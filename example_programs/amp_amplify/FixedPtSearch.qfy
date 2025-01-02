@@ -1,0 +1,40 @@
+//This is the Fixed Point Quantum Search
+//a new algorithm for fixed point quantum search
+
+method FixedPtSearch(q : Q[1], p: Q[n], r:Q[1], n:nat, f : [Bool] -> Bool, N: nat) returns (y:nat, p : real, x:nat, prob:real)
+  requires m < 2^n
+  requires forall k :: 0 <= k < m ==> f(n2b(k)) == 1
+  requires forlal k :: m <= k < m ==> f(n2b(k)) == 0
+  requires { q[0] : Nor ↦ |0⟩ }
+  requires { p[0 , n) : Nor ↦ |0⟩ }
+  requires { r[0] : Nor ↦ |0⟩ }
+  ensures y == 1 ==> p == ... //need to put the probablity
+{
+  q[0] *= H;
+  p[0,n) *= H;
+  
+  assert {q[0] : En ↦ 1 / sqrt(2) (|0⟩ + |1⟩)}
+  assert { p[0,n) : En ↦ part(2^n, sin theta : f(|k⟩) == 1, cos theta : f(|k⟩) == 0) } 
+
+  for i in [0, N)
+    invariant {
+      q[0 .. n] : En ↦ part(2^n, sin (2 * i * theta + theta) : f(|k⟩) == 1, cos (2 * i * theta + theta) : f(|k⟩) == 0)
+    }
+  {
+
+    if p[0] { q[0,n),r[0] *= λ (y:Q n, z: Q 1 => f(y,z)); }
+    y,p := measure(r[0]);
+    if (y == 1){
+      break;
+    }
+    p[0],q[0, n) *= amp; //this amplitude value will increase the amplitude of f(k) == 1 group while describing the amplitude of f(k) == 0 group.
+                    //for a state (-sin phi, cos phi), it applies cos 2 * theta * sin phi + sin 2 * theta * cos phi to the first piece
+                    //and applies - sin 2 * theta * sin phi + cos 2 * theta * cos phi to the second piece
+                    //the amp in our system might need to be generalized, we might need to break this operation down to A ; reflect(0); A^*
+                    //any structure above will have the same effect as amp (difference in terms of the theta degree)
+  }
+
+
+  x,prob := measure(q);
+}
+

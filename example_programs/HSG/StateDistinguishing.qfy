@@ -1,0 +1,49 @@
+// State Distinguishing in the swap text paper
+// 2. Quantum Fingerprinting without Shared Keys
+// https://arxiv.org/pdf/quant-ph/0102001.pdf 
+
+// q and p are messages, we want to check if they are equal. r is initialized to all zeroes
+// r is one qubit. q and p are n qubits.
+method swap(q: Q[n], p: Q[n], n:nat) 
+    ensures { q[0,n) : EN ↦ old(p[0,n)) }
+    ensures { p[0,n) : EN ↦ old(q[0,n)) }
+{
+
+   for j in [0,n)
+      if p[j] { q[j] *= q[j] +1; }
+      if q[j] { p[j] *= p[j] +1; }
+      if p[j] { q[j] *= q[j] +1; }        
+}
+
+method permLoop(r: Q[k][n], q: Q[k][n], p: Q[k][n], t:nat, k:nat, n:nat) 
+    ensures { q[t][0,n) : EN ↦ old(p[k][0,n)) }
+    ensures { p[k][0,n) : EN ↦ old(q[t][0,n)) }
+{
+
+   for j in [0,k) && r[j] == k
+     swap(q,p[k],n)
+}
+
+
+method StateDist(r: Q[k][n], q: Q[k][n], p: Q[k][n], m:nat, n:nat) returns (y:nat, prob:real)
+    requires { forall j :: 0 <= j < k ==> r[k][0 , n) : Nor ↦ |0⟩ }
+    requires { q[0,n) : EN ↦ u }
+    requires { p[0,n) : EN ↦ v }
+    ensures { u = v ==> y == 1 ==> prob == 0 }
+    ensures { u != v ==> y == 1 ==> prob = 1/2 - 1/2 * norm(u,v) } //we need to define norm of two states.
+{
+    permInit(r,n,k); //use another gate to do permutation this step will be very hard. Need to think of an implementation or assumption
+
+    // controlled SWAP (controlled by first qubit of r)
+   for t in [0,k)
+     for w in [0,k) && r[w] == t
+         ensures { q[w][0,n) : EN ↦ old(p[t][0,n)) }
+         ensures { p[t][0,n) : EN ↦ old(q[w][0,n)) }
+         {
+         swap(q[w],p[t],n);
+         }
+
+    permInit(r,n,k); //use another gate to do reversed permutation
+
+    y, prob *= measure(r);
+}

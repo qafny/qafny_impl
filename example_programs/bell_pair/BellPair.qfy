@@ -1,0 +1,13 @@
+//Simple Bell Pair
+method BellPair(q : Q[2])
+  requires { q[0, 2) : nor ↦ |0⟩ }
+  ensures  { q[0, 2) : en ↦ ∑ j ∈ [0 , 2) . isqrt(1,2) |j⟩|j⟩ }
+{
+  // induce superposition on the first qubit
+  q[0] *= H;
+  //assert { q [0] : had ↦ ⊗ i . (1) }; 
+
+  // always take the ith qubit as the controller 
+  if (q[0]) { q[1]  *= λ (x => ((x + 1) % 2)); } //can be remove the % 2, since q[1] is one qubit, why the type checking cannot infer that the % 2 is unnecessary
+ 
+}

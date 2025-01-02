@@ -1,0 +1,40 @@
+// Non-Boolean Amp
+// https://arxiv.org/abs/2102.04975
+
+method {:axiom} uf(q: Q[n], n:nat)
+    ensure { p[0,n),r[0] : EN ↦ ∑ k ∈ [0, Pow2(n)) . (-omega(v)| k , 0 ⟩, | k , 0 ⟩) }
+    
+    
+function {:axiom) inverse(uf : Q[n] -> nat -> Q[n]) //inverse function is always existed, so add to language op set.
+                                                     //the current implementation plan is to make the inverse function as built-in as ^{-1}
+
+
+method NonBoolean(q : Q[n], p : Q[1], n:nat, m:nat) returns (y: nat, prob: real)
+    requires { p[0] : Nor ↦ |0⟩ }
+{   
+    p[0] *= H;
+    init(r[0]); //initial ancilla qubit.
+    r[0] *= (lambda x => x + 1);
+    r[0] *= H; //building minus state for r, so that we can utilize phase-kick-back.
+    
+    for j in [0,m)
+    {
+      if (is_odd(j))
+      {
+        if (not p[0]) { uf(q,n); }
+        if (p[0]) {inverse(uf(q,n),n);}
+      }
+      else {
+        if (p[0]) { uf(q,n); }
+        if (not p[0]) {inverse(uf(q,n),n);}
+      }
+      
+      p[0] *= H;
+      q[0,n) *= RQFT;
+      if ({p[0],q[0,n)}) == 0) { r[0] *= (lambda x => x + 1); }
+      p[0] *= H;
+      q[0,n) *= QFT;
+    }
+    
+    y,prob := meas(q);
+}

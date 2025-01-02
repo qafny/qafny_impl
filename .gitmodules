@@ -1,0 +1,9 @@
+[submodule "external/libraries"]
+	path = external/libraries
+	url = https://github.com/dafny-lang/libraries.git
+[submodule "external/dafny"]
+	path = external/dafny
+	url = https://github.com/dafny-lang/dafny.git
+[submodule "sbv"]
+	path = sbv
+	url = https://github.com/LeventErkok/sbv.git

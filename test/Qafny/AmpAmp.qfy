@@ -1,0 +1,44 @@
+// Amplitude estimation without phase estimation
+// https://arxiv.org/pdf/quant-ph/0005055.pdf
+
+// TODO: review how chi works (placeholder notation for now)
+
+method AmplitudeAmplification(q : Q[n], p : Q[n], A:[Bool]->[Bool], n:nat, chi:[Bool]->[Bool], F:[Bool]->[Bool]) returns (y: real)
+    requires { q[0 , n) : Nor ↦ |0⟩ }
+    requires { p[0 , n) : en ↦ |0⟩ } // unsure about notation // original requires { p[0 , n) : en ↦ A|0⟩ }, new change may be wrong
+    requires 1 < c < 2
+{   
+    l := 0;
+
+    // is this valid in Dafny?
+    // have to find a way to prove termination
+    while True 
+    {
+        l := l + 1;
+        M := ceiling(c^l);
+
+        q[0,n) *= A;
+
+        z, prob *= measure(q);
+
+        if chi(z) == 1
+        {
+            y := z;
+            return y;
+        }
+
+        j := uniform(1, M); // might need to change - unform() generates random number
+
+        p *= F;
+
+        z, prob *= measure(p);
+
+        if chi(z) == 1
+        {
+            y := z;
+            return y;
+        }
+
+    }
+
+}

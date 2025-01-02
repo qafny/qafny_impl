@@ -1,0 +1,21 @@
+BellPair.qfy: pass
+ForGHZN.qfy: pass
+LongDistanceEntangle.qfy: fail
+    -Fails to parse line 6, token TId "EN"
+    -[Error] Parser Error: at line 6, col 25, token TId "EN"
+qafny-hs-exe: lexical error at line 17, column 101
+CallStack (from HasCallStack):
+  error, called at .stack-work/dist/x86_64-linux-tinfo6/ghc-9.6.4/build/Qafny/Syntax/Lexer.hs:582:61 in qafny-hs-0.1.0.0-Bg6JyfFvzrtHdkAvu3T0sM:Qafny.Syntax.Lexer
+ 
+SWAPTest.qfy: fail
+    -Fails to parse line 8 token TEq
+    -[Error] Parser Error: at line 8, col 18, token TEq
+Rest tokens: [TId "old",TLPar,TId "p",TLBracket,TLitInt 0,TRBracket,TRPar,TRBrace,TEnsures,TLBrace,TId "p",TLBracket,TLitInt 0,TRBracket,TEq,TId "old",TLPar,TId "q",TLBracket,TLitInt 0,TRBracket,TRPar,TRBrace,TLBrace,TIf,TId "p",TLBracket,TLitInt 0,TRBracket,TLBrace,TId "q",TLBracket,TLitInt 0,TRBracket,TApply,TId "q",TLBracket,TLitInt 0,TRBracket,TAdd,TLitInt 1,TSemi,TRBrace,TIf,TId "q",TLBracket,TLitInt 0,TRBracket,TLBrace,TId "p",TLBracket,TLitInt 0,TRBracket,TApply,TId "p",TLBracket,TLitInt 0,TRBracket,TAdd,TLitInt 1,TSemi,TRBrace,TIf,TId "p",TLBracket,TLitInt 0,TRBracket,TLBrace,TId "q",TLBracket,TLitInt 0,TRBracket,TApply,TId "q",TLBracket,TLitInt 0,TRBracket,TAdd,TLitInt 1,TSemi,TRBrace,TRBrace,TMethod,TId "nswap",TLPar,TId "q",TColon,TQReg,TLBracket,TId "n",TRBracket,TComma,TId "p",TColon,TQReg,TLBracket,TId "n",TRBracket,TComma,TId "n",TColon,TNat,TRPar,TEnsures,TLBrace,TId "q",TLBracket,TLitInt 0,TComma,TId "n",TRPar,TEq,TId "old",TLPar,TId "p",TLBracket,TLitInt 0,TComma,TId "n",TRPar,TRPar,TRBrace,TEnsures,TLBrace,TId "p",TLBracket,TLitInt 0,TComma,TId "n",TRPar,TEq,TId "old",TLPar,TId "q",TLBracket,TLitInt 0,TComma,TId "n",TRPar,TRPar,TRBrace,TLBrace,TFor,TId "i",TIn,TLBracket,TLitInt 0,TComma,TId "n",TRPar,TInv,TLBrace,TForall,TId "k",TIn,TLBracket,TLitInt 0,TComma,TId "i",TRBracket,TComma,TId "q",TLBracket,TLitInt 0,TComma,TId "k",TRPar,TEq,TId "old",TLPar,TId "p",TLBracket,TLitInt 0,TComma,TId "k",TRPar,TRPar,TRBrace,TInv,TLBrace,TForall,TId "k",TIn,TLBracket,TLitInt 0,TComma,TId "i",TRBracket,TComma,TId "p",TLBracket,TLitInt 0,TComma,TId "k",TRPar,TEq,TId "old",TLPar,TId "q",TLBracket,TLitInt 0,TComma,TId "k",TRPar,TRPar,TRBrace,TLBrace,TId "swap",TLPar,TId "q",TLBracket,TId "i",TRBracket,TComma,TId "p",TLBracket,TId "i",TRBracket,TRPar,TRBrace,TRBrace,TMethod,TId "SWAPTest",TLPar,TId "q",TColon,TQReg,TLBracket,TId "n",TRBracket,TComma,TId "p",TColon,TQReg,TLBracket,TId "n",TRBracket,TComma,TId "r",TColon,TQReg,TLBracket,TLitInt 1,TRBracket,TComma,TId "n",TColon,TNat,TRPar,TReturns,TLPar,TId "y",qafny-hs-exe: lexical error at line 30, column 42
+CallStack (from HasCallStack):
+  error, called at .stack-work/dist/x86_64-linux-tinfo6/ghc-9.6.4/build/Qafny/Syntax/Lexer.hs:582:61 in qafny-hs-0.1.0.0-Bg6JyfFvzrtHdkAvu3T0sM:Qafny.Syntax.Lexer
+Teleporation.qfy: fail
+    -Fails to parse line 7, token TId "EN"
+    -[Error] Parser Error: at line 7, col 23, token TId "EN"
+qafny-hs-exe: lexical error at line 18, column 96
+CallStack (from HasCallStack):
+  error, called at .stack-work/dist/x86_64-linux-tinfo6/ghc-9.6.4/build/Qafny/Syntax/Lexer.hs:582:61 in qafny-hs-0.1.0.0-Bg6JyfFvzrtHdkAvu3T0sM:Qafny.Syntax.Lexer

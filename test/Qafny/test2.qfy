@@ -1,0 +1,12 @@
+//Simple Had application with casting
+method hadtest(n:nat, q : Q[n])
+  requires { q[0, n) : nor ↦ |0⟩ }
+  ensures  { q[0, n) : en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) | k ⟩ }
+{
+  // induce superposition on the first qubit
+  q[0,n) *= H;
+  (en)q[0,n);
+  //assert { q [0] : had ↦ ⊗ i . (1) }; 
+  // always take the ith qubit as the controller 
+  //if (q[0]) { q[1]  *= λ (x => |(x + 1) % 2 ⟩); } //can be remove the % 2, since q[1] is one qubit, why the type checking cannot infer that the % 2 is unnecessary
+}

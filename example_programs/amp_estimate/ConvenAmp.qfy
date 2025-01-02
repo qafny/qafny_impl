@@ -1,0 +1,72 @@
+// Amplitude estimation without phase estimation
+// https://arxiv.org/pdf/1904.10246.pdf
+// Proof corresponds to Figure 3, 4, 5 and 7 for the Monte Carlo Integration
+
+// bₘₐₓ should be pi / 2 for our function (sin(x))²
+// PR Note: Are globals allowed?
+const b_max : real = pi / 2;
+
+// corresponds to operator R of the algorithm
+// illustrated in figure 5, built up of y rotation gates
+method phaseAdd(p: Q[n], r: Q[1], n: nat, b: real)
+    requires { p[0 , n) : En ↦ ∑ k ∈ [0, Pow2(i)) . | k ⟩ }
+    requires { r[0] : Nor ↦ |0⟩ }
+    requires 0 <= b < b_max
+    ensures { p[0,n), r[0] : En ↦ ∑ k ∈ [0, Pow2(n)) . | k , (sin(((k+1/2) * b_max)/2^n) |1⟩ + cos(((k+1/2) * b_max)/2^n)) |0⟩ ⟩ }
+{
+    r[0] := rot(b / 2^n);
+    for j in [0,n) && p[j]
+      decreases n - j
+      invariant {
+        p[0, j), r[0] : En ↦ ∑ k ∈ [0, Pow2(j)) . | k , (sin(((k+1/2) * b_max)/2^n) |1⟩ + cos(((k+1/2) * b_max)/2^n)) |0⟩ ⟩
+      }
+    {
+       r[0] := rot(b / 2^(n-j-1));
+    }
+    
+}
+
+// the oracle function
+method {:axiom} uf(q: Q[n], r: Q[1], n: nat)
+    ensures { p[0,n), r[0]: En ↦ ∑ k ∈ [0, Pow2(n)) . (-| k , 0 ⟩, | k , 0 ⟩) }
+
+// instead of Q = -AS₀A⁻¹Sₓ, as in typical generalized Grover's search algorithms (also known as amplitude amplification), 
+// in Monte Carlo Integration: A = P R, and therefore A⁻¹ = R⁻¹ P⁻¹
+// P can be taken as a simple Hadamard gate whilst R is implemented as a group of y-rotation gates (see phaseAdd and invPhaseAdd above)
+method qstep(p: Q[n], r: Q[1], n: nat, t: nat, b: real)
+    requires { p[0 , n): En ↦ ∑ k ∈ [0, Pow2(i)) . | k ⟩ }
+    requires { r[0]: Nor ↦ |0⟩ }
+    requires 0 <= b < b_max
+{
+  for j in [0,t)
+  {
+        uf(p, r);
+        p[0, n) *= H;
+        phaseAdd(p, r, n, b);
+        if p[0, n) == 0 then { r[0] *= r[0] + 1; } // reflection
+        // corresponds to operator R⁻¹ of the algorithm
+        phaseAdd^{-1}(p,r,n,b);
+        p[0, n) *= H;   
+  }
+}
+
+method AmplitudeAmplification(q: Q[m], r: Q[1], p: Q[n], m: nat, n: nat, b: real) returns (y: nat, prob: real)
+    requires { p[0, n) : Nor ↦ |0⟩ }
+    requires { r[0] : Nor ↦ |0⟩ }
+    requires { q[0, m) : Nor ↦ |0⟩ }
+    requires 0 <= b < b_max
+{
+    p[0, n) *= H;
+    q[0, m) *= H;
+    phaseAdd(p, r, n, b);
+
+    // is this valid in Dafny?
+    // have to find a way to prove termination
+    for j in [0,m) && q[j]
+    {
+      qstep(p, r, n, 2^j, b);
+    }
+    
+    q[0, m) *= RQFT;
+    y, prob := meas(q);
+}

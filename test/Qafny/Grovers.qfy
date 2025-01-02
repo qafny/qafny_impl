@@ -1,0 +1,51 @@
+//This is the Grovers algorithm file. 
+
+method {:axiom} Diff(n:nat, q: Q[n], f: nat -> bool, v:real, phi: real)
+  requires phi == sqrt(sumFun(f,2^n) / 2^n)
+  requires { q[0 , n) : aa ↦ part(n,f,sin(v), cos(v)) }
+  ensures { q[0 , n) : aa ↦ part(n,f,sin(v + 2 * phi), cos(v + 2 * phi)) }
+
+
+method Grovers(n:nat, q : Q[n], f : nat -> Bool, m:nat, N : nat) returns (y:nat, p : real)
+  requires m < 2^n
+  requires forall k :: 0 <= k < m ==> f(n2b(k)) == 1
+  requires forlal k :: m <= k < m ==> f(n2b(k)) == 0
+  requires { q[0 , n) : nor ↦ |0⟩ }
+  //we should have a way of only specifying basis.
+  //but we also care about amplitudes here.
+  ensures N == pi / 4 * sqrt(2^n) ==>  p == 1
+  ensures f(n2b(y)) == 1
+{
+  q[0, n) *= H; //prepare n qubit Had type
+  
+  //q is splitted into the representation of two sets of |k⟩ based on f(k) == 1 and f(k) == 0.
+  //in this mode, one cannot manipulate |k⟩, applying an oracle will do phase-kickback.
+  //sin theta is computed by collecting all amplitudes for basis f(k) == 1, and cos theta is otherwise.
+  //so in Grover's search, we have sin theta = sqrt(m/2^n) and cos theta = sqrt(N-m/2^n) 
+  //the following is a casting operation
+  //we turn the q[0,n) state to a special EN type for sin/cos amplitude, here, we partition all 2^n basis_vector to two groups f(k) == 1 and f(k) == 0
+  //then first sum of all first group amplitude is sin theta, and the second group is cos theta 
+  assert { q[0,n) : aa ↦ part(n,f , sin (sumFun(f,2^n) / 2^n), cos(sumFun(f,2^n) / 2^n)) } 
+
+  for i in [0, N)
+    invariant {
+      q[0,n) : aa ↦ part(n,f , sin ((2 * i + 1) * sqrt(sumFun(f,2^n) / 2^n)), cos((2 * i + 1) * sqrt(sumFun(f,2^n) / 2^n)))
+    }
+  {
+    //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
+    Diff(n,q,f,(2 * i + 1) * sqrt(sumFun(f,2^n) / 2^n),sqrt(sumFun(f,2^n) / 2^n)); //this performs phase kick-back. only allowed operation (read from f and f is a function answers yes or no). 
+                                  //to correctly represent the data-base searching, we might implement phase kick-back
+                                  //where we need to asusme there is a second register p[0], and p[0] is in |-⟩.
+     //this amplitude value will increase the amplitude of f(k) == 1 group while describing the amplitude of f(k) == 0 group.
+                    //for a state (-sin phi, cos phi), it applies cos 2 * theta * sin phi + sin 2 * theta * cos phi to the first piece
+                    //and applies - sin 2 * theta * sin phi + cos 2 * theta * cos phi to the second piece
+                    //the amp in our system might need to be generalized, we might need to break this operation down to A ; reflect(0); A^*
+                    //any structure above will have the same effect as amp (difference in terms of the theta degree)
+  }
+
+  y,p *= measure(q);
+  // we can see that after a fixed number N interation, the chance p of measuring out q which is a key in f(y) == 1 is sin (2*N * theta + theta).
+  // the chance of it to close to 1 will be to make 2*N*theta + theta == pi / 2.
+  // so N will be roughly pi / (4*theta) - 1/2, theta can be estimated to be sqrt(m/2^n). N will be N == pi / 4 * sqrt(2^n)
+}  
+

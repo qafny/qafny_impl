@@ -1,0 +1,38 @@
+// Amplitude estimation and counting
+// https://arxiv.org/pdf/quant-ph/0005055.pdf
+
+method {:axiom} uf(q: Q[n], r: Q[1], n:nat)
+    ensure { p[0,n),r[0] : EN ↦ ∑ k ∈ [0, Pow2(n)) . (-| k , 0 ⟩, | k , 0 ⟩) }
+    
+method qstep(p: Q[n], r:Q[1], n:nat, t:nat)
+{
+  for j in [0,t)
+  {
+       uf(p,r);
+       p[0,n) *= H;
+       if p[0,n) == 0 then {r[0] *= r[0] + 1;} //reflection
+       p[0,n) *= H;   
+  }
+}
+
+method AmplitudeEstimate(q : Q[n], r : Q[1], p : Q[n], m:nat, n:nat, b : real) returns (y: nat, prob: real)
+    requires { p[0 , n) : Nor ↦ |0⟩ }
+    requires { r[0] : Nor ↦ |0⟩ }
+    requires { q[0 , m) : Nor ↦ A|0⟩ } // unsure about notation
+    requires 0 <= b < pi / 2
+{   
+    p[0,n) *= H;
+    q[0,m) *= H;
+
+    // is this valid in Dafny?
+    // have to find a way to prove termination
+    for j in [0,m) && q[j]
+    {
+      qstep(p,r,n,2^j);
+    }
+    
+    q[0,m) *= RQFT;
+    y,prob := meas(q);
+}
+
+

@@ -1,0 +1,17 @@
+//Simple Had application
+method hadtest(n:nat, q : Q[n])
+  requires { q[0, n) : nor ↦ |0⟩ }
+  ensures  { q [0,n) : had ↦ ⊗ i ∈ [0,n) . |+⟩ }
+{
+  // induce superposition on the first qubit
+  assert { q[0, n) : nor ↦ |0⟩ };
+  q[0,n) *= H;
+  assert { q [0,n) : had ↦ ⊗ i ∈ [0,n) . |+⟩ };
+  //assert { q [0] : had ↦ ⊗ i . (1) }; 
+  // always take the ith qubit as the controller 
+  //if (q[0]) { q[1]  *= λ (x => |(x + 1) % 2 ⟩); } //can be remove the % 2, since q[1] is one qubit, why the type checking cannot infer that the % 2 is unnecessary
+}
+
+//|-⟩ == 1/\sqrt{2} (|0> - |1>)--> omega(1,2) == exp(2 pi i * 1/2)
+//(|0⟩)^n --->  x: seq<bv1>, x:[0,n) ---> [0,0,0,0]
+//|+⟩ --- 1/\sqrt{2} (|0> + |1>) --> omega(0,2) == exp(2 pi i * 0/2) ===> exp(i x ) == cos x + i sin x
