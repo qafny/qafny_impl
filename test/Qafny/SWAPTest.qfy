@@ -5,10 +5,10 @@
 // q and p are messages, we want to check if they are equal. r is initialized to all zeroes
 // r is one qubit. q and p are n qubits.
 method swap(q : Q[1], p : Q[1])
-  requires { q[0] : nor ↦ x }
-  requires { p[0] : nor ↦ y }
-  ensures { q[0] : nor ↦ y }
-  ensures { p[0] : nor ↦ x }
+  requires { q[0] : nor ↦ ⊗ x }
+  requires { p[0] : nor ↦ ⊗ y }
+  ensures { q[0] : nor ↦ ⊗ y }
+  ensures { p[0] : nor ↦ ⊗ x }
 {
       if (p[0]) { q[0] *= q[0] +1; }
       if (q[0]) { p[0] *= p[0] +1; }
@@ -16,10 +16,10 @@ method swap(q : Q[1], p : Q[1])
 }
 
 method nswap(q: Q[n], p: Q[n], n : nat)
-  requires { q[0,n) : nor ↦ x }
-  requires { p[0,n) : nor ↦ y }
-  ensures { q[0,n) : nor ↦ y }
-  ensures { p[0,n) : nor ↦ x }
+  requires { q[0,n) : nor ↦ ⊗ x }
+  requires { p[0,n) : nor ↦ ⊗ y }
+  ensures { q[0,n) : nor ↦ ⊗ y }
+  ensures { p[0,n) : nor ↦ ⊗ x }
 {
       for i in [0,n)
       invariant { forall k in [0,i) , q[0,k) == old(p[0,k)) }
