@@ -30,6 +30,16 @@ class DXAExp(DXTop):
     def accept(self, visitor : AbstractTargetVisitor):
         pass
 
+class DXConds(DXTop):
+
+    def accept(self, visitor : AbstractTargetVisitor):
+        pass 
+
+class DXBool(DXSpec, DXType):
+
+    def accept(self, visitor : AbstractTargetVisitor):
+        pass 
+
 # SType could be bv1, real, nat,
 class SType(DXType):
 
@@ -72,7 +82,44 @@ class DXBin(DXAExp):
     def right(self):
         return self._right
 
+class DXLogic(DXBool):
 
+    def __init__(self, op: str, left: DXBool, right: DXBool):
+        self._op = op
+        self._left = left
+        self._right = right
+
+    def accept(self, visitor : AbstractTargetVisitor):
+        return visitor.visitLogic(self)
+    
+    def op(self):
+        return self._op
+    
+    def left(self):
+        return self._left
+    
+    def right(self):
+        return self._right
+    
+class DXComp(DXBool):
+
+    def __init__(self, op: str, left: DXAExp, right: DXAExp):
+        self._op = op
+        self._left = left
+        self._right = right
+
+    def accept(self, visitor : AbstractTargetVisitor):
+        return visitor.visitComp(self)
+
+    def op(self):
+        return self._op
+
+    def left(self):
+        return self._left
+
+    def right(self):
+        return self._right
+    
 class DXUni(DXType):
 
     def __init__(self, op: str, next:DXType):
@@ -88,7 +135,7 @@ class DXUni(DXType):
     def next(self):
         return self._next
 
-
+    
 class DXNum(DXType):
 
     def __init__(self, num: int):
@@ -100,6 +147,17 @@ class DXNum(DXType):
     def num(self):
         return self._num
 
+class DXNot(DXBool):
+
+    def __init__(self, next: DXBool):
+        self._next = next
+
+    def accept(self, visitor : AbstractTargetVisitor):
+        return visitor.visitNot(self)
+	
+    def next(self):
+        return self._next
+    
 
 class DXBind(DXAExp):
 
@@ -112,7 +170,7 @@ class DXBind(DXAExp):
         return visitor.visitBind(self)
 
     def ID(self):
-        return self._id if self._id is str else self._id.getText()
+        return self._id #if self._id is str else self._id.getText()
 
     def type(self):
         return self._type
@@ -126,7 +184,85 @@ class DXBind(DXAExp):
             return DXBind(self._id, self._type, 0)
         else:
             return DXBind(self._id, self._type, self._num + 1)
+        
+class DXVar(DXBind):
 
+    def __init__(self, id : str, ty: DXType = None):
+        self._id = id
+        self._type = ty
+
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitVar(self)
+
+    def ID(self):
+        return self._id
+    
+    def type(self):
+        return self._type
+    
+    
+class DXLength(DXVar):
+
+    def __init__(self, var : DXVar):
+        self._var = var
+
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitLength(self)
+    
+    def var(self):
+        return self._var
+
+class DXRequires(DXConds):
+
+    def __init__(self, spec: DXSpec):
+        self._spec = spec
+
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitRequires(self)
+    
+    def spec(self):
+        return self._spec
+
+class DXEnsures(DXConds):
+
+    def __init__(self, spec: DXSpec):
+        self._spec = spec
+
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitEnsures(self)
+    
+    def spec(self):
+        return self._spec
+     
+class DXCall(DXStmt,DXAExp):
+
+    def __init__(self, id: str, exps: [DXAExp]):
+        self._id = id
+        self._exps = exps
+
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitCall(self)
+
+    def ID(self):
+        return self._id
+
+    def exps(self):
+        return self._exps
+
+class DXInit(DXStmt):
+
+    def __init__(self, binding: DXBind, exp: DXAExp = None):
+        self._binding = binding
+        self._exp = exp
+
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitInit(self)
+
+    def binding(self):
+        return self._binding
+    
+    def exp(self):
+        return self._exp
 
 class DXIndex(DXAExp):
 
@@ -135,32 +271,13 @@ class DXIndex(DXAExp):
         self._index = index
 
     def accept(self, visitor : AbstractTargetVisitor):
-        return visitor.visitQIndex(self)
+        return visitor.visitIndex(self)
 
     def bind(self):
-        return self._id
+        return self._id 
 
     def index(self):
         return self._index
-
-
-class DXBool(DXSpec):
-
-    def accept(self, visitor : AbstractTargetVisitor):
-        pass
-
-
-class DXCNot(DXBool):
-
-    def __init__(self, next: DXBool):
-        self._next = next
-
-    def accept(self, visitor : AbstractTargetVisitor):
-        return visitor.visitCNot(self)
-
-    def next(self):
-        return self._next
-
 
 class DXInRange(DXBool):
 
@@ -180,48 +297,7 @@ class DXInRange(DXBool):
 
     def right(self):
         return self._right
-
-
-class DXComp(DXBool):
-
-    def __init__(self, op: str, left: DXAExp, right: DXAExp):
-        self._op = op
-        self._left = left
-        self._right = right
-
-    def accept(self, visitor : AbstractTargetVisitor):
-        return visitor.visitComp(self)
-
-    def op(self):
-        return self._op
-
-    def left(self):
-        return self._left
-
-    def right(self):
-        return self._right
-
-
-class DXLogic(DXBool):
-
-    def __init__(self, op: str, left: DXBool, right: DXBool):
-        self._op = op
-        self._left = left
-        self._right = right
-
-    def accept(self, visitor : AbstractTargetVisitor):
-        return visitor.visitLogic(self)
-
-    def op(self):
-        return self._op
-
-    def left(self):
-        return self._left
-
-    def right(self):
-        return self._right
-
-
+    
 class DXAll(DXBool, DXSpec):
 
     def __init__(self, bind: DXBind, next: DXSpec):
@@ -236,32 +312,41 @@ class DXAll(DXBool, DXSpec):
 
     def next(self):
         return self._next
+    
+class DXWhile(DXStmt):
 
+    def __init__(self, cond: DXBool, stmts: [DXStmt], inv : [DXSpec] = None):
+        self._cond = cond
+        self._stmts = stmts
+        self._inv = inv
 
-class DXRequires(DXTop):
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitWhile(self)
+    
+    def cond(self):
+        return self._cond
 
-    def __init__(self, spec: DXSpec):
-        self._spec = spec
+    def stmts(self):
+        return self._stmts
+    
+    def inv(self):
+        return self._inv
+    
+class DXIf(DXStmt):
 
-    def accept(self, visitor : AbstractTargetVisitor):
-        return visitor.visitRequires(self)
+    def __init__(self, cond: DXBool, stmts: [DXStmt]):
+        self._cond = cond
+        self._stmts = stmts
 
-    def spec(self):
-        return self._spec
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitIf(self)
+    
+    def cond(self):
+        return self._cond
 
-
-class DXEnsures(DXTop):
-
-    def __init__(self, spec: DXSpec):
-        self._spec = spec
-
-    def accept(self, visitor : AbstractTargetVisitor):
-        return visitor.visitEnsures(self)
-
-    def spec(self):
-        return self._spec
-
-
+    def stmts(self):
+        return self._stmts
+    
 class DXAssert(DXStmt):
 
     def __init__(self, spec: DXSpec):
@@ -269,26 +354,10 @@ class DXAssert(DXStmt):
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitAssert(self)
-
+    
     def spec(self):
         return self._spec
-
-class DXCall(DXStmt,DXBool, DXAExp):
-
-    def __init__(self, id: str, exps: [DXAExp]):
-        self._id = id
-        self._exps = exps
-
-    def accept(self, visitor: AbstractTargetVisitor):
-        return visitor.visitCall(self)
-
-    def ID(self):
-        return self._id
-
-    def exps(self):
-        return self._exps
-
-
+    
 class DXAssign(DXAExp):
 
     def __init__(self, ids: [DXBind], exp : DXAExp):
@@ -304,10 +373,9 @@ class DXAssign(DXAExp):
     def exp(self):
         return self._exp
 
-
 class DXMethod(DXTop):
 
-    def __init__(self, id: str, axiom:bool, bindings: [DXBind], returns : [DXBind], conds: [DXSpec], stmts: [DXStmt]):
+    def __init__(self, id: str, axiom: bool, bindings: [DXBind], returns : [DXBind], conds: [DXConds], stmts: [DXStmt]):
         self._id = id
         self._axiom = axiom
         self._bindings = bindings
@@ -320,7 +388,7 @@ class DXMethod(DXTop):
 
     def ID(self):
         return self._id
-
+    
     def axiom(self):
         return self._axiom
 

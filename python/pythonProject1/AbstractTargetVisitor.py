@@ -23,7 +23,7 @@ class AbstractTargetVisitor(ABC):
         pass
 
     @abstractmethod
-    def visitCNot(self, ctx):
+    def visitNot(self, ctx):
         pass
 
     @abstractmethod
