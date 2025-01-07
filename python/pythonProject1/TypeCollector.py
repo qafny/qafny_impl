@@ -15,6 +15,15 @@ def addElem(a:QXComp, l:[QXComp]):
         return l
     return l.append(a)
 
+def isARange(env: [([QXQRange], QXQTy)], se:[str]):
+    tmp = []
+    for elem,ty in env:
+        for v in elem:
+            if not v.ID() in se:
+                tmp += [v.ID()]
+    return tmp
+
+
 # check the types of the quantum array (nor, Had, EN types)
 class TypeCollector(ProgramVisitor):
 
@@ -25,6 +34,7 @@ class TypeCollector(ProgramVisitor):
         self.tenv = []
         self.mkenv = []
         self.pred = []
+        self.fkenv = None
         self.fvar = ""
 
 
@@ -33,13 +43,38 @@ class TypeCollector(ProgramVisitor):
         self.tenv = []
         self.mkenv = []
         self.pred = []
+        self.fkenv = self.kenv.get(self.fvar)
 
         for condelem in ctx.conds():
             v = condelem.accept(self)
             if not v:
                 return False
 
+
+        tmptv = []
+        vars = isARange(self.tenv, self.fkenv.keys)
+        for var in vars:
+            if isinstance(self.fkenv.get(var),TyQ):
+                v = self.fkenv.get(var).flag()
+                locus = [QXQRange(var, QXCRange(QXNum(0), v))]
+                ty = TyEn(QXNum(1))
+                tmptv += [(locus,ty)]
+
+        tmpfv = []
+        vars = isARange(self.mkenv, self.fkenv.keys)
+        for var in vars:
+            if isinstance(self.fkenv.get(var),TyQ):
+                v = self.fkenv.get(var).flag()
+                locus = [QXQRange(var, QXCRange(QXNum(0), v))]
+                ty = TyEn(QXNum(1))
+                tmpfv += [(locus,ty)]
+
+        self.tenv += tmptv
+        self.mkenv += tmpfv
+
         self.env.update({self.fvar:(self.tenv,self.mkenv,self.pred)})
+
+
         return True
 
     def visitProgram(self, ctx: Programmer.QXProgram):
