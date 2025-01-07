@@ -23,6 +23,12 @@ def isARange(env: [([QXQRange], QXQTy)], se:[str]):
                 tmp += [v.ID()]
     return tmp
 
+def merge_two_dicts(x, y):
+    z = x.copy()   # start with keys and values of x
+    z.update(y)    # modifies z with keys and values of y
+    return z
+
+
 
 # check the types of the quantum array (nor, Had, EN types)
 class TypeCollector(ProgramVisitor):
@@ -52,18 +58,19 @@ class TypeCollector(ProgramVisitor):
 
 
         tmptv = []
-        vars = isARange(self.tenv, self.fkenv.keys)
+        vars = isARange(self.tenv, self.fkenv[0].keys())
         for var in vars:
-            if isinstance(self.fkenv.get(var),TyQ):
+            if isinstance(self.fkenv[0].get(var),TyQ):
                 v = self.fkenv.get(var).flag()
                 locus = [QXQRange(var, QXCRange(QXNum(0), v))]
                 ty = TyEn(QXNum(1))
                 tmptv += [(locus,ty)]
 
         tmpfv = []
-        vars = isARange(self.mkenv, self.fkenv.keys)
+        fkenvMerge = merge_two_dicts(self.fkenv[0], self.fkenv[1])
+        vars = isARange(self.mkenv, fkenvMerge.keys())
         for var in vars:
-            if isinstance(self.fkenv.get(var),TyQ):
+            if isinstance(fkenvMerge.get(var),TyQ):
                 v = self.fkenv.get(var).flag()
                 locus = [QXQRange(var, QXCRange(QXNum(0), v))]
                 ty = TyEn(QXNum(1))

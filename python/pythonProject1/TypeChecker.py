@@ -3,7 +3,9 @@ from ProgramVisitor import ProgramVisitor
 from CollectKind import *
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
-    return q1.ID().ID() == q2.ID().ID() and compareAExp(q1.crange().left(),q2.crange().left()) and compareAExp(q1.crange().right(),q2.crange().right())
+    return (q1.ID().ID() == q2.ID().ID()
+            and compareAExp(q1.crange().left(),q2.crange().left())
+            and compareAExp(q1.crange().right(),q2.crange().right()))
 
 def compareRangeLocus(q1: QXQRange, qs: [QXQRange]):
     vs = []
