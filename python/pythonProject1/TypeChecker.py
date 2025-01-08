@@ -3,7 +3,7 @@ from ProgramVisitor import ProgramVisitor
 from CollectKind import *
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
-    return (q1.ID().ID() == q2.ID().ID()
+    return (q1.ID() == q2.ID()
             and compareAExp(q1.crange().left(),q2.crange().left())
             and compareAExp(q1.crange().right(),q2.crange().right()))
 
@@ -24,6 +24,102 @@ def compareLocus(q1: [QXQRange], q2: [QXQRange]):
 
     return vs
 
+def compareType(ty: QXQTy, ty1: QXQTy = None):
+    if ty1 is None:
+        return ty
+
+    if isinstance(ty, TyEn) and isinstance(ty1, TyEn):
+        if ty.flag().num() < ty1.flag().num():
+            return ty1
+        else:
+            return ty
+
+    if isinstance(ty, TyEn) and isinstance(ty1, TyNor):
+        return ty
+
+    if isinstance(ty, TyNor) and isinstance(ty1, TyEn):
+        return ty1
+
+    if isinstance(ty, TyHad) and isinstance(ty1, TyEn):
+        return ty1
+
+    if isinstance(ty, TyEn) and isinstance(ty1, TyHad):
+        return ty
+
+    if isinstance(ty, TyNor) and isinstance(ty1, TyHad):
+        return TyEn(QXNum(1))
+
+    if isinstance(ty, TyHad) and isinstance(ty1, TyNor):
+        return TyEn(QXNum(1))
+
+    if isinstance(ty, TyHad) and isinstance(ty1, TyHad):
+        return TyEn(QXNum(1))
+
+    if isinstance(ty, TyNor) and isinstance(ty1, TyNor):
+        return ty
+
+
+def compareSingle(qs: [QXQRange], qv: [QXQRange]):
+    if len(qv) != 1:
+        return None
+
+    elem = qv[0]
+    vs = []
+    for i in len(qs):
+        v = qs[i]
+        if elem.ID() == v.ID():
+            if elem.crange().left() == v.crange().left():
+                if elem.crange().right() == v.crange().right():
+                    qv = []
+                    vs += (qs[i+1:len(qs)])
+                    return (QXQRange(elem.ID(), QXCRange(v.crange().left(), v.crange().right())), vs, qv)
+                else:
+                    qv = [QXQRange(elem.ID(), QXCRange(v.crange().right(), elem.crange().right()))]
+                    vs += (qs[i+1:len(qs)])
+                    return (QXQRange(elem.ID(), QXCRange(v.crange().left(), v.crange().right())), vs, qv)
+        vs += [v]
+
+    return None
+
+
+def subLocusGen(q: [QXQRange], qs: [([QXQRange], TyQ)]):
+    rev = []
+    floc = []
+    type = None
+    for i in len(qs):
+        elem,qty = qs[i]
+        if isinstance(qty, TyEn):
+            vs = compareLocus(elem, q)
+            if vs is None:
+                rev += [(elem, qty)]
+            elif vs == []:
+                floc += elem
+                type = compareType(qty, type)
+                rev += (qs[i+1:len(qs)])
+                return (floc, type, rev)
+            else:
+                q = vs
+                floc += elem
+                type = compareType(qty, type)
+
+        if isinstance(qty, TyNor) or isinstance(qty, TyHad):
+            re = compareSingle(q, elem)
+            if re is not None:
+                qxv, vs, qv = re
+                if vs == []:
+                    floc += [qxv]
+                    type = compareType(qty, type)
+                    rev += qv + (qs[i+1:len(qs)])
+                    return (floc, type, rev)
+                else:
+                    floc += [qxv]
+                    type = compareType(qty, type)
+                    rev += qv
+            else:
+                rev += [qs[i]]
+
+
+
 def subLocus(qs: [([QXQRange], TyQ)], q2: [QXQRange]):
     vs = q2
     qsf = []
@@ -43,6 +139,12 @@ def subLocus(qs: [([QXQRange], TyQ)], q2: [QXQRange]):
     else:
         return None
 
+def addOneType(ty : QXQTy):
+    if isinstance(ty, TyEn):
+        return TyEn(QXNum(ty.flag().num()+1))
+    if isinstance(ty, TyNor):
+        return TyHad
+    return None
 
 # check the types of the quantum array (nor, Had, EN types)
 class TypeChecker(ProgramVisitor):
@@ -58,7 +160,7 @@ class TypeChecker(ProgramVisitor):
 
     def visitMethod(self, ctx: Programmer.QXMethod):
         x = ctx.ID()
-        if x == self.name:
+        if x != self.name:
             return True
 
         self.kinds = self.kenv.get(self.name)
@@ -81,9 +183,9 @@ class TypeChecker(ProgramVisitor):
         return ctx.spec().accept(self)
 
     def visitInit(self, ctx: Programmer.QXInit):
-        y = ctx.binding().ID()
-        tv = ctx.binding().type()
-        self.tenv.update({y: tv})
+        #y = ctx.binding().ID()
+        #tv = ctx.binding().type()
+        #self.tenv.update({y: tv})
         return True
 
     def visitCast(self, ctx: Programmer.QXCast):
@@ -100,6 +202,14 @@ class TypeChecker(ProgramVisitor):
         return ctx.ID()
 
     def visitQAssign(self, ctx: Programmer.QXQAssign):
+        loc, ty, nenv = subLocusGen(ctx.locus(), self.renv)
+        if isinstance(ctx.exp(), QXSingle):
+            ty = addOneType(ty)
+        if ty is None:
+            return False
+
+        self.renv = nenv
+        self.renv += [(loc, ty)]
         return True
 
     def visitMeasure(self, ctx: Programmer.QXMeasure):
