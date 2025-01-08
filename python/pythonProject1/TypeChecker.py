@@ -68,8 +68,8 @@ def compareSingle(qs: [QXQRange], qv: [QXQRange]):
     for i in len(qs):
         v = qs[i]
         if elem.ID() == v.ID():
-            if elem.crange().left() == v.crange().left():
-                if elem.crange().right() == v.crange().right():
+            if compareAExp(elem.crange().left(), v.crange().left()):
+                if compareAExp(elem.crange().right(), v.crange().right()):
                     qv = []
                     vs += (qs[i+1:len(qs)])
                     return (QXQRange(elem.ID(), QXCRange(v.crange().left(), v.crange().right())), vs, qv)
@@ -117,7 +117,7 @@ def subLocusGen(q: [QXQRange], qs: [([QXQRange], TyQ)]):
                     rev += qv
             else:
                 rev += [qs[i]]
-
+    return None
 
 def sameLocus(q: [QXQRange], qs : [([QXQRange], TyQ)]):
     for i in len(qs):
@@ -131,25 +131,52 @@ def sameLocus(q: [QXQRange], qs : [([QXQRange], TyQ)]):
         else:
             return None
 
+def subRangeLocus(elem: QXQRange, qs: [QXQRange]):
+    vs = []
+    for i in range(len(qs)):
+        v = qs[i]
+        if elem.ID() == v.ID():
+            if compareAExp(elem.crange().left(), v.crange().left()):
+                if compareAExp(elem.crange().right(), v.crange().right()):
+                    vs += (qs[i + 1:len(qs)])
+                    return vs
+                else:
+                    vs += [QXQRange(elem.ID(), QXCRange(v.crange().right(), elem.crange().right()))] + (qs[i + 1:len(qs)])
+                    return vs
+        vs = vs + [qs[i]]
+    return None
 
-def subLocus(qs: [([QXQRange], TyQ)], q2: [QXQRange]):
-    vs = q2
+def subRangeLoci(q: [QXQRange], qs: [QXQRange]):
+    for elem in q:
+        qs = subRangeLocus(elem, qs)
+        if qs is None:
+            return None
+    return qs
+
+def subLocus(q: [QXQRange] , qs: [([QXQRange], TyQ)]):
     qsf = []
+    rty = None
     for i in range(len(qs)):
         elem,ty = qs[i]
-        vsa = vs
-        vs = compareLocus(elem, q2)
+        vs = subRangeLoci(q, elem)
         if vs is None:
-            vs = vsa
-            qsf = qsf + [elem]
-        if not vs:
+            qsf = qsf + [qs[i]]
+        elif vs == []:
             qsf = qsf + qs[i+1:len(qs)]
-            break
+            if isinstance(ty, TyHad):
+                rty = TyEn(QXNum(1))
+            else:
+                rty = ty
+            return (rty, qsf)
+        else:
+            qsf += [(vs,ty)] + qs[i+1:len(qs)]
+            if isinstance(ty, TyHad):
+                rty = TyEn(QXNum(1))
+            else:
+                rty = ty
+            return (rty, qsf)
 
-    if not vs:
-        return qsf
-    else:
-        return None
+    return None
 
 def addOneType(ty : QXQTy):
     if isinstance(ty, TyEn):
@@ -163,11 +190,17 @@ class TypeChecker(ProgramVisitor):
 
     def __init__(self, kenv: dict, tenv:dict, f: str, ind: int):
         # need st --> state we are deling with
+        #kind map from fun vars to kind maps
         self.kenv = kenv
+        #type env
         self.tenv = tenv
+        #current fun name
         self.name = f
+        #the index for a function name to check
         self.ind = ind
+        #kind env
         self.kinds = dict()
+        #the checked type env at index
         self.renv = []
 
     def visitMethod(self, ctx: Programmer.QXMethod):
@@ -175,7 +208,7 @@ class TypeChecker(ProgramVisitor):
         if x != self.name:
             return True
 
-        self.kinds = self.kenv.get(self.name)
+        self.kinds = self.kenv.get(self.name)[0]
         self.renv = self.tenv.get(self.name)[0]
 
         v = True
@@ -195,9 +228,9 @@ class TypeChecker(ProgramVisitor):
         return ctx.spec().accept(self)
 
     def visitInit(self, ctx: Programmer.QXInit):
-        #y = ctx.binding().ID()
-        #tv = ctx.binding().type()
-        #self.tenv.update({y: tv})
+        y = ctx.binding().ID()
+        kv = ctx.binding().type()
+        self.kinds.update({y: kv})
         return True
 
     def visitCast(self, ctx: Programmer.QXCast):
@@ -209,11 +242,12 @@ class TypeChecker(ProgramVisitor):
             else:
                 self.renv = [(ctx.locus(), TyAA())] + vs
                 return True
-        
-        self.renv = subLocus(self.renv,ctx.locus())
-        if self.renv is None:
+
+        re = subLocusGen(ctx.locus(), self.renv)
+        if re is None:
             return False
-        self.renv = self.renv + [(ctx.locus(), ty)]
+        newLoc, newTy, vs = re
+        self.renv = vs + [(newLoc, ty)]
         return True
 
     def visitBind(self, ctx: Programmer.QXBind):
@@ -233,9 +267,16 @@ class TypeChecker(ProgramVisitor):
         return True
 
     def visitMeasure(self, ctx: Programmer.QXMeasure):
-        for elem in ctx.locus():
-            elem.accept(self)
-        return ctx.ids()
+        re = subLocus(ctx.locus(), self.renv)
+        if re is None:
+            return False
+        nty, nenv = re
+
+        for id in ctx.ids():
+            self.kinds.update({id:TySingle("nat")})
+
+        self.renv = [(ctx.locus(), nty)]+nenv
+        return True
 
     def visitCAssign(self, ctx: Programmer.QXCAssign):
         return True
