@@ -119,6 +119,18 @@ def subLocusGen(q: [QXQRange], qs: [([QXQRange], TyQ)]):
                 rev += [qs[i]]
 
 
+def sameLocus(q: [QXQRange], qs : [([QXQRange], TyQ)]):
+    for i in len(qs):
+        elem, qty = qs[i]
+        vs = compareLocus(q, elem)
+        if vs == []:
+            vs += (qs[i+1:len(qs)])
+            return vs
+        elif vs is None:
+            vs += [qs[i]]
+        else:
+            return None
+
 
 def subLocus(qs: [([QXQRange], TyQ)], q2: [QXQRange]):
     vs = q2
@@ -190,6 +202,14 @@ class TypeChecker(ProgramVisitor):
 
     def visitCast(self, ctx: Programmer.QXCast):
         ty = ctx.qty()
+        if isinstance(ty, TyAA):
+            vs = sameLocus(ctx.locus(), self.renv)
+            if vs is None:
+                return False
+            else:
+                self.renv = [(ctx.locus(), TyAA())] + vs
+                return True
+        
         self.renv = subLocus(self.renv,ctx.locus())
         if self.renv is None:
             return False
@@ -303,11 +323,3 @@ class TypeChecker(ProgramVisitor):
     def visitUni(self, ctx: Programmer.QXUni):
         ctx.next().accept(self)
         return ctx.op()
-
-    def visitSingle(self, ctx: Programmer.QXSingle):
-        return ctx.op()
-
-    def visitOracle(self, ctx: Programmer.QXOracle):
-        ctx.phase().accept(self)
-        for elem in ctx.vectors():
-            elem.accept(self)
