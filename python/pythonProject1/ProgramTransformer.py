@@ -164,7 +164,7 @@ class ProgramTransformer(ExpVisitor):
         if ctx.logicImply() is not None:
             v1 = self.visitLogicImply(ctx.logicImply())
             v2 = self.visitLogicOrExp(ctx.logicOrExp())
-            return QXBool("==>", v1, v2)
+            return QXLogic("==>", v1, v2)
         return self.visitLogicOrExp(ctx.logicOrExp())
 
 
@@ -173,7 +173,7 @@ class ProgramTransformer(ExpVisitor):
         if ctx.logicOrExp() is not None:
             v1 = self.visitLogicAndExp(ctx.logicAndExp())
             v2 = self.visitLogicOrExp(ctx.logicOrExp())
-            return QXBool("||", v1, v2)
+            return QXLogic("||", v1, v2)
         return self.visitLogicAndExp(ctx.logicAndExp())
 
 
@@ -182,7 +182,7 @@ class ProgramTransformer(ExpVisitor):
         if ctx.logicAndExp() is not None:
             v1 = self.visitLogicNotExp(ctx.logicNotExp())
             v2 = self.visitLogicAndExp(ctx.logicAndExp())
-            return QXBool("&&", v1, v2)
+            return QXLogic("&&", v1, v2)
         return self.visitLogicNotExp(ctx.logicNotExp())
 
 

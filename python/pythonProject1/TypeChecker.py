@@ -1,4 +1,5 @@
 import Programmer
+from LocusCollector import LocusCollector
 from ProgramVisitor import ProgramVisitor
 from CollectKind import *
 
@@ -282,9 +283,25 @@ class TypeChecker(ProgramVisitor):
         return True
 
     def visitIf(self, ctx: Programmer.QXIf):
-        ctx.bexp().accept(self)
-        for elem in ctx.stmts():
-            elem.accept(self)
+        if isinstance(ctx.bexp(), QXBool):
+            oldenv = self.renv
+            for elem in ctx.stmts():
+                elem.accept(self)
+            if all(x == y for x, y in zip(oldenv, self.renv)):
+                return True
+            else:
+                return False
+
+
+        if isinstance(ctx.bexp(), QXQBool):
+            findLocus = LocusCollector(self.renv)
+            tmpv = self.renv
+            self.renv = findLocus.renv
+            for elem in ctx.stmts():
+                elem.accept()
+            self.renv = tmpv
+            return True
+
 
     def visitFor(self, ctx: Programmer.QXFor):
         ctx.crange().accept(self)
