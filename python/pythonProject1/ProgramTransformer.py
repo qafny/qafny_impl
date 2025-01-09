@@ -33,7 +33,7 @@ class ProgramTransformer(ExpVisitor):
             axiom = False
         returns = self.visitReturna(ctx.returna())
         conds = self.visitConds(ctx.conds())
-        if axiom:
+        if not axiom:
             stmts = self.visitStmts(ctx.stmts())
         else:
             stmts = []
@@ -162,14 +162,16 @@ class ProgramTransformer(ExpVisitor):
     # Visit a parse tree produced by ExpParser#logicImply.
     def visitLogicImply(self, ctx:ExpParser.LogicImplyContext):
         if ctx.logicImply() is not None:
-            v1 = self.visitLogicImply(ctx.logicImply())
-            v2 = self.visitLogicOrExp(ctx.logicOrExp())
+            v2 = self.visitLogicImply(ctx.logicImply())
+            v1 = self.visitLogicOrExp(ctx.logicOrExp())
             return QXLogic("==>", v1, v2)
         return self.visitLogicOrExp(ctx.logicOrExp())
 
 
     # Visit a parse tree produced by ExpParser#logicOrExp.
     def visitLogicOrExp(self, ctx:ExpParser.LogicOrExpContext):
+        if not ctx:
+            return None
         if ctx.logicOrExp() is not None:
             v1 = self.visitLogicAndExp(ctx.logicAndExp())
             v2 = self.visitLogicOrExp(ctx.logicOrExp())
@@ -194,18 +196,25 @@ class ProgramTransformer(ExpVisitor):
             return self.visitFcall(ctx.fcall())
         if ctx.chainBExp() is not None:
             vs = self.visitChainBExp(ctx.chainBExp())
-            return vs[0]
+            return vs
 
     # Visit a parse tree produced by ExpParser#chainBExp.
     def visitChainBExp(self, ctx:ExpParser.ChainBExpContext):
-        v = self.visitArithExpr(ctx.arithExpr(0))
         i = 0
-        tmp = []
-        while ctx.comOp(i) is not None:
-            op = self.visitComOp(ctx.comOp(i))
-            va = self.visitArithExpr(i+1)
-            tmp.append(QXComp(op, v, va))
-        return tmp
+        va = []
+        op = []
+        while ctx.arithExpr(i):
+            va.append(self.visitArithExpr(ctx.arithExpr(i)))
+            i += 1
+        i = 0
+        while ctx.comOp(i):
+            op.append(self.visitComOp(ctx.comOp(i)))
+            i += 1
+        i = len(op) - 1
+        while i >= 0:
+            va[i] = QXComp(op[i], va[i], va[i+1])
+            i -= 1
+        return va[0]
 
 
     # Visit a parse tree produced by ExpParser#comOp.
@@ -218,6 +227,8 @@ class ProgramTransformer(ExpVisitor):
             return "<="
         if ctx.LT() is not None:
             return "<"
+        if ctx.GT() is not None:
+            return ">"
 
 
     # Visit a parse tree produced by ExpParser#qunspec.
@@ -533,6 +544,8 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#typeT.
     def visitTypeT(self, ctx:ExpParser.TypeTContext):
+        if not ctx:
+            return None
         if ctx.typeT() is not None:
             return TyFun(self.visitBaseTy(ctx.baseTy()), self.visitTypeT(ctx.typeT()))
         return self.visitBaseTy(ctx.baseTy())

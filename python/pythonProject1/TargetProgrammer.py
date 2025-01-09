@@ -139,7 +139,7 @@ class DXUni(DXType):
 class DXNum(DXType):
 
     def __init__(self, num: int):
-        self._num = int
+        self._num = num
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitNum(self)
@@ -170,7 +170,7 @@ class DXBind(DXAExp):
         return visitor.visitBind(self)
 
     def ID(self):
-        return self._id #if self._id is str else self._id.getText()
+        return str(self._id)
 
     def type(self):
         return self._type

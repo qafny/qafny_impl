@@ -76,7 +76,7 @@ class PrinterVisitor(AbstractTargetVisitor):
         for rbinding in ctx.returns():
             returns += rbinding.ID() + ':' + rbinding.type().accept(self) + ', ' if rbinding.type() else '' 
 
-        returns = returns[:-2] + ')\n'
+        returns = (returns[:-2] + ')\n') if len(ctx.returns()) > 0 else '\n'
 
         conds = ''
         for cond in ctx.conds():
@@ -96,7 +96,7 @@ class PrinterVisitor(AbstractTargetVisitor):
         return method
         
     def visitAssert(self, ctx: TargetProgrammer.DXAssert):
-        return 'assert ' + ctx.spec().accept(self)
+        return 'assert ' + ctx.spec().accept(self) + ';'
 
     def visitRequires(self, ctx: TargetProgrammer.DXRequires):
         return 'requires ' + ctx.spec().accept(self)
@@ -105,7 +105,7 @@ class PrinterVisitor(AbstractTargetVisitor):
         return 'ensures ' + ctx.spec().accept(self)
 
     def visitInit(self, ctx: TargetProgrammer.DXInit):
-        return 'var ' + ctx.binding().ID() + ' := ' + ctx.exp().accept(self) + ';' if ctx.exp().accept(self) else  'var ' + ctx.binding().ID() + ';'
+        return 'var ' + ctx.binding().ID() + ' := ' + ctx.exp().accept(self) + ';' if ctx.exp() else  'var ' + ctx.binding().ID() + ';'
 
     def visitAssign(self, ctx: TargetProgrammer.DXAssign):
         ids = ''
@@ -121,7 +121,7 @@ class PrinterVisitor(AbstractTargetVisitor):
         return ctx.op + ctx.next().accept(self)
 
     def visitBind(self, ctx: TargetProgrammer.DXBind):
-        return ctx.ID() + ':' + ctx.type().accept(self)
+        return ctx.ID()
 
     def visitNum(self, ctx: TargetProgrammer.DXNum):
         return str(ctx.num())
@@ -129,7 +129,7 @@ class PrinterVisitor(AbstractTargetVisitor):
     def visitCall(self, ctx: TargetProgrammer.DXCall):
         args = ''
         for arg in ctx.exps():
-            args += arg.ID() + ", "
+            args += arg.accept(self) + ", "
         args = args[:-2]
         return ctx.ID() + '(' + args + ')'
 
@@ -177,7 +177,7 @@ class PrinterVisitor(AbstractTargetVisitor):
     def visitInRange(self, ctx: TargetProgrammer.DXInRange):
         return ctx.left().accept(self) + " <= " + ctx.bind().accept(self) + " < " + ctx.right().accept(self)
     
-    def visitSeqType(self, ctx):
-        pass
+    def visitSeqType(self, ctx: TargetProgrammer.SeqType):
+        return 'seq<' + ctx.type().accept(self) + ">"
 
     

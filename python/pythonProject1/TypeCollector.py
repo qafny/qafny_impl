@@ -45,7 +45,7 @@ class TypeCollector(ProgramVisitor):
 
 
     def visitMethod(self, ctx: Programmer.QXMethod):
-        self.fvar = ctx.ID()
+        self.fvar = str(ctx.ID())
         self.tenv = []
         self.mkenv = []
         self.pred = []
@@ -58,7 +58,7 @@ class TypeCollector(ProgramVisitor):
 
 
         tmptv = []
-        vars = isARange(self.tenv, self.fkenv[0].keys())
+        vars = isARange(self.tenv, self.fkenv[0])
         for var in vars:
             if isinstance(self.fkenv[0].get(var),TyQ):
                 v = self.fkenv.get(var).flag()
@@ -93,8 +93,10 @@ class TypeCollector(ProgramVisitor):
         return True
 
     def visitRequires(self, ctx: Programmer.QXRequires):
+        if not isinstance(ctx.spec(), QXQSpec):
+            return True
         for elem in ctx.spec().locus():
-            x = elem.ID().ID()
+            x = str(elem.ID())
             left = elem.crange().left()
             right = elem.crange().right()
             v = self.kenv.get(self.fvar)[0].get(x)
@@ -111,8 +113,10 @@ class TypeCollector(ProgramVisitor):
 
 
     def visitEnsures(self, ctx: Programmer.QXEnsures):
+        if not isinstance(ctx.spec(), QXQSpec):
+            return True
         for elem in ctx.spec().locus():
-            x = elem.ID().ID()
+            x = str(elem.ID())
             left = elem.crange().left()
             right = elem.crange().right()
             v = self.kenv.get(self.fvar)[0].get(x)

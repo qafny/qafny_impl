@@ -8,9 +8,10 @@ if sys.version_info[1] > 5:
 else:
 	from typing.io import TextIO
 
+
 def serializedATN():
     with StringIO() as buf:
-        buf.write("\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3N")
+        buf.write("\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3O")
         buf.write("\u0248\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7")
         buf.write("\4\b\t\b\4\t\t\t\4\n\t\n\4\13\t\13\4\f\t\f\4\r\t\r\4\16")
         buf.write("\t\16\4\17\t\17\4\20\t\20\4\21\t\21\4\22\t\22\4\23\t\23")
@@ -62,7 +63,7 @@ def serializedATN():
         buf.write(";\3;\3;\3;\3;\3;\3;\3;\5;\u023a\n;\3<\3<\3=\3=\3=\3=\3")
         buf.write("=\3=\5=\u0244\n=\3>\3>\3>\2\2?\2\4\6\b\n\f\16\20\22\24")
         buf.write("\26\30\32\34\36 \"$&(*,.\60\62\64\668:<>@BDFHJLNPRTVX")
-        buf.write("Z\\^`bdfhjlnprtvxz\2\5\3\2AD\3\2)*\3\2!\"\2\u0253\2}\3")
+        buf.write("Z\\^`bdfhjlnprtvxz\2\5\3\2AE\3\2)*\3\2!\"\2\u0253\2}\3")
         buf.write("\2\2\2\4\u0083\3\2\2\2\6\u0097\3\2\2\2\b\u00a0\3\2\2\2")
         buf.write("\n\u00a7\3\2\2\2\f\u00ad\3\2\2\2\16\u00b9\3\2\2\2\20\u00bf")
         buf.write("\3\2\2\2\22\u00c1\3\2\2\2\24\u00c8\3\2\2\2\26\u00d3\3")
@@ -85,7 +86,7 @@ def serializedATN():
         buf.write("\7\2\2\3\u0082\3\3\2\2\2\u0083\u0088\7\3\2\2\u0084\u0085")
         buf.write("\7\4\2\2\u0085\u0086\7\5\2\2\u0086\u0087\7\37\2\2\u0087")
         buf.write("\u0089\7\6\2\2\u0088\u0084\3\2\2\2\u0088\u0089\3\2\2\2")
-        buf.write("\u0089\u008a\3\2\2\2\u008a\u008b\7G\2\2\u008b\u008c\7")
+        buf.write("\u0089\u008a\3\2\2\2\u008a\u008b\7H\2\2\u008b\u008c\7")
         buf.write("\7\2\2\u008c\u008d\5^\60\2\u008d\u0090\7\b\2\2\u008e\u008f")
         buf.write("\7#\2\2\u008f\u0091\5\6\4\2\u0090\u008e\3\2\2\2\u0090")
         buf.write("\u0091\3\2\2\2\u0091\u0092\3\2\2\2\u0092\u0093\5\b\5\2")
@@ -116,7 +117,7 @@ def serializedATN():
         buf.write("\u00c9\5\26\f\2\u00c8\u00c6\3\2\2\2\u00c8\u00c7\3\2\2")
         buf.write("\2\u00c9\25\3\2\2\2\u00ca\u00d4\5h\65\2\u00cb\u00cc\5")
         buf.write("F$\2\u00cc\u00cd\5\"\22\2\u00cd\u00ce\5F$\2\u00ce\u00cf")
-        buf.write("\7J\2\2\u00cf\u00d0\5h\65\2\u00d0\u00d4\3\2\2\2\u00d1")
+        buf.write("\7K\2\2\u00cf\u00d0\5h\65\2\u00d0\u00d4\3\2\2\2\u00d1")
         buf.write("\u00d2\7\n\2\2\u00d2\u00d4\5\26\f\2\u00d3\u00ca\3\2\2")
         buf.write("\2\u00d3\u00cb\3\2\2\2\u00d3\u00d1\3\2\2\2\u00d4\27\3")
         buf.write("\2\2\2\u00d5\u00db\5\32\16\2\u00d6\u00d7\5\32\16\2\u00d7")
@@ -146,15 +147,15 @@ def serializedATN():
         buf.write("\u010e\5F$\2\u010e\u010f\7\16\2\2\u010f\u0110\5F$\2\u0110")
         buf.write("\u0111\7\16\2\2\u0111\u0112\5F$\2\u0112\u0113\7\16\2\2")
         buf.write("\u0113\u0114\5F$\2\u0114\u0115\7\b\2\2\u0115)\3\2\2\2")
-        buf.write("\u0116\u0117\7\17\2\2\u0117\u0118\7G\2\2\u0118\u0119\7")
+        buf.write("\u0116\u0117\7\17\2\2\u0117\u0118\7H\2\2\u0118\u0119\7")
         buf.write(">\2\2\u0119\u0122\5X-\2\u011a\u011b\7\17\2\2\u011b\u011c")
-        buf.write("\7G\2\2\u011c\u011d\7:\2\2\u011d\u011e\5d\63\2\u011e\u011f")
+        buf.write("\7H\2\2\u011c\u011d\7:\2\2\u011d\u011e\5d\63\2\u011e\u011f")
         buf.write("\7>\2\2\u011f\u0120\5X-\2\u0120\u0122\3\2\2\2\u0121\u0116")
         buf.write("\3\2\2\2\u0121\u011a\3\2\2\2\u0122+\3\2\2\2\u0123\u0124")
         buf.write("\5.\30\2\u0124\u0125\5F$\2\u0125\u0126\5X-\2\u0126-\3")
-        buf.write("\2\2\2\u0127\u0128\7;\2\2\u0128\u0129\7G\2\2\u0129\u012a")
+        buf.write("\2\2\2\u0127\u0128\7;\2\2\u0128\u0129\7H\2\2\u0129\u012a")
         buf.write("\7:\2\2\u012a\u012b\5d\63\2\u012b\u0134\7>\2\2\u012c\u012d")
-        buf.write("\7;\2\2\u012d\u012e\7G\2\2\u012e\u012f\7:\2\2\u012f\u0130")
+        buf.write("\7;\2\2\u012d\u012e\7H\2\2\u012e\u012f\7:\2\2\u012f\u0130")
         buf.write("\5d\63\2\u0130\u0131\7>\2\2\u0131\u0133\3\2\2\2\u0132")
         buf.write("\u012c\3\2\2\2\u0133\u0136\3\2\2\2\u0134\u0132\3\2\2\2")
         buf.write("\u0134\u0135\3\2\2\2\u0135/\3\2\2\2\u0136\u0134\3\2\2")
@@ -166,10 +167,10 @@ def serializedATN():
         buf.write("\2\u0145\u0146\7\22\2\2\u0146\u0147\5`\61\2\u0147\u0148")
         buf.write("\7\23\2\2\u0148\u0149\5F$\2\u0149\u014a\7\21\2\2\u014a")
         buf.write("\u014c\3\2\2\2\u014b\u0141\3\2\2\2\u014b\u0145\3\2\2\2")
-        buf.write("\u014c\65\3\2\2\2\u014d\u014e\7G\2\2\u014e\u014f\7\23")
+        buf.write("\u014c\65\3\2\2\2\u014d\u014e\7H\2\2\u014e\u014f\7\23")
         buf.write("\2\2\u014f\u0150\5F$\2\u0150\u0151\7\21\2\2\u0151\67\3")
-        buf.write("\2\2\2\u0152\u0157\7G\2\2\u0153\u0154\7\16\2\2\u0154\u0156")
-        buf.write("\7G\2\2\u0155\u0153\3\2\2\2\u0156\u0159\3\2\2\2\u0157")
+        buf.write("\2\2\2\u0152\u0157\7H\2\2\u0153\u0154\7\16\2\2\u0154\u0156")
+        buf.write("\7H\2\2\u0155\u0153\3\2\2\2\u0156\u0159\3\2\2\2\u0157")
         buf.write("\u0155\3\2\2\2\u0157\u0158\3\2\2\2\u01589\3\2\2\2\u0159")
         buf.write("\u0157\3\2\2\2\u015a\u015b\5b\62\2\u015b\u015c\7\24\2")
         buf.write("\2\u015c\u015d\5T+\2\u015d\u015e\7\21\2\2\u015e;\3\2\2")
@@ -183,10 +184,10 @@ def serializedATN():
         buf.write("\u0172\7\66\2\2\u0172\u0173\7\7\2\2\u0173\u0174\5\24\13")
         buf.write("\2\u0174\u0175\7\b\2\2\u0175\u0176\7\4\2\2\u0176\u0177")
         buf.write("\5\f\7\2\u0177\u0178\7\6\2\2\u0178?\3\2\2\2\u0179\u017a")
-        buf.write("\7\67\2\2\u017a\u017b\7G\2\2\u017b\u017c\7:\2\2\u017c")
+        buf.write("\7\67\2\2\u017a\u017b\7H\2\2\u017b\u017c\7:\2\2\u017c")
         buf.write("\u017d\5d\63\2\u017d\u017e\5\n\6\2\u017e\u017f\7\4\2\2")
         buf.write("\u017f\u0180\5\f\7\2\u0180\u0181\7\6\2\2\u0181A\3\2\2")
-        buf.write("\2\u0182\u0183\7G\2\2\u0183\u0184\7\7\2\2\u0184\u0185")
+        buf.write("\2\u0182\u0183\7H\2\2\u0183\u0184\7\7\2\2\u0184\u0185")
         buf.write("\5D#\2\u0185\u0186\7\b\2\2\u0186C\3\2\2\2\u0187\u018c")
         buf.write("\5F$\2\u0188\u0189\7\16\2\2\u0189\u018b\5F$\2\u018a\u0188")
         buf.write("\3\2\2\2\u018b\u018e\3\2\2\2\u018c\u018a\3\2\2\2\u018c")
@@ -194,7 +195,7 @@ def serializedATN():
         buf.write("\u0190\5H%\2\u0190\u0191\5x=\2\u0191\u0192\5F$\2\u0192")
         buf.write("\u0195\3\2\2\2\u0193\u0195\5H%\2\u0194\u018f\3\2\2\2\u0194")
         buf.write("\u0193\3\2\2\2\u0195G\3\2\2\2\u0196\u01a4\5n8\2\u0197")
-        buf.write("\u01a4\7G\2\2\u0198\u0199\7\7\2\2\u0199\u019a\5F$\2\u019a")
+        buf.write("\u01a4\7H\2\2\u0198\u0199\7\7\2\2\u0199\u019a\5F$\2\u019a")
         buf.write("\u019b\7\b\2\2\u019b\u01a4\3\2\2\2\u019c\u01a4\5B\"\2")
         buf.write("\u019d\u01a4\5P)\2\u019e\u01a4\5J&\2\u019f\u01a4\5L\'")
         buf.write("\2\u01a0\u01a4\5N(\2\u01a1\u01a4\5R*\2\u01a2\u01a4\5h")
@@ -215,13 +216,13 @@ def serializedATN():
         buf.write("\7\63\2\2\u01c2\u01c4\5V,\2\u01c3\u01bf\3\2\2\2\u01c3")
         buf.write("\u01c0\3\2\2\2\u01c3\u01c1\3\2\2\2\u01c3\u01c2\3\2\2\2")
         buf.write("\u01c4U\3\2\2\2\u01c5\u01c6\78\2\2\u01c6\u01c7\7\7\2\2")
-        buf.write("\u01c7\u01c8\58\35\2\u01c8\u01c9\7E\2\2\u01c9\u01ca\5")
+        buf.write("\u01c7\u01c8\58\35\2\u01c8\u01c9\7F\2\2\u01c9\u01ca\5")
         buf.write("R*\2\u01ca\u01cb\5X-\2\u01cb\u01cc\7\b\2\2\u01cc\u01dc")
         buf.write("\3\2\2\2\u01cd\u01ce\78\2\2\u01ce\u01cf\7\7\2\2\u01cf")
-        buf.write("\u01d0\58\35\2\u01d0\u01d1\7E\2\2\u01d1\u01d2\5X-\2\u01d2")
+        buf.write("\u01d0\58\35\2\u01d0\u01d1\7F\2\2\u01d1\u01d2\5X-\2\u01d2")
         buf.write("\u01d3\7\b\2\2\u01d3\u01dc\3\2\2\2\u01d4\u01d5\78\2\2")
         buf.write("\u01d5\u01d6\7\7\2\2\u01d6\u01d7\58\35\2\u01d7\u01d8\7")
-        buf.write("E\2\2\u01d8\u01d9\5R*\2\u01d9\u01da\7\b\2\2\u01da\u01dc")
+        buf.write("F\2\2\u01d8\u01d9\5R*\2\u01d9\u01da\7\b\2\2\u01da\u01dc")
         buf.write("\3\2\2\2\u01db\u01c5\3\2\2\2\u01db\u01cd\3\2\2\2\u01db")
         buf.write("\u01d4\3\2\2\2\u01dcW\3\2\2\2\u01dd\u01df\5Z.\2\u01de")
         buf.write("\u01dd\3\2\2\2\u01df\u01e0\3\2\2\2\u01e0\u01de\3\2\2\2")
@@ -233,19 +234,19 @@ def serializedATN():
         buf.write("\3\2\2\2\u01ed]\3\2\2\2\u01ee\u01f3\5`\61\2\u01ef\u01f0")
         buf.write("\7\16\2\2\u01f0\u01f2\5`\61\2\u01f1\u01ef\3\2\2\2\u01f2")
         buf.write("\u01f5\3\2\2\2\u01f3\u01f1\3\2\2\2\u01f3\u01f4\3\2\2\2")
-        buf.write("\u01f4_\3\2\2\2\u01f5\u01f3\3\2\2\2\u01f6\u01f7\7G\2\2")
+        buf.write("\u01f4_\3\2\2\2\u01f5\u01f3\3\2\2\2\u01f6\u01f7\7H\2\2")
         buf.write("\u01f7\u01f8\7\5\2\2\u01f8\u01f9\5p9\2\u01f9a\3\2\2\2")
         buf.write("\u01fa\u01fc\5l\67\2\u01fb\u01fa\3\2\2\2\u01fc\u01fd\3")
         buf.write("\2\2\2\u01fd\u01fb\3\2\2\2\u01fd\u01fe\3\2\2\2\u01fec")
         buf.write("\3\2\2\2\u01ff\u0200\7\33\2\2\u0200\u0201\5F$\2\u0201")
         buf.write("\u0202\7\16\2\2\u0202\u0203\5F$\2\u0203\u0204\7\b\2\2")
         buf.write("\u0204e\3\2\2\2\u0205\u0206\7\33\2\2\u0206\u0207\5F$\2")
-        buf.write("\u0207\u0208\7\34\2\2\u0208g\3\2\2\2\u0209\u020a\7G\2")
-        buf.write("\2\u020a\u020b\5f\64\2\u020bi\3\2\2\2\u020c\u020d\7G\2")
+        buf.write("\u0207\u0208\7\34\2\2\u0208g\3\2\2\2\u0209\u020a\7H\2")
+        buf.write("\2\u020a\u020b\5f\64\2\u020bi\3\2\2\2\u020c\u020d\7H\2")
         buf.write("\2\u020d\u020e\5d\63\2\u020ek\3\2\2\2\u020f\u0212\5h\65")
         buf.write("\2\u0210\u0212\5j\66\2\u0211\u020f\3\2\2\2\u0211\u0210")
-        buf.write("\3\2\2\2\u0212m\3\2\2\2\u0213\u0217\7F\2\2\u0214\u0215")
-        buf.write("\7*\2\2\u0215\u0217\7F\2\2\u0216\u0213\3\2\2\2\u0216\u0214")
+        buf.write("\3\2\2\2\u0212m\3\2\2\2\u0213\u0217\7G\2\2\u0214\u0215")
+        buf.write("\7*\2\2\u0215\u0217\7G\2\2\u0216\u0213\3\2\2\2\u0216\u0214")
         buf.write("\3\2\2\2\u0217o\3\2\2\2\u0218\u021e\5r:\2\u0219\u021a")
         buf.write("\5r:\2\u021a\u021b\7\35\2\2\u021b\u021c\5p9\2\u021c\u021e")
         buf.write("\3\2\2\2\u021d\u0218\3\2\2\2\u021d\u0219\3\2\2\2\u021e")
@@ -297,8 +298,8 @@ class ExpParser ( Parser ):
                      "'H'", "'QFT'", "'RQFT'", "'aa'", "'en'", "'if'", "'for'", 
                      "'\u03BB'", "'\u27E9'", "<INVALID>", "<INVALID>", "'\u2295'", 
                      "'invariant'", "'.'", "'&&'", "'||'", "'>='", "'<='", 
-                     "'=='", "'<'", "'=>'", "<INVALID>", "<INVALID>", "<INVALID>", 
-                     "<INVALID>", "'@'", "'...'" ]
+                     "'=='", "'<'", "'>'", "'=>'", "<INVALID>", "<INVALID>", 
+                     "<INVALID>", "<INVALID>", "'@'", "'...'" ]
 
     symbolicNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
                       "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
@@ -312,9 +313,9 @@ class ExpParser ( Parser ):
                       "TAdd", "TSub", "TMul", "TDiv", "TMod", "TExp", "Nor", 
                       "Had", "SHad", "SQFT", "RQFT", "AA", "En", "If", "For", 
                       "TCl", "TKet", "TIn", "TSum", "OPlus", "Invariant", 
-                      "Dot", "And", "OR", "GE", "LE", "EQ", "LT", "ARROW", 
-                      "Number", "ID", "Letter", "LetterOrDigit", "AT", "ELLIPSIS", 
-                      "WS", "Comment", "Line_Comment" ]
+                      "Dot", "And", "OR", "GE", "LE", "EQ", "LT", "GT", 
+                      "ARROW", "Number", "ID", "Letter", "LetterOrDigit", 
+                      "AT", "ELLIPSIS", "WS", "Comment", "Line_Comment" ]
 
     RULE_program = 0
     RULE_method = 1
@@ -458,22 +459,24 @@ class ExpParser ( Parser ):
     LE=64
     EQ=65
     LT=66
-    ARROW=67
-    Number=68
-    ID=69
-    Letter=70
-    LetterOrDigit=71
-    AT=72
-    ELLIPSIS=73
-    WS=74
-    Comment=75
-    Line_Comment=76
+    GT=67
+    ARROW=68
+    Number=69
+    ID=70
+    Letter=71
+    LetterOrDigit=72
+    AT=73
+    ELLIPSIS=74
+    WS=75
+    Comment=76
+    Line_Comment=77
 
     def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
         super().__init__(input, output)
         self.checkVersion("4.9.2")
         self._interp = ParserATNSimulator(self, self.atn, self.decisionsToDFA, self.sharedContextCache)
         self._predicates = None
+
 
 
 
@@ -504,12 +507,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitProgram" ):
                 listener.exitProgram(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitProgram" ):
-                return visitor.visitProgram(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -542,6 +539,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class MethodContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -585,12 +583,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitMethod" ):
                 listener.exitMethod(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitMethod" ):
-                return visitor.visitMethod(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -652,6 +644,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class ReturnaContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -673,12 +666,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitReturna" ):
                 listener.exitReturna(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitReturna" ):
-                return visitor.visitReturna(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -702,6 +689,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class CondsContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -735,12 +723,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitConds" ):
                 listener.exitConds(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitConds" ):
-                return visitor.visitConds(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -770,6 +752,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class InvariantsContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -802,12 +785,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitInvariants" ):
                 listener.exitInvariants(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitInvariants" ):
-                return visitor.visitInvariants(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -838,6 +815,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class StmtsContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -862,12 +840,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitStmts" ):
                 listener.exitStmts(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitStmts" ):
-                return visitor.visitStmts(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -896,6 +868,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class StmtContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -950,12 +923,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitStmt" ):
                 listener.exitStmt(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitStmt" ):
-                return visitor.visitStmt(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1031,6 +998,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class SpecContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -1064,12 +1032,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitSpec" ):
                 listener.exitSpec(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitSpec" ):
-                return visitor.visitSpec(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1115,6 +1077,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class AllspecContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -1144,12 +1107,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitAllspec" ):
                 listener.exitAllspec(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitAllspec" ):
-                return visitor.visitAllspec(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -1174,6 +1131,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class BexpContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -1200,12 +1158,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitBexp" ):
                 listener.exitBexp(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitBexp" ):
-                return visitor.visitBexp(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1238,6 +1190,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class QboolContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -1278,12 +1231,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitQbool" ):
                 listener.exitQbool(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitQbool" ):
-                return visitor.visitQbool(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1333,6 +1280,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class LogicImplyContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -1358,12 +1306,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitLogicImply" ):
                 listener.exitLogicImply(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitLogicImply" ):
-                return visitor.visitLogicImply(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1401,6 +1343,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class LogicOrExpContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -1429,12 +1372,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitLogicOrExp" ):
                 listener.exitLogicOrExp(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitLogicOrExp" ):
-                return visitor.visitLogicOrExp(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1472,6 +1409,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class LogicAndExpContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -1500,12 +1438,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitLogicAndExp" ):
                 listener.exitLogicAndExp(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitLogicAndExp" ):
-                return visitor.visitLogicAndExp(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1543,6 +1475,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class LogicNotExpContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -1572,12 +1505,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitLogicNotExp" ):
                 listener.exitLogicNotExp(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitLogicNotExp" ):
-                return visitor.visitLogicNotExp(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1619,6 +1546,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class ChainBExpContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -1651,12 +1579,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitChainBExp" ):
                 listener.exitChainBExp(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitChainBExp" ):
-                return visitor.visitChainBExp(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -1680,7 +1602,7 @@ class ExpParser ( Parser ):
                 self.state = 244 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                if not (((((_la - 63)) & ~0x3f) == 0 and ((1 << (_la - 63)) & ((1 << (ExpParser.GE - 63)) | (1 << (ExpParser.LE - 63)) | (1 << (ExpParser.EQ - 63)) | (1 << (ExpParser.LT - 63)))) != 0)):
+                if not (((((_la - 63)) & ~0x3f) == 0 and ((1 << (_la - 63)) & ((1 << (ExpParser.GE - 63)) | (1 << (ExpParser.LE - 63)) | (1 << (ExpParser.EQ - 63)) | (1 << (ExpParser.LT - 63)) | (1 << (ExpParser.GT - 63)))) != 0)):
                     break
 
         except RecognitionException as re:
@@ -1690,6 +1612,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class ComOpContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -1710,6 +1633,9 @@ class ExpParser ( Parser ):
         def LT(self):
             return self.getToken(ExpParser.LT, 0)
 
+        def GT(self):
+            return self.getToken(ExpParser.GT, 0)
+
         def getRuleIndex(self):
             return ExpParser.RULE_comOp
 
@@ -1720,12 +1646,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitComOp" ):
                 listener.exitComOp(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitComOp" ):
-                return visitor.visitComOp(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1739,7 +1659,7 @@ class ExpParser ( Parser ):
             self.enterOuterAlt(localctx, 1)
             self.state = 246
             _la = self._input.LA(1)
-            if not(((((_la - 63)) & ~0x3f) == 0 and ((1 << (_la - 63)) & ((1 << (ExpParser.GE - 63)) | (1 << (ExpParser.LE - 63)) | (1 << (ExpParser.EQ - 63)) | (1 << (ExpParser.LT - 63)))) != 0)):
+            if not(((((_la - 63)) & ~0x3f) == 0 and ((1 << (_la - 63)) & ((1 << (ExpParser.GE - 63)) | (1 << (ExpParser.LE - 63)) | (1 << (ExpParser.EQ - 63)) | (1 << (ExpParser.LT - 63)) | (1 << (ExpParser.GT - 63)))) != 0)):
                 self._errHandler.recoverInline(self)
             else:
                 self._errHandler.reportMatch(self)
@@ -1751,6 +1671,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class QunspecContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -1782,12 +1703,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitQunspec" ):
                 listener.exitQunspec(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitQunspec" ):
-                return visitor.visitQunspec(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -1818,6 +1733,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class QspecContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -1856,12 +1772,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitQspec" ):
                 listener.exitQspec(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitQspec" ):
-                return visitor.visitQspec(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1915,6 +1825,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class PartspecContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -1939,12 +1850,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitPartspec" ):
                 listener.exitPartspec(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitPartspec" ):
-                return visitor.visitPartspec(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -1983,6 +1888,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class TensorallContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2017,12 +1923,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitTensorall" ):
                 listener.exitTensorall(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitTensorall" ):
-                return visitor.visitTensorall(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -2072,6 +1972,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class SumspecContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2102,12 +2003,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitSumspec" ):
                 listener.exitSumspec(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitSumspec" ):
-                return visitor.visitSumspec(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -2130,6 +2025,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class MaySumContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -2180,12 +2076,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitMaySum" ):
                 listener.exitMaySum(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitMaySum" ):
-                return visitor.visitMaySum(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -2232,6 +2122,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class AssertingContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2253,12 +2144,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitAsserting" ):
                 listener.exitAsserting(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitAsserting" ):
-                return visitor.visitAsserting(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -2282,6 +2167,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class CastingContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -2308,12 +2194,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitCasting" ):
                 listener.exitCasting(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitCasting" ):
-                return visitor.visitCasting(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -2342,6 +2222,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class VarcreateContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2367,12 +2248,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitVarcreate" ):
                 listener.exitVarcreate(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitVarcreate" ):
-                return visitor.visitVarcreate(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -2418,6 +2293,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class AssigningContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2442,12 +2318,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitAssigning" ):
                 listener.exitAssigning(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitAssigning" ):
-                return visitor.visitAssigning(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -2474,6 +2344,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class IdsContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2497,12 +2368,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitIds" ):
                 listener.exitIds(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitIds" ):
-                return visitor.visitIds(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -2536,6 +2401,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class QassignContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2562,12 +2428,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitQassign" ):
                 listener.exitQassign(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitQassign" ):
-                return visitor.visitQassign(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -2592,6 +2452,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class MeasureContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -2622,12 +2483,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitMeasure" ):
                 listener.exitMeasure(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitMeasure" ):
-                return visitor.visitMeasure(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -2685,6 +2540,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class IfexpContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2713,12 +2569,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitIfexp" ):
                 listener.exitIfexp(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitIfexp" ):
-                return visitor.visitIfexp(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -2750,6 +2600,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class ForexpContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -2790,12 +2641,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitForexp" ):
                 listener.exitForexp(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitForexp" ):
-                return visitor.visitForexp(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -2829,6 +2674,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class FcallContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2853,12 +2699,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitFcall" ):
                 listener.exitFcall(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitFcall" ):
-                return visitor.visitFcall(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -2885,6 +2725,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class ArithExprsContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2909,12 +2750,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitArithExprs" ):
                 listener.exitArithExprs(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitArithExprs" ):
-                return visitor.visitArithExprs(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -2948,6 +2783,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class ArithExprContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -2977,12 +2813,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitArithExpr" ):
                 listener.exitArithExpr(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitArithExpr" ):
-                return visitor.visitArithExpr(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3019,6 +2849,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class ArithAtomicContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -3076,12 +2907,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitArithAtomic" ):
                 listener.exitArithAtomic(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitArithAtomic" ):
-                return visitor.visitArithAtomic(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3167,6 +2992,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class SinExprContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -3188,12 +3014,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitSinExpr" ):
                 listener.exitSinExpr(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitSinExpr" ):
-                return visitor.visitSinExpr(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3220,6 +3040,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class CosExprContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -3241,12 +3062,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitCosExpr" ):
                 listener.exitCosExpr(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitCosExpr" ):
-                return visitor.visitCosExpr(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3273,6 +3088,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class SqrtExprContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -3294,12 +3110,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitSqrtExpr" ):
                 listener.exitSqrtExpr(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitSqrtExpr" ):
-                return visitor.visitSqrtExpr(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3326,6 +3136,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class AbsExprContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -3347,12 +3158,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitAbsExpr" ):
                 listener.exitAbsExpr(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitAbsExpr" ):
-                return visitor.visitAbsExpr(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3376,6 +3181,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class OmegaExprContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -3401,12 +3207,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitOmegaExpr" ):
                 listener.exitOmegaExpr(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitOmegaExpr" ):
-                return visitor.visitOmegaExpr(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3436,6 +3236,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class ExprContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -3467,12 +3268,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitExpr" ):
                 listener.exitExpr(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitExpr" ):
-                return visitor.visitExpr(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3516,6 +3311,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class LambdaTContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -3551,12 +3347,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitLambdaT" ):
                 listener.exitLambdaT(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitLambdaT" ):
-                return visitor.visitLambdaT(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3628,6 +3418,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class ManyketContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -3652,12 +3443,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitManyket" ):
                 listener.exitManyket(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitManyket" ):
-                return visitor.visitManyket(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3689,6 +3474,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class KetContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -3717,12 +3503,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitKet" ):
                 listener.exitKet(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitKet" ):
-                return visitor.visitKet(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3762,6 +3542,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class QstateContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -3787,12 +3568,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitQstate" ):
                 listener.exitQstate(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitQstate" ):
-                return visitor.visitQstate(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3826,6 +3601,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class BindingsContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -3850,12 +3626,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitBindings" ):
                 listener.exitBindings(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitBindings" ):
-                return visitor.visitBindings(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -3889,6 +3659,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class BindingContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -3914,12 +3685,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitBinding" ):
                 listener.exitBinding(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitBinding" ):
-                return visitor.visitBinding(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -3942,6 +3707,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class LocusContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -3967,12 +3733,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitLocus" ):
                 listener.exitLocus(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitLocus" ):
-                return visitor.visitLocus(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -4004,6 +3764,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class CrangeContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -4028,12 +3789,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitCrange" ):
                 listener.exitCrange(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitCrange" ):
-                return visitor.visitCrange(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -4062,6 +3817,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class IndexContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -4083,12 +3839,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitIndex" ):
                 listener.exitIndex(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitIndex" ):
-                return visitor.visitIndex(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -4112,6 +3862,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class QindexContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -4138,12 +3889,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitQindex" ):
                 listener.exitQindex(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitQindex" ):
-                return visitor.visitQindex(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -4164,6 +3909,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class RangeTContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -4190,12 +3936,6 @@ class ExpParser ( Parser ):
             if hasattr( listener, "exitRangeT" ):
                 listener.exitRangeT(self)
 
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitRangeT" ):
-                return visitor.visitRangeT(self)
-            else:
-                return visitor.visitChildren(self)
-
 
 
 
@@ -4216,6 +3956,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class QrangeContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -4242,12 +3983,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitQrange" ):
                 listener.exitQrange(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitQrange" ):
-                return visitor.visitQrange(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -4281,6 +4016,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class NumexpContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -4304,12 +4040,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitNumexp" ):
                 listener.exitNumexp(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitNumexp" ):
-                return visitor.visitNumexp(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -4345,6 +4075,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class TypeTContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -4370,12 +4101,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitTypeT" ):
                 listener.exitTypeT(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitTypeT" ):
-                return visitor.visitTypeT(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -4412,6 +4137,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class BaseTyContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -4450,12 +4176,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitBaseTy" ):
                 listener.exitBaseTy(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitBaseTy" ):
-                return visitor.visitBaseTy(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -4523,6 +4243,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class QtyContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -4556,12 +4277,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitQty" ):
                 listener.exitQty(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitQty" ):
-                return visitor.visitQty(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -4619,6 +4334,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class AddOpContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -4642,12 +4358,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitAddOp" ):
                 listener.exitAddOp(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitAddOp" ):
-                return visitor.visitAddOp(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -4673,6 +4383,7 @@ class ExpParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
+
 
     class OpContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -4710,12 +4421,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitOp" ):
                 listener.exitOp(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitOp" ):
-                return visitor.visitOp(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 
@@ -4769,6 +4474,7 @@ class ExpParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class ReenContext(ParserRuleContext):
         __slots__ = 'parser'
 
@@ -4792,12 +4498,6 @@ class ExpParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitReen" ):
                 listener.exitReen(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitReen" ):
-                return visitor.visitReen(self)
-            else:
-                return visitor.visitChildren(self)
 
 
 

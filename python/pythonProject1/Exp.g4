@@ -32,7 +32,7 @@ logicNotExp: 'not' logicNotExp | fcall | chainBExp;
 
 chainBExp: arithExpr (comOp arithExpr)+;
 
-comOp :  GE | LE | EQ | LT;
+comOp :  GE | LE | EQ | LT | GT;
 
 qunspec : '{' locus ':' qty '↦' qspec '}' ;
 
@@ -208,6 +208,8 @@ TSum : 'Σ' | '∑';
  EQ : '==';
 
  LT : '<';
+ 
+ GT : '>';
 
  ARROW : '=>';
 

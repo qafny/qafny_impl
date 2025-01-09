@@ -60,7 +60,7 @@ class TySingle(QXType):
         return visitor.visitSingleT(self)
 
     def type(self):
-        return self._name
+        return str(self._name) if self._name else None
 
 class TyQ(QXType):
 
@@ -142,7 +142,7 @@ class QXBind(QXAExp):
         return visitor.visitBind(self)
 
     def ID(self):
-        return self._id if self._id is str else self._id.getText()
+        return str(self._id) if self._id else None
 
     def type(self):
         return self._type
@@ -281,7 +281,7 @@ class QXUni(QXAExp):
 class QXNum(QXAExp):
 
     def __init__(self, num: int):
-        self._num = int
+        self._num = num
 
     def accept(self, visitor : AbstractProgramVisitor):
         return visitor.visitNum(self)
@@ -456,7 +456,7 @@ class QXTensor(QXQState):
         return visitor.visitTensor(self)
 
     def ID(self):
-        return self._id if self._id is str else self._id.getText()
+        return str(self._id) if self._id else None
 
     def range(self):
         return self._crange

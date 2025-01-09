@@ -5,7 +5,7 @@ from TargetProgrammer import *
 from CollectKind import *
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
-    return q1.ID().ID() == q2.ID().ID() and compareAExp(q1.crange().left(),q2.crange().left()) and compareAExp(q1.crange().right(),q2.crange().right())
+    return str(q1.ID()) == str(q2.ID()) and compareAExp(q1.crange().left(),q2.crange().left()) and compareAExp(q1.crange().right(),q2.crange().right())
 
 def compareRangeLocus(q1: QXQRange, qs: [QXQRange]):
     vs = []
@@ -50,6 +50,11 @@ def makeVars(locus:[QXQRange], t:QXQTy, n:int):
             tmp += [DXBind("amp", genType(num, SType("real")), n)]
             tmp += [DXBind("phase", genType(num, SType("real")), n)]
             tmp += [DXBind(elem.ID(), genType(num, SeqType(SType("bv1"))),n)]
+    
+    elif isinstance(t, TyHad):
+        for elem in locus:
+            tmp += [DXBind(elem.ID(), SeqType(SType("real")), n)]
+
     return tmp
 
 def makeMap(ids: [str], locus: [QXQRange]):
@@ -195,7 +200,7 @@ class ProgramTransfer(ProgramVisitor):
     #2) for quantum variable, do not gen argument in qafny,
     # but take in the loci in requires, and gen variables according to loci with correct types.
     def visitMethod(self, ctx: Programmer.QXMethod):
-        self.fvar = ctx.ID()
+        self.fvar = str(ctx.ID())
         self.fkenv = self.kenv.get(self.fvar)
         self.ftenvp = self.tenv.get(self.fvar)[0]
         self.ftenvr = self.tenv.get(self.fvar)[1]
@@ -207,7 +212,7 @@ class ProgramTransfer(ProgramVisitor):
             tmpv = bindelem.accept(self)
             if tmpv is not None:
                 tmpbind.append(tmpv)
-
+        
         tmpbind = self.genArgs(tmpbind)
 
         if tmpbind is None:
@@ -215,13 +220,17 @@ class ProgramTransfer(ProgramVisitor):
 
         tmpcond = []
         for condelem in ctx.conds():
-            tmpcond.append(condelem.accept(self))
+            tmpcond.extend(condelem.accept(self))
 
         axiom = ctx.axiom()
         tmpstmt = []
-        if axiom:
+        if not axiom:
             for stmtelem in ctx.stmts():
-                tmpstmt.append(stmtelem.accept(self))
+                s = stmtelem.accept(self)
+                if isinstance(s, list):
+                    tmpstmt.extend(s)
+                else:
+                    tmpstmt.append(s)
 
         tmpreturn = []
         for reelem in ctx.returns():
@@ -229,7 +238,7 @@ class ProgramTransfer(ProgramVisitor):
             if tmpv is not None:
                 tmpreturn.append(tmpv)
 
-        return DXMethod(self.fvar, axiom, tmpbind, tmpreturn, tmpcond, tmpstmt)
+        return DXMethod(str(self.fvar), axiom, tmpbind, tmpreturn, tmpcond, tmpstmt)
 
 
     def visitProgram(self, ctx: Programmer.QXProgram):
@@ -243,22 +252,27 @@ class ProgramTransfer(ProgramVisitor):
         if isinstance(ctx.type(), TySingle):
             ty = ctx.type().accept(self)
             return DXBind(ctx.ID(), ty, None)
+        if ctx.ID() and not ctx.type():
+            return DXBind(ctx.ID(), None)
         return None
 
 
     def visitAssert(self, ctx: Programmer.QXAssert):
         v = ctx.spec().accept(self)
-        return DXAssert(v)
-
+        x = [DXAssert(i) for i in v] if isinstance(v,list) else DXAssert(v)
+        return x
+        
 
     def visitRequires(self, ctx: Programmer.QXRequires):
         v = ctx.spec().accept(self)
-        return DXRequires(v)
+        x = [DXRequires(i) for i in v]
+        return x
 
 
     def visitEnsures(self, ctx: Programmer.QXEnsures):
         v = ctx.spec().accept(self)
-        return DXEnsures(v)
+        x = [DXEnsures(i) for i in v]
+        return x
 
 
     def visitCRange(self, ctx: Programmer.QXCRange):
@@ -279,7 +293,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitInit(self, ctx: Programmer.QXInit):
-        return super().visitInit(ctx)
+        return DXInit(ctx.binding().accept(self))
 
 
     def genKetList(self, varmap: dict, flag: int, num:int, ids: [str], kets: [QXKet]):
@@ -343,7 +357,7 @@ class ProgramTransfer(ProgramVisitor):
         return super().visitMeasure(ctx)
 
     def visitCAssign(self, ctx: Programmer.QXCAssign):
-        return super().visitCAssign(ctx)
+        return DXAssign([DXVar(ctx.ID())], ctx.aexp().accept(self))
 
     def visitIf(self, ctx: Programmer.QXIf):
         super().visitIf(ctx)
@@ -355,7 +369,7 @@ class ProgramTransfer(ProgramVisitor):
         return super().visitCall(ctx)
 
     def visitSingleT(self, ctx: Programmer.TySingle):
-        return super().visitSingleT(ctx)
+        return SType(ctx.type())
 
     def visitArrayT(self, ctx: Programmer.TyArray):
         ty = ctx.type().accept(self)
@@ -365,11 +379,11 @@ class ProgramTransfer(ProgramVisitor):
         super().visitFun(ctx)
 
     def visitQ(self, ctx: Programmer.TyQ):
-        super().visitQ(ctx)
+        return ctx.flag().accept(self)
 
     def visitCNot(self, ctx: Programmer.QXCNot):
         v = ctx.next().accept(self)
-        return DXCNot(v)
+        return DXNot(v)
 
     def visitNor(self, ctx: Programmer.TyNor):
         return super().visitNor(ctx)
@@ -398,7 +412,7 @@ class ProgramTransfer(ProgramVisitor):
             x = DXBind("tmp", SType("nat"), self.counter)
             self.counter += 1
         else:
-            x = ctx.ID()
+            x = DXBind(str(ctx.ID()))
 
         tmp = []
 
@@ -461,7 +475,7 @@ class ProgramTransfer(ProgramVisitor):
     def visitAll(self, ctx: Programmer.QXAll):
         x = ctx.bind().accept(self)
         p = ctx.next().accept(self)
-        DXAll(x, p)
+        return DXAll(x, p)
 
     def visitBin(self, ctx: Programmer.QXBin):
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self))
@@ -486,3 +500,6 @@ class ProgramTransfer(ProgramVisitor):
 
     def visitQRange(self, ctx: Programmer.QXQRange):
         return super().visitQRange(ctx)
+    
+    def visitVarState(self, ctx):
+        pass

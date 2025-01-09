@@ -122,9 +122,9 @@ class AbstractProgramVisitor(ABC):
     def visitSum(self, ctx):
         pass
 
-    @abstractmethod
-    def visitVarState(self, ctx):
-        pass
+    #@abstractmethod
+    #def visitVarState(self, ctx):
+        #pass
 
     @abstractmethod
     def visitPart(self, ctx):

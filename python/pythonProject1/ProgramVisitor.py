@@ -62,8 +62,8 @@ class ProgramVisitor(AbstractProgramVisitor):
                 return self.visitSum(ctx)
             case QXPart():
                 return self.visitPart(ctx)
-            case QXVarState():
-                return self.visitVarState(ctx)
+            #case QXVarState():
+                #return self.visitVarState(ctx)
             case QXComp():
                 return self.visitBool(ctx)
             case QXLogic():
@@ -229,8 +229,8 @@ class ProgramVisitor(AbstractProgramVisitor):
         for elem in ctx.sums():
             elem.accept(self)
 
-    def visitVarState(self, ctx: Programmer.QXVarState):
-        return ctx.amp().accept(self)
+    #def visitVarState(self, ctx: Programmer.QXVarState):
+        #return ctx.amp().accept(self)
 
     def visitPart(self, ctx: Programmer.QXPart):
         ctx.qnum().accept(self)
@@ -252,8 +252,8 @@ class ProgramVisitor(AbstractProgramVisitor):
         return ctx.ID()
 
     def visitQIndex(self, ctx: Programmer.QXQIndex):
-        ctx.index().accept(self)
-        return ctx.ID()
+        i = ctx.index().accept(self)
+        return ctx.ID() + '[' + i  + ']'
 
     def visitQNot(self, ctx: Programmer.QXQNot):
         return ctx.next().accept(self)
