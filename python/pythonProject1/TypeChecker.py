@@ -304,7 +304,8 @@ class TypeChecker(ProgramVisitor):
 
 
     def visitFor(self, ctx: Programmer.QXFor):
-        ctx.crange().accept(self)
+        lbound = ctx.crange().left()
+        rbound = ctx.crange().right()
 
         for ielem in ctx.inv():
             ielem.accept(self)
