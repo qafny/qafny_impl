@@ -142,7 +142,8 @@ class QXBind(QXAExp):
         return visitor.visitBind(self)
 
     def ID(self):
-        return self._id if self._id is str else self._id.getText()
+        # return self._id if self._id is str else self._id.getText()
+        return self._id if isinstance(self._id, str) else self._id.getText()
 
     def type(self):
         return self._type

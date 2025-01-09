@@ -229,7 +229,7 @@ class ProgramVisitor(AbstractProgramVisitor):
         for elem in ctx.sums():
             elem.accept(self)
 
-    def visitVarState(self, ctx: Programmer.QXVarState):
+    def visitVarState(self, ctx: Programmer.QXQState):
         return ctx.amp().accept(self)
 
     def visitPart(self, ctx: Programmer.QXPart):
