@@ -7,6 +7,7 @@ class QXTop:
     def accept(self, visitor):
         pass
 
+#QXType refers kinds
 class QXType(QXTop):
 
     def accept(self, visitor : AbstractProgramVisitor):
@@ -88,6 +89,7 @@ class TyFun(QXType):
     def right(self):
         return self._right
 
+#QXQTy refers to actual quantum types
 class QXQTy(QXTop):
 
     def accept(self, visitor : AbstractProgramVisitor):

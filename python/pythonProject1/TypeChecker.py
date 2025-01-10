@@ -232,21 +232,32 @@ def replaceEnvLoci(tenv: [([QXQRange],QXQTy)], l1: [QXQRange], l2: [QXQRange]):
     return tmp
 
 # check the types of the quantum array (nor, Had, EN types)
+# for a given index in a function name f, we check the type information at location index in the function
 class TypeChecker(ProgramVisitor):
 
     def __init__(self, kenv: dict, tenv:dict, f: str, ind: int):
         # need st --> state we are deling with
         #kind map from fun vars to kind maps
+        #generated from CollectKind
         self.kenv = kenv
         #type env
+        #this is the type env mapping from function names to input and output envs,
+        #as well as predicates. These predicates deal with the relations among loci.
+        #for example, if we have a locus x[i,j), y[m,n), Obviously, we should have
+        #predicates to show that i < j, and m < n. Otherwise, the locus will not make sense.
+        #recall that type env is not a map, but a list of pairs
+        # first in a pair is a locus (a list of ranges), the second is a quantum type
+        #we assume that this is also an input, because the input/output type envs can be generated
+        #in TypeCollector
         self.tenv = tenv
-        #current fun name
+        #current fun name, where we want
         self.name = f
         #the index for a function name to check
         self.ind = ind
-        #kind env
+        #kind env, this is the step kind env inside a function f
         self.kinds = dict()
         #the checked type env at index
+        #the generated type environment.
         self.renv = []
 
     def visitMethod(self, ctx: Programmer.QXMethod):

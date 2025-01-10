@@ -37,9 +37,16 @@ class CollectKind(ProgramVisitor):
 
     def __init__(self):
         # need st --> state we are deling with
+        # form a map from a method variable to two maps, from variables to kinds
+        # the first map contains all variables used in a method
+        # the second map contain all variables as returns
         self.env = dict()
-        self.tenv = dict()
-        self.xenv = dict()
+        # temp map for storing all variables used in a method, mapping from variable to kinds.
+        self.tenv = None
+        # temp map for storing all variables in returns, mapping from variable to kinds.
+        self.xenv = None
+        # check if a return variable is assigned
+        # we use this list to remove variables
         self.reenv = []
 
     def visitMethod(self, ctx: Programmer.QXMethod):
@@ -62,7 +69,7 @@ class CollectKind(ProgramVisitor):
                 return False
             self.xenv.update({y: tv})
 
-        self.reenv = self.xenv.copy()
+        self.reenv = self.xenv.keys()
 
         for condelem in ctx.conds():
             condelem.accept(self)
