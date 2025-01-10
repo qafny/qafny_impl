@@ -24,7 +24,7 @@ class SubstAExp(ProgramVisitor):
 
 
     def visitHad(self, ctx: Programmer.QXHad):
-        return QXHad(ctx.state())
+        return ctx
 
 
     def visitSKet(self, ctx: Programmer.QXSKet):
