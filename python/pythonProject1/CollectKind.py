@@ -69,7 +69,7 @@ class CollectKind(ProgramVisitor):
                 return False
             self.xenv.update({y: tv})
 
-        self.reenv = self.xenv.keys()
+        self.reenv = deepcopy(list(self.xenv.keys()))
 
         for condelem in ctx.conds():
             condelem.accept(self)
