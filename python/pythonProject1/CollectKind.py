@@ -9,9 +9,9 @@ def compareAExp(a1: QXAExp, a2: QXAExp):
     if a1 is None or a2 is None:
         return False
     if isinstance(a1, QXBind) and isinstance(a2, QXBind):
-        return a1.ID() == a2.ID() and a1.num() == a2.num()
+        return str(a1.ID()) == str(a2.ID()) and compareType(a1.type(), a2.type())
     if isinstance(a1, QXQIndex) and isinstance(a2, QXQIndex):
-        return a1.ID() == a2.ID() and compareAExp(a1.index(), a2.index())
+        return str(a1.ID()) == str(a2.ID()) and compareAExp(a1.index(), a2.index())
     if isinstance(a1, QXBin) and isinstance(a2, QXBin):
         return a1.op() == a2.op() and compareAExp(a1.left(), a2.left()) and compareAExp(a1.right(), a2.right())
     if isinstance(a1, QXUni) and isinstance(a2, QXUni):
@@ -22,6 +22,8 @@ def compareAExp(a1: QXAExp, a2: QXAExp):
 
 
 def compareType(t1: QXType, t2: QXType):
+    if t1 is None and t2 is None:
+        return True
     if t1 is None or t2 is None:
         return False
     if isinstance(t1, TySingle) and isinstance(t2, TySingle):
@@ -35,26 +37,33 @@ class CollectKind(ProgramVisitor):
 
     def __init__(self):
         # need st --> state we are deling with
+        # form a map from a method variable to two maps, from variables to kinds
+        # the first map contains all variables used in a method
+        # the second map contain all variables as returns
         self.env = dict()
-        self.tenv = dict()
-        self.xenv = dict()
+        # temp map for storing all variables used in a method, mapping from variable to kinds.
+        self.tenv = None
+        # temp map for storing all variables in returns, mapping from variable to kinds.
+        self.xenv = None
+        # check if a return variable is assigned
+        # we use this list to remove variables
         self.reenv = []
 
     def visitMethod(self, ctx: Programmer.QXMethod):
-        x = ctx.ID()
+        x = str(ctx.ID())
         self.tenv = dict()
         self.xenv = dict()
 
         for binding in ctx.bindings():
-            y = binding.ID()
+            y = str(binding.ID())
             tv = binding.type()
             if not tv.accept(self):
                 return False
             self.tenv.update({y:tv})
 
-        x = True
+        x_ = True
         for elem in ctx.returns():
-            y = elem.ID()
+            y = str(elem.ID())
             tv = elem.type()
             if not tv.accept(self):
                 return False
@@ -65,14 +74,14 @@ class CollectKind(ProgramVisitor):
         for condelem in ctx.conds():
             condelem.accept(self)
 
-        tenvv = deepcopy(self.tenv)
+        tenvv = self.tenv.copy()
 
         for stmt in ctx.stmts():
-            x = x and stmt.accept(self)
-
+            x_ = x_ and stmt.accept(self)
+        
         self.env.update({x: (tenvv,self.xenv)})
 
-        return x
+        return x_
 
     def visitProgram(self, ctx: Programmer.QXProgram):
         for elem in ctx.method():
@@ -82,17 +91,17 @@ class CollectKind(ProgramVisitor):
         return True
 
     def visitBind(self, ctx: Programmer.QXBind):
-        ty = self.tenv.get(ctx.ID())
+        ty = self.tenv.get(str(ctx.ID()))
 
         if ctx.type() is not None:
             return compareType(ty,ctx.type())
         elif ty is not None:
             return True
         else:
-            ty1 = self.xenv.get(ctx.ID())
+            ty1 = self.xenv.get(str(ctx.ID()))
             if ty1 is None:
                 return False
-            self.reenv.remove(ctx.ID())
+            self.reenv.remove(str(ctx.ID()))
 
             if ctx.type() is not None:
                 return compareType(ty1, ctx.type())
@@ -121,7 +130,7 @@ class CollectKind(ProgramVisitor):
         return True
 
     def visitInit(self, ctx: Programmer.QXInit):
-        y = ctx.binding().ID()
+        y = str(ctx.binding().ID())
         tv = ctx.binding().type()
         if tv.accept(self):
             self.tenv.update({y: tv})
@@ -164,7 +173,7 @@ class CollectKind(ProgramVisitor):
 
     def visitCAssign(self, ctx: Programmer.QXCAssign):
         v = ctx.aexp().accept(self)
-        v = v and ctx.ID()
+        v = v and str(ctx.ID())
         return v
 
     def visitIf(self, ctx: Programmer.QXIf):
@@ -176,7 +185,7 @@ class CollectKind(ProgramVisitor):
     def visitFor(self, ctx: Programmer.QXFor):
         v = ctx.crange().accept(self)
 
-        self.tenv.update({ctx.ID(), TySingle("nat")})
+        self.tenv.update({str(ctx.ID()), TySingle("nat")})
 
         for ielem in ctx.inv():
             v = v and ielem.accept(self)
@@ -186,9 +195,14 @@ class CollectKind(ProgramVisitor):
         return v
 
     def visitCall(self, ctx: Programmer.QXCall):
-        if ctx.ID() in self.env.keys():
+        if str(ctx.ID()) in self.env.keys():
             v = True
             for elem in ctx.exps():
                 v = v and elem.accept(self)
                 return v
         return False
+    
+    def visitAssert(self, ctx: Programmer.QXAssert):
+        if isinstance(ctx.spec(), QXQSpec):
+            return True
+        return ctx.spec().accept(self)

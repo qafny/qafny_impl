@@ -2,6 +2,9 @@ import Programmer
 from LocusCollector import LocusCollector
 from ProgramVisitor import ProgramVisitor
 from CollectKind import *
+from SimpAExp import SimpAExp
+from SubstAExp import SubstAExp
+
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
     return (q1.ID() == q2.ID()
@@ -24,6 +27,23 @@ def compareLocus(q1: [QXQRange], q2: [QXQRange]):
             return None
 
     return vs
+
+def equalLocusEnv(q1: [QXQRange], qs: [([QXQRange, QXQTy])]):
+    vs = None
+    for elem, ty in qs:
+        vs = compareLocus(q1, elem)
+        if vs is not None:
+            return vs
+    return vs
+
+def equalEnv(qs1: [([QXQRange, QXQTy])], qs2: [([QXQRange, QXQTy])]):
+    vs = None
+    for elem, ty in qs1:
+        vs = equalLocusEnv(elem, qs2)
+        if vs is not None:
+            return vs
+    return vs
+
 
 def compareType(ty: QXQTy, ty1: QXQTy = None):
     if ty1 is None:
@@ -186,22 +206,58 @@ def addOneType(ty : QXQTy):
         return TyHad
     return None
 
+def replaceLocus(t: [QXQRange], r1: QXQRange, r2: QXQRange):
+    tmp = []
+    for elem in t:
+        if compareQRange(elem, r1):
+            tmp += [r2]
+        else:
+            tmp += [elem]
+    return tmp
+
+def replaceLoci(t: [QXQRange], r1: [QXQRange], r2: [QXQRange]):
+    vs = zip(r1, r2)
+    for v1,v2 in vs:
+        t = replaceLocus(t, v1, v2)
+    return t
+
+def replaceEnvLoci(tenv: [([QXQRange],QXQTy)], l1: [QXQRange], l2: [QXQRange]):
+    tmp = []
+    for elem,ty in tenv:
+        vs = compareLocus(elem, l1)
+        if vs is None:
+            tmp += [(elem,ty)]
+        else:
+            tmp += [replaceLoci(elem, l1, l2)]
+    return tmp
+
 # check the types of the quantum array (nor, Had, EN types)
+# for a given index in a function name f, we check the type information at location index in the function
 class TypeChecker(ProgramVisitor):
 
     def __init__(self, kenv: dict, tenv:dict, f: str, ind: int):
         # need st --> state we are deling with
         #kind map from fun vars to kind maps
+        #generated from CollectKind
         self.kenv = kenv
         #type env
+        #this is the type env mapping from function names to input and output envs,
+        #as well as predicates. These predicates deal with the relations among loci.
+        #for example, if we have a locus x[i,j), y[m,n), Obviously, we should have
+        #predicates to show that i < j, and m < n. Otherwise, the locus will not make sense.
+        #recall that type env is not a map, but a list of pairs
+        # first in a pair is a locus (a list of ranges), the second is a quantum type
+        #we assume that this is also an input, because the input/output type envs can be generated
+        #in TypeCollector
         self.tenv = tenv
-        #current fun name
+        #current fun name, where we want
         self.name = f
         #the index for a function name to check
         self.ind = ind
-        #kind env
+        #kind env, this is the step kind env inside a function f
         self.kinds = dict()
         #the checked type env at index
+        #the generated type environment.
         self.renv = []
 
     def visitMethod(self, ctx: Programmer.QXMethod):
@@ -287,31 +343,61 @@ class TypeChecker(ProgramVisitor):
             oldenv = self.renv
             for elem in ctx.stmts():
                 elem.accept(self)
-            if all(x == y for x, y in zip(oldenv, self.renv)):
+            if equalEnv(oldenv, self.renv):
                 return True
             else:
                 return False
 
 
         if isinstance(ctx.bexp(), QXQBool):
-            findLocus = LocusCollector(self.renv)
-            tmpv = self.renv
-            self.renv = findLocus.renv
+            findLocus = LocusCollector()
+            findLocus.visit(ctx.bexp())
+
+            floc, ty, nenv = subLocusGen(findLocus.renv, self.renv)
+
+            if isinstance(ty, TyNor):
+                for elem in ctx.stmts():
+                    elem.accept()
+                return True
+
+            for elem in ctx.stmts():
+                findLocus.visit(elem)
+            floc, ty, nenv = subLocusGen(findLocus.renv, self.renv)
+            self.renv = [(floc,ty)] + nenv
             for elem in ctx.stmts():
                 elem.accept()
-            self.renv = tmpv
             return True
 
-
     def visitFor(self, ctx: Programmer.QXFor):
-        ctx.crange().accept(self)
+        lbound = ctx.crange().left()
+        rbound = ctx.crange().right()
 
+        tmpv = self.renv
+        self.kinds.update({ctx.ID():TySingle("nat")})
+        self.renv = []
         for ielem in ctx.inv():
-            ielem.accept(self)
+            if isinstance(ielem, QXQSpec):
+                self.renv += [ielem.locus(),ielem.qty()]
 
         for elem in ctx.stmts():
-            elem.accept(self)
-        return ctx.ID()
+            re = elem.accept(self)
+            if not re:
+                return re
+
+        tmp1 = deepcopy(self.renv)
+        simpler = SimpAExp()
+        subst1 = SubstAExp(ctx.ID(), lbound)
+        subst2 = SubstAExp(ctx.ID(), rbound)
+        for elem, ty in tmp1:
+            elem1 = subst1.visit(elem)
+            elem1a = simpler.visit(elem1)
+            elem2 = subst2.visit(elem)
+            elem2a = simpler.visit(elem2)
+            replaceEnvLoci(tmpv, elem1a, elem2a)
+
+        self.renv = tmpv
+
+        return True
 
     def visitCall(self, ctx: Programmer.QXCall):
         for elem in ctx.exps():

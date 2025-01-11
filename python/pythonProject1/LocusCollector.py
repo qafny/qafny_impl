@@ -3,56 +3,60 @@ from ProgramVisitor import ProgramVisitor
 from Programmer import *
 from TypeChecker import *
 
+def joinRange(q1:QXQRange, qs:[QXQRange]):
+    tmp = []
+    for i in len(qs):
+        elem = qs[i]
+        if q1.ID() == elem.ID() and compareAExp(elem.crange().right(), q1.crange().left()):
+                tmp += [QXQRange(q1.ID(), QXCRange(elem.crange().right(), q1.crange().left()))] + qs[i+1:len(qs)]
+                return tmp
+        else:
+            tmp += [elem]
+    tmp += [q1]
+    return tmp
+
+def joinLocus(q1:[QXQRange], qs:[QXQRange]):
+    for elem in q1:
+        qs=joinLocus(elem,qs)
+    return qs
+
+def getVars(q: [QXQRange]):
+    tmp = []
+    for elem in q:
+        tmp += [elem.ID()]
+    return tmp
+
+def findLocus(q: [str], qs:[[QXQRange]]):
+    tmp = []
+    for i in len(qs):
+        elem = qs[i]
+        if set(q) <= set(getVars(elem)):
+            return elem,(tmp + qs[i+1:len(qs)])
+    return None
+
 
 class LocusCollector(ProgramVisitor):
 
-    def __init__(self, tenv: [([QXQRange], QXQTy)]):
-        # need st --> state we are deling with
-        # kind map from fun vars to kind maps
-        #self.kenv = kenv
-        # the checked type env at index
-        self.tenv = tenv
+    def __init__(self):
         self.renv = []
-        self.ty = None
 
     def visitAssert(self, ctx: Programmer.QXAssert):
         if isinstance(ctx.spec(), QXQSpec):
-            self.renv += [(ctx.spec().locus(), ctx.spec().qty())]
+            self.renv=joinLocus(ctx.spec().locus(),self.renv)
         return True
 
     def visitInit(self, ctx: Programmer.QXInit):
         return True
 
     def visitCast(self, ctx: Programmer.QXCast):
-        ty = ctx.qty()
-        if isinstance(ty, TyAA):
-            vs = sameLocus(ctx.locus(), self.renv)
-            if vs is None:
-                return False
-            else:
-                self.renv += [(ctx.locus(), TyAA())]
-                return True
-
-        re = subLocusGen(ctx.locus(), self.renv)
-        if re is None:
-            return False
-        newLoc, newTy, vs = re
-        self.renv += [(newLoc, ty)]
+        self.renv=joinLocus(ctx.locus(), self.renv)
         return True
 
     def visitBind(self, ctx: Programmer.QXBind):
-        if ctx.type() is not None:
-            ctx.type().accept(self)
-        return ctx.ID()
+        return True
 
     def visitQAssign(self, ctx: Programmer.QXQAssign):
-        loc, ty, nenv = subLocusGen(ctx.locus(), self.renv)
-        if isinstance(ctx.exp(), QXSingle):
-            ty = addOneType(ty)
-        if ty is None:
-            return False
-
-        self.renv += [(loc, ty)]
+        self.renv=joinLocus(ctx.locus(), self.renv)
         return True
 
     def visitMeasure(self, ctx: Programmer.QXMeasure):
@@ -66,8 +70,6 @@ class LocusCollector(ProgramVisitor):
             for elem in ctx.stmts():
                 elem.accept(self)
                 return True
-            else:
-                return False
 
         if isinstance(ctx.bexp(), QXQBool):
             ctx.bexp().accept(self)
@@ -82,23 +84,27 @@ class LocusCollector(ProgramVisitor):
 
         for elem in ctx.stmts():
             elem.accept(self)
-        return ctx.ID()
+        return True
 
     def visitCall(self, ctx: Programmer.QXCall):
         for elem in ctx.exps():
             elem.accept(self)
-        return ctx.ID()
+        return True
 
     def visitCon(self, ctx: Programmer.QXCon):
-        self.renv += [QXQRange(ctx.ID(),ctx.range())]
+        self.renv=joinLocus([QXQRange(ctx.ID(),ctx.range())],self.renv)
         return True
 
     def visitQIndex(self, ctx: Programmer.QXQIndex):
-        self.renv += [QXQRange(ctx.ID(), ctx.index(), QXBin("+", ctx.index(), QXNum(1)))]
+        self.renv=joinLocus([QXQRange(ctx.ID(), ctx.index(), QXBin("+", ctx.index(), QXNum(1)))], self.renv)
         return True
 
     def visitQNot(self, ctx: Programmer.QXQNot):
         return ctx.next().accept(self)
+
+    def visitQRange(self, ctx: Programmer.QXQRange):
+        self.renv = joinLocus([ctx],self.renv)
+        return True
 
     def visitQComp(self, ctx: Programmer.QXQComp):
         v1 = ctx.left().accept(self)
