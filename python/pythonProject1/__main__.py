@@ -18,9 +18,13 @@ from TypeChecker import TypeChecker # usage: type checking the parsed file
 def path_relative_to_self(path: str) -> str:
     return os.path.relpath(path, start=os.path.dirname(__file__))
 
+# returns a path following the format "../../test/Qafny/<name.qfy>"
+def example_program(filename: str) -> str:
+    return path_relative_to_self(f"../../test/Qafny/{filename}.qfy")
+
 # The suite of test qafny files (default to running these)
 DEFAULT_FILENAMES = [
-    path_relative_to_self("../../test/Qafny/BellPair.qfy")
+    example_program("BellPair")
 ]
 
 #######################################
@@ -60,10 +64,4 @@ if __name__ == "__main__":
         if parser.getNumberOfSyntaxErrors() > 0:
             print(f"Failed to parse: {filename}")
         else:
-            # type-check
-
-            # transform to dafny
-            
-            # output dafny
-            
-            # verify dafny
+            print("Verifying!")
