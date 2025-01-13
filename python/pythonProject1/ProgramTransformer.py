@@ -13,6 +13,8 @@ from ExpVisitor import *
 from Programmer import *
 from ExpParser import *
 
+""" Transforms an ANTLR AST into a Qafny one.
+"""
 class ProgramTransformer(ExpVisitor):
 
     def visitProgram(self, ctx:ExpParser.ProgramContext):

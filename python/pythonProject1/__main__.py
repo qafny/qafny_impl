@@ -5,6 +5,7 @@ import os  # usage: getting relative paths and directoy names
 from antlr4 import FileStream, CommonTokenStream  # usage: reading in a file and creating a token stream
 from ExpLexer import ExpLexer  # usage: lexing the file stream
 from ExpParser import ExpParser  # usage: parsing the token stream
+from ProgramTransformer import ProgramTransformer # usage: transforming antlr ast into the qafny one
 from CollectKind import CollectKind # usage: generating the type environment used for type checking
 from TypeChecker import TypeChecker # usage: type checking the parsed file
 
@@ -24,7 +25,25 @@ def example_program(filename: str) -> str:
 
 # The suite of test qafny files (default to running these)
 DEFAULT_FILENAMES = [
-    example_program("BellPair")
+    example_program("test1"),
+    example_program("test2"),
+    example_program("test3"),
+    example_program("test4"),
+    example_program("test5"),
+    example_program("test6"),
+    example_program("test7"),
+    example_program("BellPair"),
+    example_program("GHZ"),
+    example_program("Teleportation"),
+    example_program("Superdense"),
+    example_program("Shors"),
+    example_program("DeutschJozsa"),
+    example_program("simon"),
+    example_program("DiscreteLog"),
+    example_program("Grovers"),
+    example_program("DiscreteLog"),
+    example_program("QPE"),
+    example_program("SWAPTest")
 ]
 
 #######################################
@@ -64,4 +83,14 @@ if __name__ == "__main__":
         if parser.getNumberOfSyntaxErrors() > 0:
             print(f"Failed to parse: {filename}")
         else:
-            print("Verifying!")
+            # Transform ANTLR AST to Qafny AST
+            transformer = ProgramTransformer()
+            qafny_ast = transformer.visit(ast)
+
+            print(qafny_ast)
+
+            # Collect the types + kinds in the AST
+
+            # Type-check
+
+            # Convert to Dafny
