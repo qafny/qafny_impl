@@ -2,21 +2,26 @@ import AbstractProgramVisitor
 
 # Qafny's AST
 
+
 class QXTop:
 
     def accept(self, visitor):
         pass
 
-#QXType refers kinds
+
 class QXType(QXTop):
+    """QXType refers kinds.
+    """
 
     def accept(self, visitor : AbstractProgramVisitor):
         pass
+
 
 class QXQExp(QXTop):
 
     def accept(self, visitor : AbstractProgramVisitor):
         pass
+
 
 class QXHad(QXQExp):
 
@@ -72,6 +77,7 @@ class TySingle(QXType):
     def __repr__(self):
         return f"TySingle(name={self._name})"
 
+
 class TyQ(QXType):
 
     def __init__(self, flag: QXAExp):
@@ -85,6 +91,7 @@ class TyQ(QXType):
 
     def __repr__(self):
         return f"TyQ(flag={self._flag})"
+
 
 class TyFun(QXType):
 
@@ -104,11 +111,14 @@ class TyFun(QXType):
     def __repr__(self):
         return f"TyFun(left={self._left}, right={self._right})"
 
-#QXQTy refers to actual quantum types
+
 class QXQTy(QXTop):
+    """QXQTy refers to actual quantum types
+    """
 
     def accept(self, visitor : AbstractProgramVisitor):
         pass
+
 
 class TyHad(QXQTy):
 
@@ -133,6 +143,7 @@ class TyEn(QXQTy):
     def __repr__(self):
         return f"TyEn(flag={self._flag})"
 
+
 class TyAA(QXQTy):
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -140,6 +151,7 @@ class TyAA(QXQTy):
 
     def __repr__(self):
         return f"TyAA()"
+
 
 class TyNor(QXQTy):
 
@@ -154,6 +166,7 @@ class QXBExp(QXTop):
 
     def accept(self, visitor : AbstractProgramVisitor):
         pass
+
 
 class QXSpec(QXTop):
 
@@ -272,6 +285,7 @@ class QXQBool(QXBExp):
     def accept(self, visitor : AbstractProgramVisitor):
         pass
 
+
 class QXQIndex(QXQBool, QXAExp):
 
     def __init__(self, id: str, index: QXAExp):
@@ -289,6 +303,7 @@ class QXQIndex(QXQBool, QXAExp):
 
     def __repr__(self):
         return f"QXQindex(id={self._id}, index={self._index})"
+
 
 class QXBin(QXAExp):
 
@@ -391,6 +406,7 @@ class QXExp(QXTop):
     def accept(self, visitor : AbstractProgramVisitor):
         pass
 
+
 class QXSingle(QXExp):
 
     def __init__(self, op: str):
@@ -404,6 +420,7 @@ class QXSingle(QXExp):
 
     def __repr__(self):
         return f"QXSingle(op={self._op})"
+
 
 class QXKet(QXTop):
 
@@ -440,6 +457,7 @@ class QXVKet(QXKet):
     def __repr__(self):
         return f"QXVKet(vector={self._vector})"
 
+
 class QXOracle(QXExp):
 
     def __init__(self, ids: [str], omega: QXAExp, kets: [QXKet]):
@@ -461,6 +479,7 @@ class QXOracle(QXExp):
 
     def __repr__(self):
         return f"QXOracle(ids={self._ids}, omega={self._omega}, kets={self._kets})"
+
 
 class QXCRange(QXTop):
 
@@ -573,6 +592,7 @@ class QXSum(QXQState):
 
     def __repr__(self):
         return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets})"
+
 
 class QXPart(QXQState):
 
@@ -834,6 +854,7 @@ class QXCall(QXStmt, QXBool, QXAExp):
     def __repr__(self):
         return f"QXCall(id={self._id}, exps={self._exps})"
 
+
 class QXMethod(QXTop):
 
     def __init__(self, id: str, axiom:bool, bindings: [QXBind], returns : [QXBind], conds: [QXSpec], stmts: [QXStmt]):
@@ -868,6 +889,7 @@ class QXMethod(QXTop):
     def __repr__(self):
         return f"QXMethod(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, returns={self._returns}, conds={self._conds}, stmts={self._stmts})"
 
+
 class QXProgram(QXTop):
 
     def __init__(self, exps: [QXMethod]):
@@ -881,6 +903,3 @@ class QXProgram(QXTop):
 
     def __repr__(self):
         return f"QXProgram(exps={self._exps})"
-
-
-
