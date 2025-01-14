@@ -69,6 +69,8 @@ def makeIndex(id : DXBind, sums: [QXCon]):
         tmp = DXIndex(tmp, DXBind(elem.ID(),SType("nat")))
     return tmp
 
+# In the transfer below. transferring a stmt/exp results in a list of resulting stmts in Dafny
+# but transferring logic specification results in one specification
 class ProgramTransfer(ProgramVisitor):
 
     def __init__(self, kenv: dict, tenv: dict):
@@ -360,10 +362,45 @@ class ProgramTransfer(ProgramVisitor):
         return DXAssign([DXVar(ctx.ID())], ctx.aexp().accept(self))
 
     def visitIf(self, ctx: Programmer.QXIf):
-        super().visitIf(ctx)
+        if isinstance(ctx.bexp(), QXBool):
+            bex = ctx.bexp().accept(self)
+            terms = []
+            for elem in ctx.stmts():
+                terms += elem.accept(self)
+            return DXIf(bex, terms)
+
+        pred, v = ctx.bexp().accept(self)
+        terms = []
+        for elem in ctx.stmts():
+            terms += elem.accept(self)
+        #need to add a sub function to store the transitions of predicates
+        #need to insert pred to each of the predicates.
+        #if we find the subterm has a predicate like requires P, ensures Q
+        #then we need to say two things in the following:
+        #We first say the inputting the predicate is P, then for Q, we will have
+        # for all i, index(locus) <= i < index_end(locus) ==> pred(i) ==> Q(i)
+        # forall i, index(locus) <= i < index_end(locus) ==> not pred(i) ==> P(i)
+        # this means that in an array, if pred(i) is good, then Q(i), else P(i)
+        # we also need to create a heap to store DXMethod
+        # when genearting a method, it cannot be inside a stmt
+        return [DXMethod("ctru", False, [], [], [], terms), DXCall("ctrU", [v])]
 
     def visitFor(self, ctx: Programmer.QXFor):
-        return super().visitFor(ctx)
+        x = ctx.ID()
+        tmpinvs = []
+        for inv in ctx.inv():
+            tmpinvs += [inv.accept(self)]
+
+        tmpstmts = []
+        for elem in ctx.stmts():
+            tmpstmts += elem.accept(self)
+
+        lbound = ctx.crange().left().accept(self)
+        rbound = ctx.crange().right().accept(self)
+        vx = DXBind(x, SType("nat"))
+
+        return [DXInit(vx, lbound), DXWhile(DXComp("<", vx, rbound), tmpstmts, tmpinvs)]
+
 
     def visitCall(self, ctx: Programmer.QXCall):
         return super().visitCall(ctx)
@@ -459,7 +496,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitQIndex(self, ctx: Programmer.QXQIndex):
-        return super().visitQIndex(ctx)
+        return (None, DXIndex(DXBind(ctx.ID()),ctx.index().accept(self)))
 
 
     def visitCon(self, ctx: Programmer.QXCon):
@@ -467,10 +504,12 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitQComp(self, ctx: Programmer.QXQComp):
-        super().visitQComp(ctx)
+        return (DXComp(ctx.op(), ctx.left().accept(self), ctx.right().accept(self)),
+                DXIndex(DXBind(ctx.index().ID()),ctx.index().accept(self)))
 
     def visitQNot(self, ctx: Programmer.QXQNot):
-        super().visitQNot(ctx)
+        pred, index = ctx.next().accept(self)
+        return (DXNot(pred), index)
 
     def visitAll(self, ctx: Programmer.QXAll):
         x = ctx.bind().accept(self)
