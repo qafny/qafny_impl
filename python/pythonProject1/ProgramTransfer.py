@@ -69,6 +69,8 @@ def makeIndex(id : DXBind, sums: [QXCon]):
         tmp = DXIndex(tmp, DXBind(elem.ID(),SType("nat")))
     return tmp
 
+# In the transfer below. transferring a stmt/exp results in a list of resulting stmts in Dafny
+# but transferring logic specification results in one specification
 class ProgramTransfer(ProgramVisitor):
 
     def __init__(self, kenv: dict, tenv: dict):
@@ -363,7 +365,21 @@ class ProgramTransfer(ProgramVisitor):
         super().visitIf(ctx)
 
     def visitFor(self, ctx: Programmer.QXFor):
-        return super().visitFor(ctx)
+        x = ctx.ID()
+        tmpinvs = []
+        for inv in ctx.inv():
+            tmpinvs += [inv.accept(self)]
+
+        tmpstmts = []
+        for elem in ctx.stmts():
+            tmpstmts += elem.accept(self)
+
+        lbound = ctx.crange().left().accept(self)
+        rbound = ctx.crange().right().accept(self)
+        vx = DXBind(x, SType("nat"))
+
+        return [DXInit(vx, lbound), DXWhile(DXComp("<", vx, rbound), tmpstmts, tmpinvs)]
+
 
     def visitCall(self, ctx: Programmer.QXCall):
         return super().visitCall(ctx)
