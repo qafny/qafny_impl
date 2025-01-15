@@ -3,6 +3,7 @@ from LocusCollector import LocusCollector
 from Programmer import *
 from ProgramVisitor import ProgramVisitor
 from SubstAExp import SubstAExp
+from SubstDAExp import SubstDAExp
 from TargetProgrammer import *
 from CollectKind import *
 from TypeChecker import TypeChecker, subLocusGen
@@ -74,6 +75,29 @@ def makeIndex(id : DXBind, sums: [QXCon]):
     for elem in sums:
         tmp = DXIndex(tmp, DXBind(elem.ID(),SType("nat")))
     return tmp
+
+def locateAExp(locus: [QXQRange], r:QXQRange, lexp:[DXAExp]):
+    for i in range(len(locus)):
+        if compareQRange(locus[i], r):
+            return lexp[i]
+    return None
+
+def replaceAExp(locus: [QXQRange], r:QXQRange, lexp:[DXAExp], rep: DXAExp):
+    re = []
+    for i in range(len(locus)):
+        if compareQRange(locus[i], r):
+            re += [rep] + lexp[i+1:]
+            return re
+        else:
+            re += lexp[i]
+    return lexp
+
+def updateInd(lexp:[DXAExp], ind: DXAExp):
+    tmp = []
+    for elem in lexp:
+        tmp += [DXIndex(elem,ind)]
+    return tmp
+
 
 # In the transfer below. transferring a stmt/exp results in a list of resulting stmts in Dafny
 # but transferring logic specification results in one specification
@@ -324,14 +348,14 @@ class ProgramTransfer(ProgramVisitor):
     def genPreds(self, locus: [QXQRange], t:QXQTy, num: int, ids : [str], kets:[QXKet], phase: QXAExp):
         vars = makeVars(locus, t, num)
         pVar = vars[1]
-        kVars = vars[1:]
+        kVars = vars[2:]
         tmpSubs = []
         for i in range(len(ids)):
-            subst = SubstAExp(ids[i], kVars[i])
+            subst = SubstDAExp(ids[i], kVars[i])
             tmpSubs += [subst]
         newVars = makeVars(locus, t, self.counter)
         newPVar = newVars[1]
-        newKVars = newVars[1:]
+        newKVars = newVars[2:]
         self.counter += 1
 
         res = []
@@ -351,6 +375,38 @@ class ProgramTransfer(ProgramVisitor):
 
         preds += [DXComp("==", newPVar, DXBin("*", pVar, newp)),DXComp("==", vars[0], newVars[0])]
         return preds
+
+    def dealExps(self, locus: [QXQRange], pexp:DXAExp, lexp:[DXAExp], exps: [QXStmt]):
+        for elem in exps:
+            if isinstance(elem, QXQAssign) and isinstance(elem.exp(), QXOracle):
+                loc = elem.locus()
+                ids = elem.exp().ids()
+                kets = elem.exp().vectors()
+                phase = elem.exp().phase()
+
+                tmpSubs = []
+                for i in range(len(ids)):
+                    tarExp = locateAExp(locus, loc[i], lexp)
+                    if tarExp is None:
+                        return None
+                    subst = SubstDAExp(ids[i], tarExp)
+                    tmpSubs += [subst]
+
+                res = []
+                for ket in kets:
+                    re = ket.accept(self)
+                    for esub in tmpSubs:
+                        re = esub.visit(re)
+                    res += [re]
+
+                for i in range(len(loc)):
+                    lexp = replaceAExp(locus, loc[i], lexp, res[i])
+
+                newp = phase.accept(self)
+                for esub in tmpSubs:
+                    newp = esub.visit(newp)
+
+                return DXBin("*", pexp, newp), lexp
 
 
 
@@ -436,34 +492,42 @@ class ProgramTransfer(ProgramVisitor):
             self.varnums = typeCheck.tenv()
             self.counter = typeCheck.counter
 
-            return DXIf(bex, terms)
+            return DXIf(bex, terms, [])
 
+        #the below one is an example for en(1) typed only
+        #we might need to deal with other cases like aa type, and had type
         lcollect = LocusCollector()
         lcollect.visit(ctx.bexp())
         for elem in ctx.stmts():
             lcollect.visit(elem)
         newLoc = lcollect.renv
+
         result = []
         vs = subLocus(newLoc, self.varnums)
         if vs is None:
             v = subLocusGen(newLoc, self.varnums)
             if v is None:
-                return False
+                return None
             floc, ty, rev, num = v
             rea = QXCast(TyEn(QXNum(1)), floc)
-            self.varnums = [(floc, ty, num)] + rev
-            reb = self.visit(rea)
-            result += [reb]
+            result += [rea.accept(self)]
+            self.varnums = [(floc, ty, self.counter)] + rev
+            self.counter += 1
+            vs = floc,ty, num
 
+        nLoc, nTy, nNum = vs
+        exps = makeVars(nLoc,nTy, nNum)
+        vk = DXBind("nvar", SType("nat"), self.counter)
+        self.counter+=1
+        exps = updateInd(exps, vk)
 
-        typeCheck = TypeChecker(self.fkenv, self.varnums, self.counter)
-        self.typeCheck.visit(ctx)
-        tmpv = self.typeCheck.tenv()
+        re = self.dealExps(nLoc, exps[1], exps[2:], ctx.stmts())
 
-        pred, v = ctx.bexp().accept(self)
-        terms = []
-        for elem in ctx.stmts():
-            terms += elem.accept(self)
+        if re is not None:
+            pre, kre = re
+        else:
+            return None
+
         #need to add a sub function to store the transitions of predicates
         #need to insert pred to each of the predicates.
         #if we find the subterm has a predicate like requires P, ensures Q
@@ -477,12 +541,34 @@ class ProgramTransfer(ProgramVisitor):
         #tyCheck = TypeChecker(self.fkenv, self.ftenvp, self.fvar,self.ind)
         #tyCheck.visit()
 
+        genExps = exps[0]+[pre]+kre
+
+        newExps = makeVars(nLoc, nTy, self.counter)
+        self.counter += 1
+        newExps = updateInd(newExps, vk)
 
         vx = DXBind("nvar", SType("nat"), self.counter)
         self.counter += 1
-        # the following missing predicates
-        wil = DXWhile(DXComp("<",vx, DXNum(100)), terms)
-        return [DXInit(vx, DXNum(0)), wil]
+
+        #genereating the invs, we might need to add more to make Dafny happy
+        tmpInv = []
+        for elem in newExps:
+            tmpInv += [DXLogic("&&", DXComp("<=", DXNum(0),vx),DXComp("<=",vx,DXUni("len",elem.bind())))]
+
+        for i in range(len(genExps)):
+            tmpInv += [DXAll(vk, DXLogic("==>",
+                DXLogic("&&", DXComp("<=", DXNum(0),vk),DXComp("<=",vk,vx)),
+                    DXComp("==", newExps[i],genExps[i])))]
+
+
+        pred, v = ctx.bexp().accept(self)
+        terms = []
+        for elem in ctx.stmts():
+            terms += elem.accept(self)
+
+        wil = DXWhile(DXComp("<",vx, DXNum(100)), [DXIf(pred, [DXAssign([v], DXNum(1))]+ terms,[])],tmpInv)
+        result += [DXInit(vx, DXNum(0)), wil]
+        return result
 
     def visitFor(self, ctx: Programmer.QXFor):
         x = ctx.ID()

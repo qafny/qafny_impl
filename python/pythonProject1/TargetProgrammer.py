@@ -63,6 +63,21 @@ class SeqType(DXType):
     def type(self):
         return self._ty
 
+class FunType(DXType):
+
+    def __init__(self, left: DXType, right:DXType):
+        self._left = left
+        self._right = right
+
+    def accept(self, visitor : AbstractTargetVisitor):
+        return visitor.visitSeqType(self)
+
+    def left(self):
+        return self._left
+
+    def right(self):
+        return self._right
+
 class DXBin(DXAExp):
 
     def __init__(self, op: str, left:DXAExp, right: DXAExp):
@@ -120,9 +135,9 @@ class DXComp(DXBool):
     def right(self):
         return self._right
     
-class DXUni(DXType):
+class DXUni(DXAExp):
 
-    def __init__(self, op: str, next:DXType):
+    def __init__(self, op: str, next:DXAExp):
         self._op = op
         self._next = next
 
@@ -334,9 +349,10 @@ class DXWhile(DXStmt):
     
 class DXIf(DXStmt):
 
-    def __init__(self, cond: DXBool, stmts: [DXStmt]):
+    def __init__(self, cond: DXBool, left: [DXStmt], right:[DXStmt]):
         self._cond = cond
-        self._stmts = stmts
+        self._left = left
+        self._right = right
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitIf(self)
@@ -344,8 +360,11 @@ class DXIf(DXStmt):
     def cond(self):
         return self._cond
 
-    def stmts(self):
-        return self._stmts
+    def left(self):
+        return self._left
+
+    def right(self):
+        return self._right
     
 class DXAssert(DXStmt):
 
@@ -358,9 +377,9 @@ class DXAssert(DXStmt):
     def spec(self):
         return self._spec
     
-class DXAssign(DXAExp):
+class DXAssign(DXStmt):
 
-    def __init__(self, ids: [DXBind], exp : DXAExp):
+    def __init__(self, ids: [DXAExp], exp : DXAExp):
         self._ids = ids
         self._exp = exp
 
