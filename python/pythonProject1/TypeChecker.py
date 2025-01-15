@@ -86,7 +86,7 @@ def compareSingle(qs: [QXQRange], qv: [QXQRange]):
 
     elem = qv[0]
     vs = []
-    for i in len(qs):
+    for i in range(len(qs)):
         v = qs[i]
         if elem.ID() == v.ID():
             if compareAExp(elem.crange().left(), v.crange().left()):
@@ -107,7 +107,7 @@ def subLocusGen(q: [QXQRange], qs: [([QXQRange], TyQ)]):
     rev = []
     floc = []
     type = None
-    for i in len(qs):
+    for i in range(len(qs)):
         elem,qty = qs[i]
         if isinstance(qty, TyEn):
             vs = compareLocus(elem, q)
@@ -141,7 +141,7 @@ def subLocusGen(q: [QXQRange], qs: [([QXQRange], TyQ)]):
     return None
 
 def sameLocus(q: [QXQRange], qs : [([QXQRange], TyQ)]):
-    for i in len(qs):
+    for i in range(len(qs)):
         elem, qty = qs[i]
         vs = compareLocus(q, elem)
         if vs == []:

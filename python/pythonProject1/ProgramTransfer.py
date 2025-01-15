@@ -1,8 +1,11 @@
 import Programmer
+from LocusCollector import LocusCollector
 from Programmer import *
 from ProgramVisitor import ProgramVisitor
 from TargetProgrammer import *
 from CollectKind import *
+from TypeChecker import TypeChecker
+
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
     return str(q1.ID()) == str(q2.ID()) and compareAExp(q1.crange().left(),q2.crange().left()) and compareAExp(q1.crange().right(),q2.crange().right())
@@ -109,6 +112,7 @@ class ProgramTransfer(ProgramVisitor):
         self.counter = 0
         #The function name when visiting a method
         self.fvar = ""
+        self.ind = 0
         #For a locus in a spec, we generate Dafny variables for each range in a locus,
         #depending on the types
         #For example, if x[i,j) , y[0,n) |-> en(1).
@@ -208,6 +212,7 @@ class ProgramTransfer(ProgramVisitor):
         self.ftenvr = self.tenv.get(self.fvar)[1]
         self.varnums = self.genVarNumMap(self.ftenvp)
         self.genSizeMap()
+        self.ind = 0
 
         tmpbind = []
         for bindelem in ctx.bindings():
@@ -260,6 +265,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitAssert(self, ctx: Programmer.QXAssert):
+        self.ind += 1
         v = ctx.spec().accept(self)
         x = [DXAssert(i) for i in v] if isinstance(v,list) else DXAssert(v)
         return x
@@ -282,6 +288,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitCast(self, ctx: Programmer.QXCast):
+        self.ind += 1
         v = subLocus(ctx.locus(), self.varnums)
         if v is not None:
             loc,qty,num = v
@@ -295,6 +302,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitInit(self, ctx: Programmer.QXInit):
+        self.ind += 1
         return DXInit(ctx.binding().accept(self))
 
 
@@ -312,6 +320,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitQAssign(self, ctx: Programmer.QXQAssign):
+        self.ind += 1
         v = subLocus(ctx.locus(), self.varnums)
         if v is not None:
             loc,qty,num = v
@@ -356,6 +365,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitMeasure(self, ctx: Programmer.QXMeasure):
+        self.ind += 1
         return super().visitMeasure(ctx)
 
     def visitCAssign(self, ctx: Programmer.QXCAssign):
@@ -363,6 +373,7 @@ class ProgramTransfer(ProgramVisitor):
 
     def visitIf(self, ctx: Programmer.QXIf):
         if isinstance(ctx.bexp(), QXBool):
+            self.ind += 1
             bex = ctx.bexp().accept(self)
             terms = []
             for elem in ctx.stmts():
@@ -383,7 +394,19 @@ class ProgramTransfer(ProgramVisitor):
         # this means that in an array, if pred(i) is good, then Q(i), else P(i)
         # we also need to create a heap to store DXMethod
         # when genearting a method, it cannot be inside a stmt
-        return [DXMethod("ctru", False, [], [], [], terms), DXCall("ctrU", [v])]
+        #tyCheck = TypeChecker(self.fkenv, self.ftenvp, self.fvar,self.ind)
+        #tyCheck.visit()
+        lcollect = LocusCollector()
+        lcollect.visit(ctx.bexp())
+        for elem in ctx.stmts():
+            lcollect.visit(elem)
+        newLoc = lcollect.renv
+
+        vx = DXBind("nvar", SType("nat"), self.counter)
+        self.counter += 1
+        # the following missing predicates
+        wil = DXWhile(DXComp("<",vx, DXNum(100)), terms)
+        return [DXInit(vx, DXNum(0)), wil]
 
     def visitFor(self, ctx: Programmer.QXFor):
         x = ctx.ID()
@@ -441,7 +464,10 @@ class ProgramTransfer(ProgramVisitor):
     def visitAA(self, ctx: Programmer.TyAA):
         return super().visitAA(ctx)
 
-    def visitKet(self, ctx: Programmer.QXKet):
+    def visitSKet(self, ctx: Programmer.QXSKet):
+        return ctx.vector().accept(self)
+
+    def visitVKet(self, ctx: Programmer.QXVKet):
         return ctx.vector().accept(self)
 
     def visitTensor(self, ctx: Programmer.QXTensor):
@@ -464,13 +490,14 @@ class ProgramTransfer(ProgramVisitor):
 
     def visitSum(self, ctx: Programmer.QXSum):
         tmp = []
+
         for i in range(len(self.qvars)):
             v = ctx.kets()[i].accept(self)
             eq = DXComp("==",makeIndex(self.qvars[i], ctx.sums()),v)
             for con in ctx.sums():
                 x = DXBind(con.ID(), SType("nat"))
-                range = DXInRange(x,con.crange().left().accept(self), con.crange().right().accept(self))
-                eq = DXAll(x, DXLogic("==>",range,eq))
+                arange = DXInRange(x,con.crange().left().accept(self), con.crange().right().accept(self))
+                eq = DXAll(x, DXLogic("==>",arange,eq))
             tmp += [eq]
 
         num = self.qvars[0].num()
@@ -479,8 +506,8 @@ class ProgramTransfer(ProgramVisitor):
         eq = DXComp("==", ampvar, v)
         for con in ctx.sums():
             x = DXBind(con.ID(), SType("nat"))
-            range = DXInRange(x, con.crange().left().accept(self), con.crange().right().accept(self))
-            eq = DXAll(x, DXLogic("==>", range, eq))
+            arange = DXInRange(x, con.crange().left().accept(self), con.crange().right().accept(self))
+            eq = DXAll(x, DXLogic("==>", arange, eq))
         return ([eq]+tmp)
 
     def visitLogic(self, ctx: Programmer.QXLogic):

@@ -136,7 +136,7 @@ class DXUni(DXType):
         return self._next
 
     
-class DXNum(DXType):
+class DXNum(DXType, DXAExp):
 
     def __init__(self, num: int):
         self._num = num
