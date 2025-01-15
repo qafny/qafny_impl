@@ -235,7 +235,7 @@ def replaceEnvLoci(tenv: [([QXQRange],QXQTy)], l1: [QXQRange], l2: [QXQRange]):
 # for a given index in a function name f, we check the type information at location index in the function
 class TypeChecker(ProgramVisitor):
 
-    def __init__(self, kenv: dict, tenv:dict, f: str, ind: int):
+    def __init__(self, kenv: dict, tenv:dict):
         # need st --> state we are deling with
         #kind map from fun vars to kind maps
         #generated from CollectKind
@@ -251,34 +251,14 @@ class TypeChecker(ProgramVisitor):
         #in TypeCollector
         self.tenv = tenv
         #current fun name, where we want
-        self.name = f
+        #self.name = f
         #the index for a function name to check
-        self.ind = ind
+        #self.ind = ind
         #kind env, this is the step kind env inside a function f
         self.kinds = dict()
         #the checked type env at index
         #the generated type environment.
         self.renv = []
-
-    def visitMethod(self, ctx: Programmer.QXMethod):
-        x = ctx.ID()
-        if x != self.name:
-            return True
-
-        self.kinds = self.kenv.get(self.name)[0]
-        self.renv = self.tenv.get(self.name)[0]
-
-        v = True
-        for i in range(self.ind):
-            v = v and ctx.stmts()[i].accept(self)
-        return v
-
-    def visitProgram(self, ctx: Programmer.QXProgram):
-        for elem in ctx.method():
-            v = elem.accept(self)
-            if not v:
-                return False
-        return True
 
 
     def visitAssert(self, ctx: Programmer.QXAssert):
@@ -420,7 +400,10 @@ class TypeChecker(ProgramVisitor):
         for elem in ctx.kets():
             elem.accept(self)
 
-    def visitKet(self, ctx: Programmer.QXKet):
+    def visitSKet(self, ctx: Programmer.QXSKet):
+        return ctx.vector().accept(self)
+
+    def visitVKet(self, ctx: Programmer.QXVKet):
         return ctx.vector().accept(self)
 
     def visitSum(self, ctx: Programmer.QXSum):
