@@ -6,7 +6,8 @@ from antlr4 import FileStream, CommonTokenStream  # usage: reading in a file and
 from ExpLexer import ExpLexer  # usage: lexing the file stream
 from ExpParser import ExpParser  # usage: parsing the token stream
 from ProgramTransformer import ProgramTransformer # usage: transforming antlr ast into the qafny one
-from CollectKind import CollectKind # usage: generating the type environment used for type checking
+from CollectKind import CollectKind # usage: collecting the kind environment from the qafny AST (see the README for a breakdown of kinds vs. types)
+from TypeCollector import TypeCollector # usage: collecting the type environment from the qafny AST (see the README for a breakdown of types vs. kinds)
 from TypeChecker import TypeChecker # usage: type checking the parsed file
 
 #######################################
@@ -87,10 +88,24 @@ if __name__ == "__main__":
             transformer = ProgramTransformer()
             qafny_ast = transformer.visit(ast)
 
-            print(qafny_ast)
+            # print(f"Qafny AST: {qafny_ast}")
 
             # Collect the types + kinds in the AST
+            collect_kind = CollectKind()
+            collect_kind.visit(qafny_ast)
+            # print(collect_kind.get_kenv())
 
-            # Type-check
+            type_collector = TypeCollector(collect_kind.get_kenv())
+            type_collector.visit(qafny_ast)
+            # print(type_collector.get_tenv())
+
+            # Type-check (for each method in the ast)
+            for method in qafny_ast.method():
+                # print(f"{method.ID()}, {len(method.stmts())}")
+                # print(collect_kind.get_kenv().get(method.ID())[0])
+                # print(collect_kind.get_kenv().get("hadtest")[0])
+                print(type(method.ID()))
+                type_checker = TypeChecker(collect_kind.get_kenv(), type_collector.get_tenv(), method.ID(), len(method.stmts()))
+                print(type_checker.visit(qafny_ast))
 
             # Convert to Dafny

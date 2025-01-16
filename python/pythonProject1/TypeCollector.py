@@ -34,7 +34,7 @@ def merge_two_dicts(x, y):
 class TypeCollector(ProgramVisitor):
 
     def __init__(self, kenv: dict):
-        # need st --> state we are deling with
+        # need st --> state we are dealing with
         self.kenv = kenv
         self.env = dict()
         self.tenv = []
@@ -130,3 +130,7 @@ class TypeCollector(ProgramVisitor):
 
         self.mkenv.append((ctx.spec().locus(),ctx.spec().qty()))
         return True
+
+    def get_tenv(self):
+        """Returns the tenv used by TypeChecker"""
+        return self.env

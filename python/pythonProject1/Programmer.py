@@ -35,7 +35,7 @@ class QXHad(QXQExp):
         return self._state
 
     def __repr__(self):
-        return f"QXHad(state={self._state})"
+        return f"QXHad(state={repr(str(self._state))})"
 
 
 class QXAExp(QXQExp, QXTop):
@@ -75,7 +75,7 @@ class TySingle(QXType):
         return str(self._name) if self._name else None
 
     def __repr__(self):
-        return f"TySingle(name={self._name})"
+        return f"TySingle(name={repr(str(self._name))})"
 
 
 class TyQ(QXType):
@@ -191,7 +191,7 @@ class QXBind(QXAExp):
         return self._type
 
     def __repr__(self):
-        return f"QXBind(id={self._id}, ty={self._type})"
+        return f"QXBind(id={repr(str(self._id))}, ty={self._type})"
 
 
 class QXBool(QXBExp, QXSpec):
@@ -220,7 +220,7 @@ class QXLogic(QXBool):
         return self._right
 
     def __repr__(self):
-        return f"QXLogic(op={self._op}, left={self._left}, right={self._right})"
+        return f"QXLogic(op={repr(str(self._op))}, left={self._left}, right={self._right})"
 
 
 class QXCNot(QXBool):
@@ -258,7 +258,7 @@ class QXComp(QXBool):
         return self._right
 
     def __repr__(self):
-        return f"QXComp(op={self._op}, left={self._left}, right={self._right})"
+        return f"QXComp(op={repr(str(self._op))}, left={self._left}, right={self._right})"
 
 
 class QXAll(QXSpec):
@@ -302,7 +302,7 @@ class QXQIndex(QXQBool, QXAExp):
         return self._index
 
     def __repr__(self):
-        return f"QXQindex(id={self._id}, index={self._index})"
+        return f"QXQindex(id={repr(str(self._id))}, index={self._index})"
 
 
 class QXBin(QXAExp):
@@ -325,7 +325,7 @@ class QXBin(QXAExp):
         return self._right
 
     def __repr__(self):
-        return f"QXBin(op={self._op}, left={self._left}, right={self._right})"
+        return f"QXBin(op={repr(str(self._op))}, left={self._left}, right={self._right})"
 
 
 class QXUni(QXAExp):
@@ -344,7 +344,7 @@ class QXUni(QXAExp):
         return self._next
 
     def __repr__(self):
-        return f"QXUni(op={self._op}, next={self._next})"
+        return f"QXUni(op={repr(str(self._op))}, next={self._next})"
 
 
 class QXNum(QXAExp):
@@ -386,7 +386,7 @@ class QXQComp(QXQBool):
         return self._index
 
     def __repr__(self):
-        return f"QXQComp(op={self._op}, left={self._left}, right={self._right}, index={self._index})"
+        return f"QXQComp(op={repr(str(self._op))}, left={self._left}, right={self._right}, index={self._index})"
 
 
 class QXQNot(QXQBool):
@@ -419,7 +419,7 @@ class QXSingle(QXExp):
         return self._op
 
     def __repr__(self):
-        return f"QXSingle(op={self._op})"
+        return f"QXSingle(op={repr(str(self._op))})"
 
 
 class QXKet(QXTop):
@@ -516,7 +516,7 @@ class QXQRange(QXTop):
         return self._crange
 
     def __repr__(self):
-        return f"QXQRange(id={self._id}, cragne={self._crange})"
+        return f"QXQRange(id={repr(str(self._id))}, crange={self._crange})"
 
 
 class QXQState(QXTop):
@@ -541,7 +541,7 @@ class QXCon(QXTop):
         return visitor.visitCon(self)
 
     def __repr__(self):
-        return f"QXCon(id={self._id}, crange={self._crange})"
+        return f"QXCon(id={repr(str(self._id))}, crange={self._crange})"
 
 
 class QXTensor(QXQState):
@@ -568,7 +568,7 @@ class QXTensor(QXQState):
         return self._amp
 
     def __repr__(self):
-        return f"QXTensor(kets={self._kets}, id={self._id}, crange={self._crange}, amp={self._amp})"
+        return f"QXTensor(kets={self._kets}, id={repr(str(self._id))}, crange={self._crange}, amp={self._amp})"
 
 
 class QXSum(QXQState):
@@ -745,7 +745,7 @@ class QXCAssign(QXStmt):
         return self._expr
 
     def __repr__(self):
-        return f"QXCAssign(id={self._id}, expr={self._expr})"
+        return f"QXCAssign(id={repr(str(self._id))}, expr={self._expr})"
 
 
 class QXQAssign(QXStmt):
@@ -833,7 +833,7 @@ class QXFor(QXStmt):
         return self._stmts
 
     def __repr__(self):
-        return f"QXFor(id={self._id}, crange={self._crange}, invs={self._invs}, stmts={self._stmts})"
+        return f"QXFor(id={repr(str(self._id))}, crange={self._crange}, invs={self._invs}, stmts={self._stmts})"
 
 
 class QXCall(QXStmt, QXBool, QXAExp):
@@ -852,7 +852,7 @@ class QXCall(QXStmt, QXBool, QXAExp):
         return self._exps
 
     def __repr__(self):
-        return f"QXCall(id={self._id}, exps={self._exps})"
+        return f"QXCall(id={repr(str(self._id))}, exps={self._exps})"
 
 
 class QXMethod(QXTop):
@@ -887,7 +887,7 @@ class QXMethod(QXTop):
         return self._stmts
 
     def __repr__(self):
-        return f"QXMethod(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, returns={self._returns}, conds={self._conds}, stmts={self._stmts})"
+        return f"QXMethod(id={repr(str(self._id))}, axiom={self._axiom}, bindings={self._bindings}, returns={self._returns}, conds={self._conds}, stmts={self._stmts})"
 
 
 class QXProgram(QXTop):

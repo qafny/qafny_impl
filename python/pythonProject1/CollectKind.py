@@ -34,6 +34,10 @@ def compareType(t1: QXType, t2: QXType):
 
 # Collects the types of parameters to methods
 class CollectKind(ProgramVisitor):
+    """Implements a kind collector through the visitor pattern.
+    The kenv is stored in env and can be retrieved through `get_kenv()`
+    The visitor method returns a boolean indicating 
+    """
 
     def __init__(self):
         # need st --> state we are deling with
@@ -206,3 +210,7 @@ class CollectKind(ProgramVisitor):
         if isinstance(ctx.spec(), QXQSpec):
             return True
         return ctx.spec().accept(self)
+
+    def get_kenv(self):
+        """Returns the kenv used by TypeCollector and TypeChecker"""
+        return self.env
