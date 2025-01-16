@@ -58,6 +58,14 @@ class AbstractTargetVisitor(ABC):
         pass
 
     @abstractmethod
+    def visitIf(self, ctx):
+        pass
+
+    @abstractmethod
+    def visitWhile(self, ctx):
+        pass
+
+    @abstractmethod
     def visitIndex(self, ctx):
         pass
 
@@ -87,4 +95,8 @@ class AbstractTargetVisitor(ABC):
 
     @abstractmethod
     def visitSeqType(self, ctx):
+        pass
+
+    @abstractmethod
+    def visitFunType(self, ctx):
         pass

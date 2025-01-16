@@ -5,7 +5,7 @@ from TypeChecker import *
 
 def joinRange(q1:QXQRange, qs:[QXQRange]):
     tmp = []
-    for i in len(qs):
+    for i in range(len(qs)):
         elem = qs[i]
         if q1.ID() == elem.ID() and compareAExp(elem.crange().right(), q1.crange().left()):
                 tmp += [QXQRange(q1.ID(), QXCRange(elem.crange().right(), q1.crange().left()))] + qs[i+1:len(qs)]
@@ -28,7 +28,7 @@ def getVars(q: [QXQRange]):
 
 def findLocus(q: [str], qs:[[QXQRange]]):
     tmp = []
-    for i in len(qs):
+    for i in range(len(qs)):
         elem = qs[i]
         if set(q) <= set(getVars(elem)):
             return elem,(tmp + qs[i+1:len(qs)])
@@ -96,7 +96,7 @@ class LocusCollector(ProgramVisitor):
         return True
 
     def visitQIndex(self, ctx: Programmer.QXQIndex):
-        self.renv=joinLocus([QXQRange(ctx.ID(), ctx.index(), QXBin("+", ctx.index(), QXNum(1)))], self.renv)
+        self.renv=joinLocus([QXQRange(ctx.ID(), QXCRange(ctx.index(), QXBin("+", ctx.index(), QXNum(1))))], self.renv)
         return True
 
     def visitQNot(self, ctx: Programmer.QXQNot):
