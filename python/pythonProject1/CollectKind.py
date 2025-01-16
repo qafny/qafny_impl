@@ -46,9 +46,9 @@ class CollectKind(ProgramVisitor):
         # the second map contain all variables as returns
         self.env = dict()
         # temp map for storing all variables used in a method, mapping from variable to kinds.
-        self.tenv = None
+        self.tenv = dict()
         # temp map for storing all variables in returns, mapping from variable to kinds.
-        self.xenv = None
+        self.xenv = dict()
         # check if a return variable is assigned
         # we use this list to remove variables
         self.reenv = []
@@ -73,7 +73,7 @@ class CollectKind(ProgramVisitor):
                 return False
             self.xenv.update({y: tv})
 
-        self.reenv = deepcopy(list(self.xenv.keys()))
+        self.reenv = self.xenv.copy()
 
         for condelem in ctx.conds():
             condelem.accept(self)
