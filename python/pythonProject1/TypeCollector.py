@@ -2,6 +2,8 @@ import Programmer
 from ProgramVisitor import ProgramVisitor
 from CollectKind import *
 
+from antlr4.tree.Tree import TerminalNodeImpl
+
 def compareComp(t1: QXComp, t2: QXComp):
     return t1.op() == t2.op() and compareAExp(t1.left(),t2.left()) and compareAExp(t1.right(),t2.right())
 
@@ -30,7 +32,7 @@ def merge_two_dicts(x, y):
 
 
 
-# check the types of the quantum array (nor, Had, EN types)
+# collect the types of the quantum array (nor, Had, EN types)
 class TypeCollector(ProgramVisitor):
 
     def __init__(self, kenv: dict):
@@ -131,6 +133,16 @@ class TypeCollector(ProgramVisitor):
         self.mkenv.append((ctx.spec().locus(),ctx.spec().qty()))
         return True
 
-    def get_tenv(self):
-        """Returns the tenv used by TypeChecker"""
-        return self.env
+    def get_tenv(self, method_name: str | TerminalNodeImpl) -> [([QXQRange], QXQTy, int)]:
+        """Returns the requires type environment associated with a particular method name (either str or antlr4.tree.Tree.TerminalNodeImpl)"""
+        if isinstance(method_name, TerminalNodeImpl):
+            method_name = str(method_name)
+
+        return self.env[method_name][0]
+
+    def get_mkenv(self, method_name: str | TerminalNodeImpl) -> [([QXQRange], QXTy, int)]:
+        """Returns the ensures type environment associated with a particular method name (either str or antlr4.tree.Tree.TerminalNodeImpl)"""
+        if isinstance(method_name, TerminalNodeImpl):
+            method_name = str(method_name)
+
+        return self.env[method_name][1]
