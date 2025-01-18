@@ -108,7 +108,7 @@ def subLocusGen(q: [QXQRange], qs: [([QXQRange], QXQTy, int)]):
     floc = []
     type = None
     for i in range(len(qs)):
-        elem,qty, num = qs[i]
+        elem, qty, num = qs[i]
         if isinstance(qty, TyEn):
             vs = compareLocus(elem, q)
             if vs is None:
@@ -178,7 +178,7 @@ def subLocus(q: [QXQRange] , qs: [([QXQRange], QXQTy, int)]):
     qsf = []
     rty = None
     for i in range(len(qs)):
-        elem,ty, num = qs[i]
+        elem, ty, num = qs[i]
         vs = subRangeLoci(q, elem)
         if vs is None:
             qsf = qsf + [qs[i]]
@@ -301,6 +301,7 @@ class TypeChecker(ProgramVisitor):
 
     def visitQAssign(self, ctx: Programmer.QXQAssign):
         loc, ty, nenv , num = subLocusGen(ctx.locus(), self.renv)
+        
         if isinstance(ctx.exp(), QXSingle):
             ty = addOneType(ty)
         if ty is None:
