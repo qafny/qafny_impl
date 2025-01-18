@@ -56,6 +56,8 @@ class PrinterVisitor(AbstractTargetVisitor):
                 self.visitNot(ctx)
             case DXInRange():
                 self.visitInRange(ctx)
+            case FunType():
+                self.visitFunType(ctx)
             
     def visitProgram(self, ctx: TargetProgrammer.DXProgram):
         #visit all the methods and append them to create a program 
@@ -180,4 +182,5 @@ class PrinterVisitor(AbstractTargetVisitor):
     def visitSeqType(self, ctx: TargetProgrammer.SeqType):
         return 'seq<' + ctx.type().accept(self) + ">"
 
-    
+    def visitFunType(self, ctx):
+        pass
