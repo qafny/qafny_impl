@@ -110,7 +110,7 @@ class TypeCollector(ProgramVisitor):
             else:
                 return False
 
-        self.tenv.append((ctx.spec().locus(),ctx.spec().qty()))
+        self.tenv.append((ctx.spec().locus(), ctx.spec().qty()))
         return True
 
 
@@ -133,6 +133,9 @@ class TypeCollector(ProgramVisitor):
         self.mkenv.append((ctx.spec().locus(),ctx.spec().qty()))
         return True
 
+    def get_env(self):
+        return self.env
+
     def get_tenv(self, method_name: str | TerminalNodeImpl) -> [([QXQRange], QXQTy, int)]:
         """Returns the requires type environment associated with a particular method name (either str or antlr4.tree.Tree.TerminalNodeImpl)"""
         if isinstance(method_name, TerminalNodeImpl):
@@ -140,7 +143,7 @@ class TypeCollector(ProgramVisitor):
 
         return self.env[method_name][0]
 
-    def get_mkenv(self, method_name: str | TerminalNodeImpl) -> [([QXQRange], QXTy, int)]:
+    def get_mkenv(self, method_name: str | TerminalNodeImpl) -> [([QXQRange], QXQTy, int)]:
         """Returns the ensures type environment associated with a particular method name (either str or antlr4.tree.Tree.TerminalNodeImpl)"""
         if isinstance(method_name, TerminalNodeImpl):
             method_name = str(method_name)
