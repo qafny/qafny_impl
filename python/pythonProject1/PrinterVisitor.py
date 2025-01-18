@@ -1,64 +1,11 @@
 import TargetProgrammer
 from TargetProgrammer import *
 
-from AbstractTargetVisitor import AbstractTargetVisitor
+from TargetProgramVisitor import TargetProgramVisitor
 
 
-class PrinterVisitor(AbstractTargetVisitor):
-
-    def visit(self, ctx):
-        match ctx:
-            case DXProgram():
-                return self.visitProgram(ctx)
-            case DXMethod():
-                return self.visitMethod(ctx)
-            case DXAssert():
-                return self.visitAssert(ctx)
-            case DXRequires():
-                return self.visitRequires(ctx)
-            case DXEnsures():
-                return self.visitEnsures(ctx)
-            case DXInit():
-                return self.visitInit(ctx)
-            case DXAssign():
-                return self.visitAssign(ctx)
-            case DXBin():
-                return self.visitBin(ctx)
-            case DXUni():
-                return self.visitUni(ctx)
-            case DXBind():
-                return self.visitBind(ctx)
-            case DXNum():
-                return self.visitNum(ctx)
-            case DXCall():
-                return self.visitCall(ctx)
-            case SType():
-                return self.visitSType(ctx)
-            case DXLogic():
-                return self.visitLogic(ctx)
-            case DXAll():
-                return self.visitAll(ctx)
-            case DXWhile():
-                return self.visitWhile(ctx)
-            case DXIf():
-                return self.visitIf(ctx)
-            case SeqType():
-                return self.visitSeqType(ctx)
-            case DXVar():
-                return self.visitVar(ctx)
-            case DXIndex():
-                return self.visitIndex(ctx)
-            case DXLength():
-                return self.visitLength(ctx)
-            case DXComp():
-                return self.visitComp(ctx)
-            case DXNot():
-                return self.visitNot(ctx)
-            case DXInRange():
-                return self.visitInRange(ctx)
-            case FunType():
-                return self.visitFunType(ctx)
-            
+class PrinterVisitor(TargetProgramVisitor):
+    
     def visitProgram(self, ctx: TargetProgrammer.DXProgram):
         # visit all the methods and append them to create a program 
         program = ''
@@ -181,6 +128,3 @@ class PrinterVisitor(AbstractTargetVisitor):
     
     def visitSeqType(self, ctx: TargetProgrammer.SeqType):
         return 'seq<' + ctx.type().accept(self) + ">"
-
-    def visitFunType(self, ctx):
-        pass

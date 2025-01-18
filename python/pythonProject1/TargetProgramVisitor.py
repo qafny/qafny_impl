@@ -6,7 +6,7 @@ from AbstractTargetVisitor import *
 from AbstractProgramVisitor import AbstractProgramVisitor
 
 
-class ProgramVisitor(AbstractTargetVisitor):
+class TargetProgramVisitor(AbstractTargetVisitor):
 
     def visit(self, ctx):
         match ctx:
