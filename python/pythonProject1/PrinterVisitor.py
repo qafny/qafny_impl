@@ -9,65 +9,65 @@ class PrinterVisitor(AbstractTargetVisitor):
     def visit(self, ctx):
         match ctx:
             case DXProgram():
-                self.visitProgram(ctx)
+                return self.visitProgram(ctx)
             case DXMethod():
-                self.visitMethod(ctx)
+                return self.visitMethod(ctx)
             case DXAssert():
-                self.visitAssert(ctx)
+                return self.visitAssert(ctx)
             case DXRequires():
-                self.visitRequires(ctx)
+                return self.visitRequires(ctx)
             case DXEnsures():
-                self.visitEnsures(ctx)
+                return self.visitEnsures(ctx)
             case DXInit():
-                self.visitInit(ctx)
+                return self.visitInit(ctx)
             case DXAssign():
-                self.visitAssign(ctx)
+                return self.visitAssign(ctx)
             case DXBin():
-                self.visitBin(ctx)
+                return self.visitBin(ctx)
             case DXUni():
-                self.visitUni(ctx)
+                return self.visitUni(ctx)
             case DXBind():
-                self.visitBind(ctx)
+                return self.visitBind(ctx)
             case DXNum():
-                self.visitNum(ctx)
+                return self.visitNum(ctx)
             case DXCall():
-                self.visitCall(ctx)
+                return self.visitCall(ctx)
             case SType():
-                self.visitSType(ctx)
+                return self.visitSType(ctx)
             case DXLogic():
-                self.visitLogic(ctx)
+                return self.visitLogic(ctx)
             case DXAll():
-                self.visitAll(ctx)
+                return self.visitAll(ctx)
             case DXWhile():
-                self.visitWhile(ctx)
+                return self.visitWhile(ctx)
             case DXIf():
-                self.visitIf(ctx)
+                return self.visitIf(ctx)
             case SeqType():
-                self.visitSeqType(ctx)
+                return self.visitSeqType(ctx)
             case DXVar():
-                self.visitVar(ctx)
+                return self.visitVar(ctx)
             case DXIndex():
-                self.visitIndex(ctx)
+                return self.visitIndex(ctx)
             case DXLength():
-                self.visitLength(ctx)
+                return self.visitLength(ctx)
             case DXComp():
-                self.visitComp(ctx)
+                return self.visitComp(ctx)
             case DXNot():
-                self.visitNot(ctx)
+                return self.visitNot(ctx)
             case DXInRange():
-                self.visitInRange(ctx)
+                return self.visitInRange(ctx)
             case FunType():
-                self.visitFunType(ctx)
+                return self.visitFunType(ctx)
             
     def visitProgram(self, ctx: TargetProgrammer.DXProgram):
-        #visit all the methods and append them to create a program 
+        # visit all the methods and append them to create a program 
         program = ''
         for method in ctx.method():
             program += method.accept(self) + "\n\n"
         return program
     
     def visitMethod(self, ctx: TargetProgrammer.DXMethod):
-        #visit all attributes of method, append the resultant strings to create a method
+        # visit all attributes of method, append the resultant strings to create a method
 
         bindings = ''
         for binding in ctx.bindings():

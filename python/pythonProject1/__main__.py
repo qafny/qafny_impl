@@ -53,6 +53,20 @@ DEFAULT_FILENAMES = [
 ]
 
 #######################################
+# Helper Functions
+#######################################
+
+def show_step_status(filename: str, description: str, is_success: bool):
+    """show_step_status shows a status message to the user about the current file"""
+    human_readable_filename = os.path.basename(filename)
+    blue_hr_filename = stylize(f'"{human_readable_filename}"', fore('blue'))
+    print(f"{description} {blue_hr_filename}: ", end='')
+    if is_success:
+        print(stylize("✓ (pass)", fore('green')))
+    else:
+        print(stylize("🞫 (fail)", fore('red')))
+
+#######################################
 # Main Routine
 #######################################
 
@@ -109,17 +123,14 @@ if __name__ == "__main__":
             # print(type_collector.get_tenv())
 
             # Type-check (for each method in the ast)
+            types_correct = True
             for method in qafny_ast.method():
                 modified_tenv = [(x[0], x[1], 0) for x in type_collector.get_tenv(method.ID())]
                 print(modified_tenv)
                 type_checker = TypeChecker(collect_kind.get_kenv(), modified_tenv, 0)
-                types_correct = type_checker.visit(qafny_ast)
+                types_correct = types_correct and type_checker.visit(qafny_ast)
 
-                print(f"Type-check {blue_hr_filename}: ", end='')
-                if types_correct:
-                    print(stylize("✓ (pass)", fore('green')))
-                else:
-                    print(stylize("🞫 (fail)", fore('red')))
+            show_step_status(filename, "Type-check", types_correct)
 
             # Convert to Dafny AST
             dafny_transfer = ProgramTransfer(collect_kind.get_kenv(), type_collector.get_env())
@@ -129,4 +140,8 @@ if __name__ == "__main__":
             target_printer_visitor = PrinterVisitor()
             dafny_code = target_printer_visitor.visit(dafny_ast)
 
-            print(f"Dafny: {dafny_code}\n\n")
+            print(f"Dafny:\n{dafny_code}")
+
+            show_step_status(filename, "Verify", False)
+            print("") # newline break
+

@@ -658,7 +658,7 @@ class ProgramTransfer(ProgramVisitor):
             eq = DXComp("==",makeIndex(self.qvars[i], ctx.sums()),v)
             for con in ctx.sums():
                 x = DXBind(con.ID(), SType("nat"))
-                arange = DXInRange(x,con.crange().left().accept(self), con.crange().right().accept(self))
+                arange = DXInRange(x, con.crange().left().accept(self), con.crange().right().accept(self))
                 eq = DXAll(x, DXLogic("==>",arange,eq))
             tmp += [eq]
 
