@@ -1,7 +1,10 @@
 # Qafny-PY main
+# -*- coding: UTF-8 -*-
 
 import argparse  # usage: parsing cli arguments, printing help
 import os  # usage: getting relative paths and directoy names
+from colored import stylize, fore # console ui styling
+
 from antlr4 import FileStream, CommonTokenStream  # usage: reading in a file and creating a token stream
 from ExpLexer import ExpLexer  # usage: lexing the file stream
 from ExpParser import ExpParser  # usage: parsing the token stream
@@ -9,6 +12,8 @@ from ProgramTransformer import ProgramTransformer # usage: transforming antlr as
 from CollectKind import CollectKind # usage: collecting the kind environment from the qafny AST (see the README for a breakdown of kinds vs. types)
 from TypeCollector import TypeCollector # usage: collecting the type environment from the qafny AST (see the README for a breakdown of types vs. kinds)
 from TypeChecker import TypeChecker # usage: type checking the parsed file
+from ProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one
+from PrinterVisitor import PrinterVisitor # usage: outputting string text dafny code from a dafny (TargetProgrammer) AST
 
 #######################################
 # Qafny Options (a.k.a. Defines)
@@ -24,7 +29,7 @@ def path_relative_to_self(path: str) -> str:
 def example_program(filename: str) -> str:
     return path_relative_to_self(f"../../test/Qafny/{filename}.qfy")
 
-# The suite of test qafny files (default to running these)
+# The suite of test qafny files (Qafny defaults to verifying these)
 DEFAULT_FILENAMES = [
     example_program("test1"),
     example_program("test2"),
@@ -71,7 +76,10 @@ if __name__ == "__main__":
 
     # loop through each file in args.filename
     for filename in args.filename:
-        print(f"Verifying: {filename}")
+        # filename w/o the folders
+        human_readable_filename = os.path.basename(filename)
+        blue_hr_filename = stylize(f'"{human_readable_filename}"', fore('blue'))
+        print(f"Verifying: {blue_hr_filename}")
         # create a file stream
         file_stream = FileStream(filename, encoding="utf-8")
         # scan (lex the file)
@@ -88,24 +96,37 @@ if __name__ == "__main__":
             transformer = ProgramTransformer()
             qafny_ast = transformer.visit(ast)
 
-            # print(f"Qafny AST: {qafny_ast}")
-
             # Collect the types + kinds in the AST
             collect_kind = CollectKind()
             collect_kind.visit(qafny_ast)
-            # print(collect_kind.get_kenv())
+            # QXBind can have a none type
+            print(collect_kind.get_kenv())
 
             type_collector = TypeCollector(collect_kind.get_kenv())
             type_collector.visit(qafny_ast)
+
+            # print(f"{type(collect_kind.get_kenv())}, {type(type_collector.get_tenv())}")
             # print(type_collector.get_tenv())
 
             # Type-check (for each method in the ast)
             for method in qafny_ast.method():
-                # print(f"{method.ID()}, {len(method.stmts())}")
-                # print(collect_kind.get_kenv().get(method.ID())[0])
-                # print(collect_kind.get_kenv().get("hadtest")[0])
-                print(type(method.ID()))
-                type_checker = TypeChecker(collect_kind.get_kenv(), type_collector.get_tenv(), method.ID(), len(method.stmts()))
-                print(type_checker.visit(qafny_ast))
+                modified_tenv = [(x[0], x[1], 0) for x in type_collector.get_tenv(method.ID())]
+                print(modified_tenv)
+                type_checker = TypeChecker(collect_kind.get_kenv(), modified_tenv, 0)
+                types_correct = type_checker.visit(qafny_ast)
 
-            # Convert to Dafny
+                print(f"Type-check {blue_hr_filename}: ", end='')
+                if types_correct:
+                    print(stylize("✓ (pass)", fore('green')))
+                else:
+                    print(stylize("🞫 (fail)", fore('red')))
+
+            # Convert to Dafny AST
+            dafny_transfer = ProgramTransfer(collect_kind.get_kenv(), type_collector.get_env())
+            dafny_ast = dafny_transfer.visit(qafny_ast)
+
+            # Print Dafny AST
+            target_printer_visitor = PrinterVisitor()
+            dafny_code = target_printer_visitor.visit(dafny_ast)
+
+            print(f"Dafny: {dafny_code}\n\n")
