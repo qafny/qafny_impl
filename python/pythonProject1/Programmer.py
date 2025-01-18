@@ -1,5 +1,7 @@
 import AbstractProgramVisitor
 
+import utils # for make_repr(...)
+
 # Qafny's AST
 
 
@@ -191,7 +193,7 @@ class QXBind(QXAExp):
         return self._type
 
     def __repr__(self):
-        return f"QXBind(id={repr(str(self._id))}, ty={self._type})"
+        return utils.make_repr('QXBind', {'id': self._id, 'ty': self._type})
 
 
 class QXBool(QXBExp, QXSpec):
@@ -296,7 +298,7 @@ class QXQIndex(QXQBool, QXAExp):
         return visitor.visitQIndex(self)
 
     def ID(self):
-        return self._id
+        return self._id if isinstance(self._id, str) else self._id.getText()
 
     def index(self):
         return self._index
@@ -510,7 +512,7 @@ class QXQRange(QXTop):
         return visitor.visitQRange(self)
 
     def ID(self):
-        return self._id
+        return self._id if isinstance(self._id, str) else self._id.getText()
 
     def crange(self):
         return self._crange
@@ -532,7 +534,7 @@ class QXCon(QXTop):
         self._crange = crange
 
     def ID(self):
-        return self._id
+        return self._id if isinstance(self._id, str) else self._id.getText()
 
     def range(self):
         return self._crange
@@ -739,7 +741,7 @@ class QXCAssign(QXStmt):
         return visitor.visitCAssign(self)
 
     def ID(self):
-        return self._id
+        return self._id if isinstance(self._id, str) else self._id.getText()
 
     def aexp(self):
         return self._expr
@@ -821,7 +823,7 @@ class QXFor(QXStmt):
         return visitor.visitFor(self)
 
     def ID(self):
-        return self._id
+        return self._id if isinstance(self._id, str) else self._id.getText()
 
     def crange(self):
         return self._crange
@@ -846,7 +848,7 @@ class QXCall(QXStmt, QXBool, QXAExp):
         return visitor.visitCall(self)
 
     def ID(self):
-        return self._id
+        return self._id if isinstance(self._id, str) else self._id.getText()
 
     def exps(self):
         return self._exps
@@ -869,7 +871,7 @@ class QXMethod(QXTop):
         return visitor.visitMethod(self)
 
     def ID(self):
-        return self._id
+        return self._id if isinstance(self._id, str) else self._id.getText()
 
     def axiom(self):
         return self._axiom
