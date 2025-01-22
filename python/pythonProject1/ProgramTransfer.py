@@ -157,6 +157,10 @@ class ProgramTransfer(ProgramVisitor):
         #This will reserves the locus and allow the sub-visitor-call to assign the current locus
         self.locus = []
 
+        # additional Dafny methods, as template libs generated from the method
+        # in printing, one needs to print out the additional methods first
+        self.addFuns = []
+
     def genVarNumMap(self, tenv: [([QXQRange], QXQTy)]):
         tmp = []
         for locus, qty in tenv:
@@ -347,34 +351,58 @@ class ProgramTransfer(ProgramVisitor):
 
     def genPreds(self, locus: [QXQRange], t:QXQTy, num: int, ids : [str], kets:[QXKet], phase: QXAExp):
         vars = makeVars(locus, t, num)
-        pVar = vars[1]
-        kVars = vars[2:]
-        tmpSubs = []
-        for i in range(len(ids)):
-            subst = SubstDAExp(ids[i], kVars[i])
-            tmpSubs += [subst]
-        newVars = makeVars(locus, t, self.counter)
-        newPVar = newVars[1]
-        newKVars = newVars[2:]
-        self.counter += 1
 
-        res = []
-        for ket in kets:
-            re = ket.accept(self)
+        if isinstance(t, TyEn):
+            pVar = vars[0]
+            kVars = vars[1:]
+            tmpSubs = []
+            for i in range(len(ids)):
+                subst = SubstDAExp(ids[i], kVars[i])
+                tmpSubs += [subst]
+            newVars = makeVars(locus, t, self.counter)
+            newPVar = newVars[0]
+            newKVars = newVars[1:]
+            self.counter += 1
+
+            res = []
+            for ket in kets:
+                re = ket.accept(self)
+                for esub in tmpSubs:
+                    re = esub.visit(re)
+                res += [re]
+
+            preds = []
+            for i in range(len(newKVars)):
+                preds += [DXComp("==", newKVars[i], res[i])]
+
+            newp = phase.accept(self)
             for esub in tmpSubs:
-                re = esub.visit(re)
-            res += [re]
+                newp = esub.visit(newp)
 
-        preds = []
-        for i in range(len(newKVars)):
-            preds += [DXComp("==", newKVars[i], res[i])]
+            preds += [DXComp("==", newPVar, DXBin("*", pVar, newp)), DXComp("==", vars[0], newVars[0])]
+            return preds
 
-        newp = phase.accept(self)
-        for esub in tmpSubs:
-            newp = esub.visit(newp)
+        if isinstance(t, TyNor):
+            tmpSubs = []
+            for i in range(len(ids)):
+                subst = SubstDAExp(ids[i], vars[i])
+                tmpSubs += [subst]
+            newVars = makeVars(locus, t, self.counter)
+            self.counter += 1
 
-        preds += [DXComp("==", newPVar, DXBin("*", pVar, newp)),DXComp("==", vars[0], newVars[0])]
-        return preds
+            res = []
+            for ket in kets:
+                re = ket.accept(self)
+                for esub in tmpSubs:
+                    re = esub.visit(re)
+                res += [re]
+
+            preds = []
+            for i in range(len(newVars)):
+                preds += [DXComp("==", newVars[i], res[i])]
+            return preds
+
+
 
     def dealExps(self, locus: [QXQRange], pexp:DXAExp, lexp:[DXAExp], exps: [QXStmt]):
         for elem in exps:
@@ -456,17 +484,28 @@ class ProgramTransfer(ProgramVisitor):
                 self.counter += 1
                 return result
 
-            if isinstance(qty, TyEn) and isinstance(ctx.exp(),QXOracle):
-                flagNum = qty.flag().num()
-                varmap = makeMap(ctx.exp().ids(), ctx.locus())
-                result = self.genKetList(varmap, flagNum, num, ctx.exp().ids(), ctx.exp().vectors)
-                vs = compareLocus(ctx.locus(), loc)
-                for rem in vs:
-                    result += [DXAssign([DXBind(rem.ID(),genType(flagNum,SeqType(SType("bv1"))),self.counter)],
-                                        DXBind(rem.ID(),genType(flagNum,SeqType(SType("bv1"))),num))]
-                self.removeLocus(num)
-                self.varnums = [(loc,qty,self.counter)] + self.varnums
+            if isinstance(ctx.exp(),QXOracle):
+                result = []
+
+                if isinstance(qty, TyHad):
+                    tmpStmt = QXCast(TyEn(QXNum(1)), loc).accept(self)
+                    result += [tmpStmt]
+
+                newNum = self.counter
                 self.counter += 1
+                vars = makeVars(loc, qty, num)
+                newVars = makeVars(loc, qty, newNum)
+                preds = self.genPreds(loc, qty, num, ctx.exp().ids(), ctx.exp().vectors(), ctx.exp().phase())
+
+                newConds = []
+                for pred in preds:
+                    newConds += [DXEnsures(pred)]
+
+                name = "newFun" + str(self.counter)
+                self.counter += 1
+                self.addFuns += [DXMethod(name, True, vars, newVars, newConds, [])]
+
+                self.varnums = [(loc,qty,newNum)] + self.varnums
                 return result
 
         return None
