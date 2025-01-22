@@ -419,12 +419,12 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#absExpr.
     def visitAbsExpr(self, ctx:ExpParser.AbsExprContext):
-        return QXUni("abs", self.visitArithExpr(ctx.arithExpr()))
+        return QXUni("abs", self.visitArithExpr(ctx))
 
 
     # Visit a parse tree produced by ExpParser#omegaExpr.
     def visitOmegaExpr(self, ctx:ExpParser.OmegaExprContext):
-        return QXBin("omega", self.visitArithExpr(ctx.arithExpr(0)), self.visitAbsExpr(ctx.arithExpr(1)))
+        return QXCall("omega", [self.visitArithExpr(ctx.arithExpr(0)), self.visitAbsExpr(ctx.arithExpr(1))])
 
 
     # Visit a parse tree produced by ExpParser#expr.
@@ -506,7 +506,11 @@ class ProgramTransformer(ExpVisitor):
         i = 0
         tmp = []
         while ctx.qrange(i) is not None:
-            tmp.append(self.visitQrange(ctx.qrange(i)))
+            x = self.visitQrange(ctx.qrange(i))
+            if isinstance(x, list):
+                tmp.extend(x)
+            else:    
+                tmp.append(x)
             i = i + 1
         return tmp
 
@@ -527,7 +531,12 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#rangeT.
     def visitRangeT(self, ctx:ExpParser.RangeTContext):
-        return QXQRange((ctx.ID()), self.visitCrange(ctx.crange()))
+        if len(ctx.ID()) > 1:
+           tmp = []
+           for i in range(len(ctx.ID())):
+                tmp.append(QXQRange(str(ctx.ID()[i]), self.visitCrange(ctx.crange()[i])))
+           return tmp
+        return QXQRange(str(ctx.ID()[0]), self.visitCrange(ctx.crange()[0]))
 
 
     # Visit a parse tree produced by ExpParser#qrange.

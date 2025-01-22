@@ -54,7 +54,6 @@ def makeVars(locus:[QXQRange], t:QXQTy, n:int):
     elif isinstance(t, TyEn):
         num = t.flag().num()
         tmp += [DXBind("amp", genType(num, SType("real")), n)]
-        tmp += [DXBind("phase", genType(num, SType("real")), n)]
         for elem in locus:
             tmp += [DXBind(elem.ID(), genType(num, SeqType(SType("bv1"))),n)]
     
@@ -67,7 +66,7 @@ def makeVars(locus:[QXQRange], t:QXQTy, n:int):
 def makeMap(ids: [str], locus: [QXQRange]):
     tmp = dict()
     for i in range(len(ids)):
-        tmp.update({ids[i]:locus[i]})
+        tmp.update({str(ids[i]):locus[i]})
     return tmp
 
 def makeIndex(id : DXBind, sums: [QXCon]):
@@ -198,7 +197,6 @@ class ProgramTransfer(ProgramVisitor):
                 if isinstance(qty.flag(), QXNum):
                     tyv = qty.flag().num()
                     binds += [DXBind("amp", genType(tyv, SType("real")), num)]
-                    binds += [DXBind("phase", genType(tyv, SType("real")), num)]
                     for elem in locus:
                         binds += [DXBind(elem.ID(), genType(tyv, SeqType(SType("bv1"))), num)]
                 else:
@@ -442,12 +440,12 @@ class ProgramTransfer(ProgramVisitor):
         tmp = []
         for i in range(len(ids)):
             if isinstance(kets[i].vector(), QXBind) and ids[i] == kets[i].vector().ID():
-                var = varmap.get(ids[i]).ID()
+                var = varmap.get(str(ids[i])).ID()
                 tmp += [DXAssign([DXBind(var,genType(flag,SeqType(SType("bv1"))),self.counter)],
                                  DXBind(var,genType(flag,SeqType(SType("bv1"))),num))]
             elif isinstance(kets[i].vector(), QXBin):
-                var = varmap.get(kets[i].vector().left().ID())
-                val = DXNum(kets[i].vector().right().num())
+                var = varmap.get(str(ids[i])).ID()
+                val = kets[i].vector().accept(self)
                 tmp += [DXAssign([DXBind(var,genType(flag,SeqType(SType("bv1"))),self.counter)],
                                  DXCall("lambdaBaseEn",[val,DXBind(var,genType(flag,SeqType(SType("bv1"))),num)]))]
         return tmp
@@ -627,7 +625,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitCall(self, ctx: Programmer.QXCall):
-        return super().visitCall(ctx)
+        return DXCall(str(ctx.ID()), [x.accept(self) for x in ctx.exps()])
 
     def visitSingleT(self, ctx: Programmer.TySingle):
         return SType(ctx.type())
@@ -691,13 +689,13 @@ class ProgramTransfer(ProgramVisitor):
 
     def visitSum(self, ctx: Programmer.QXSum):
         tmp = []
-
-        for i in range(len(self.qvars)):
+        vars = [x for x in self.qvars if x.ID() not in ('amp')]
+        for i in range(len(vars)):
             v = ctx.kets()[i].accept(self)
-            eq = DXComp("==",makeIndex(self.qvars[i], ctx.sums()),v)
+            eq = DXComp("==",makeIndex(vars[i], ctx.sums()),v)
             for con in ctx.sums():
                 x = DXBind(con.ID(), SType("nat"))
-                arange = DXInRange(x,con.crange().left().accept(self), con.crange().right().accept(self))
+                arange = DXInRange(x,con.range().left().accept(self), con.range().right().accept(self))
                 eq = DXAll(x, DXLogic("==>",arange,eq))
             tmp += [eq]
 
@@ -707,7 +705,7 @@ class ProgramTransfer(ProgramVisitor):
         eq = DXComp("==", ampvar, v)
         for con in ctx.sums():
             x = DXBind(con.ID(), SType("nat"))
-            arange = DXInRange(x, con.crange().left().accept(self), con.crange().right().accept(self))
+            arange = DXInRange(x, con.range().left().accept(self), con.range().right().accept(self))
             eq = DXAll(x, DXLogic("==>", arange, eq))
         return ([eq]+tmp)
 

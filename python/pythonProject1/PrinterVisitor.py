@@ -117,10 +117,10 @@ class PrinterVisitor(AbstractTargetVisitor):
         return ids + ' := ' + ctx.exp().accept(self) + ';'
 
     def visitBin(self, ctx: TargetProgrammer.DXBin):
-        return ctx.left().accept(self) + ' ' + ctx.op() + ' ' + ctx.right().accept(self)
+        return '(' + ctx.left().accept(self) + ' ' + ctx.op() + ' ' + ctx.right().accept(self) + ')'
 
     def visitUni(self, ctx: TargetProgrammer.DXUni):
-        return ctx.op + ctx.next().accept(self)
+        return ctx.op() + '(' + ctx.next().accept(self) + ')'
 
     def visitBind(self, ctx: TargetProgrammer.DXBind):
         return ctx.ID()

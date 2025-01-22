@@ -108,7 +108,7 @@ index: '[' arithExpr ']';
 
 qindex : ID index;
 
-rangeT: ID crange ;
+rangeT: ID crange (',' ID crange)* ;
 
 qrange: qindex | rangeT;
 
