@@ -54,7 +54,6 @@ def makeVars(locus:[QXQRange], t:QXQTy, n:int):
     elif isinstance(t, TyEn):
         num = t.flag().num()
         tmp += [DXBind("amp", genType(num, SType("real")), n)]
-        tmp += [DXBind("phase", genType(num, SType("real")), n)]
         for elem in locus:
             tmp += [DXBind(elem.ID(), genType(num, SeqType(SType("bv1"))),n)]
     
@@ -67,7 +66,7 @@ def makeVars(locus:[QXQRange], t:QXQTy, n:int):
 def makeMap(ids: [str], locus: [QXQRange]):
     tmp = dict()
     for i in range(len(ids)):
-        tmp.update({ids[i]:locus[i]})
+        tmp.update({str(ids[i]):locus[i]})
     return tmp
 
 def makeIndex(id : DXBind, sums: [QXCon]):
@@ -157,6 +156,10 @@ class ProgramTransfer(ProgramVisitor):
         #This will reserves the locus and allow the sub-visitor-call to assign the current locus
         self.locus = []
 
+        # additional Dafny methods, as template libs generated from the method
+        # in printing, one needs to print out the additional methods first
+        self.addFuns = []
+
     def genVarNumMap(self, tenv: [([QXQRange], QXQTy)]):
         tmp = []
         for locus, qty in tenv:
@@ -194,7 +197,6 @@ class ProgramTransfer(ProgramVisitor):
                 if isinstance(qty.flag(), QXNum):
                     tyv = qty.flag().num()
                     binds += [DXBind("amp", genType(tyv, SType("real")), num)]
-                    binds += [DXBind("phase", genType(tyv, SType("real")), num)]
                     for elem in locus:
                         binds += [DXBind(elem.ID(), genType(tyv, SeqType(SType("bv1"))), num)]
                 else:
@@ -347,34 +349,58 @@ class ProgramTransfer(ProgramVisitor):
 
     def genPreds(self, locus: [QXQRange], t:QXQTy, num: int, ids : [str], kets:[QXKet], phase: QXAExp):
         vars = makeVars(locus, t, num)
-        pVar = vars[1]
-        kVars = vars[2:]
-        tmpSubs = []
-        for i in range(len(ids)):
-            subst = SubstDAExp(ids[i], kVars[i])
-            tmpSubs += [subst]
-        newVars = makeVars(locus, t, self.counter)
-        newPVar = newVars[1]
-        newKVars = newVars[2:]
-        self.counter += 1
 
-        res = []
-        for ket in kets:
-            re = ket.accept(self)
+        if isinstance(t, TyEn):
+            pVar = vars[0]
+            kVars = vars[1:]
+            tmpSubs = []
+            for i in range(len(ids)):
+                subst = SubstDAExp(ids[i], kVars[i])
+                tmpSubs += [subst]
+            newVars = makeVars(locus, t, self.counter)
+            newPVar = newVars[0]
+            newKVars = newVars[1:]
+            self.counter += 1
+
+            res = []
+            for ket in kets:
+                re = ket.accept(self)
+                for esub in tmpSubs:
+                    re = esub.visit(re)
+                res += [re]
+
+            preds = []
+            for i in range(len(newKVars)):
+                preds += [DXComp("==", newKVars[i], res[i])]
+
+            newp = phase.accept(self)
             for esub in tmpSubs:
-                re = esub.visit(re)
-            res += [re]
+                newp = esub.visit(newp)
 
-        preds = []
-        for i in range(len(newKVars)):
-            preds += [DXComp("==", newKVars[i], res[i])]
+            preds += [DXComp("==", newPVar, DXBin("*", pVar, newp)), DXComp("==", vars[0], newVars[0])]
+            return preds
 
-        newp = phase.accept(self)
-        for esub in tmpSubs:
-            newp = esub.visit(newp)
+        if isinstance(t, TyNor):
+            tmpSubs = []
+            for i in range(len(ids)):
+                subst = SubstDAExp(ids[i], vars[i])
+                tmpSubs += [subst]
+            newVars = makeVars(locus, t, self.counter)
+            self.counter += 1
 
-        preds += [DXComp("==", newPVar, DXBin("*", pVar, newp)),DXComp("==", vars[0], newVars[0])]
-        return preds
+            res = []
+            for ket in kets:
+                re = ket.accept(self)
+                for esub in tmpSubs:
+                    re = esub.visit(re)
+                res += [re]
+
+            preds = []
+            for i in range(len(newVars)):
+                preds += [DXComp("==", newVars[i], res[i])]
+            return preds
+
+
 
     def dealExps(self, locus: [QXQRange], pexp:DXAExp, lexp:[DXAExp], exps: [QXStmt]):
         for elem in exps:
@@ -414,12 +440,12 @@ class ProgramTransfer(ProgramVisitor):
         tmp = []
         for i in range(len(ids)):
             if isinstance(kets[i].vector(), QXBind) and ids[i] == kets[i].vector().ID():
-                var = varmap.get(ids[i]).ID()
+                var = varmap.get(str(ids[i])).ID()
                 tmp += [DXAssign([DXBind(var,genType(flag,SeqType(SType("bv1"))),self.counter)],
                                  DXBind(var,genType(flag,SeqType(SType("bv1"))),num))]
             elif isinstance(kets[i].vector(), QXBin):
-                var = varmap.get(kets[i].vector().left().ID())
-                val = DXNum(kets[i].vector().right().num())
+                var = varmap.get(str(ids[i])).ID()
+                val = kets[i].vector().accept(self)
                 tmp += [DXAssign([DXBind(var,genType(flag,SeqType(SType("bv1"))),self.counter)],
                                  DXCall("lambdaBaseEn",[val,DXBind(var,genType(flag,SeqType(SType("bv1"))),num)]))]
         return tmp
@@ -456,17 +482,28 @@ class ProgramTransfer(ProgramVisitor):
                 self.counter += 1
                 return result
 
-            if isinstance(qty, TyEn) and isinstance(ctx.exp(),QXOracle):
-                flagNum = qty.flag().num()
-                varmap = makeMap(ctx.exp().ids(), ctx.locus())
-                result = self.genKetList(varmap, flagNum, num, ctx.exp().ids(), ctx.exp().vectors)
-                vs = compareLocus(ctx.locus(), loc)
-                for rem in vs:
-                    result += [DXAssign([DXBind(rem.ID(),genType(flagNum,SeqType(SType("bv1"))),self.counter)],
-                                        DXBind(rem.ID(),genType(flagNum,SeqType(SType("bv1"))),num))]
-                self.removeLocus(num)
-                self.varnums = [(loc,qty,self.counter)] + self.varnums
+            if isinstance(ctx.exp(),QXOracle):
+                result = []
+
+                if isinstance(qty, TyHad):
+                    tmpStmt = QXCast(TyEn(QXNum(1)), loc).accept(self)
+                    result += [tmpStmt]
+
+                newNum = self.counter
                 self.counter += 1
+                vars = makeVars(loc, qty, num)
+                newVars = makeVars(loc, qty, newNum)
+                preds = self.genPreds(loc, qty, num, ctx.exp().ids(), ctx.exp().vectors(), ctx.exp().phase())
+
+                newConds = []
+                for pred in preds:
+                    newConds += [DXEnsures(pred)]
+
+                name = "newFun" + str(self.counter)
+                self.counter += 1
+                self.addFuns += [DXMethod(name, True, vars, newVars, newConds, [])]
+
+                self.varnums = [(loc,qty,newNum)] + self.varnums
                 return result
 
         return None
@@ -588,7 +625,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitCall(self, ctx: Programmer.QXCall):
-        return super().visitCall(ctx)
+        return DXCall(str(ctx.ID()), [x.accept(self) for x in ctx.exps()])
 
     def visitSingleT(self, ctx: Programmer.TySingle):
         return SType(ctx.type())
@@ -652,13 +689,13 @@ class ProgramTransfer(ProgramVisitor):
 
     def visitSum(self, ctx: Programmer.QXSum):
         tmp = []
-
-        for i in range(len(self.qvars)):
+        vars = [x for x in self.qvars if x.ID() not in ('amp')]
+        for i in range(len(vars)):
             v = ctx.kets()[i].accept(self)
-            eq = DXComp("==",makeIndex(self.qvars[i], ctx.sums()),v)
+            eq = DXComp("==",makeIndex(vars[i], ctx.sums()),v)
             for con in ctx.sums():
                 x = DXBind(con.ID(), SType("nat"))
-                arange = DXInRange(x, con.crange().left().accept(self), con.crange().right().accept(self))
+                arange = DXInRange(x,con.range().left().accept(self), con.range().right().accept(self))
                 eq = DXAll(x, DXLogic("==>",arange,eq))
             tmp += [eq]
 
@@ -668,7 +705,7 @@ class ProgramTransfer(ProgramVisitor):
         eq = DXComp("==", ampvar, v)
         for con in ctx.sums():
             x = DXBind(con.ID(), SType("nat"))
-            arange = DXInRange(x, con.crange().left().accept(self), con.crange().right().accept(self))
+            arange = DXInRange(x, con.range().left().accept(self), con.range().right().accept(self))
             eq = DXAll(x, DXLogic("==>", arange, eq))
         return ([eq]+tmp)
 
