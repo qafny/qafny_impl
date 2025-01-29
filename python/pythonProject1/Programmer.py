@@ -175,6 +175,11 @@ class QXSpec(QXTop):
     def accept(self, visitor : AbstractProgramVisitor):
         pass
 
+class QXCond(QXTop):
+
+    def accept(self, visitor : AbstractProgramVisitor):
+        pass
+
 
 class QXBind(QXAExp):
 
@@ -646,7 +651,7 @@ class QXQSpec(QXSpec):
         return f"QXQSpec(locus={self._locus}, qty={self._qty}, state={self._state})"
 
 
-class QXRequires(QXTop):
+class QXRequires(QXCond):
 
     def __init__(self, spec: QXSpec):
         self._spec = spec
@@ -661,7 +666,7 @@ class QXRequires(QXTop):
         return f"QXRequires(spec={self._spec})"
 
 
-class QXEnsures(QXTop):
+class QXEnsures(QXCond):
 
     def __init__(self, spec: QXSpec):
         self._spec = spec
@@ -859,7 +864,7 @@ class QXCall(QXStmt, QXBool, QXAExp):
 
 class QXMethod(QXTop):
 
-    def __init__(self, id: str, axiom:bool, bindings: [QXBind], returns : [QXBind], conds: [QXSpec], stmts: [QXStmt]):
+    def __init__(self, id: str, axiom:bool, bindings: [QXBind], returns : [QXBind], conds: [QXCond], stmts: [QXStmt]):
         self._id = id
         self._axiom = axiom
         self._bindings = bindings

@@ -523,10 +523,10 @@ class ProgramTransfer(ProgramVisitor):
             terms = []
             for elem in ctx.stmts():
                 terms += elem.accept(self)
-            typeCheck = TypeChecker(self.fkenv, self.varnums, self.counter)
+            typeCheck = TypeChecker(self.fkenv, self.tenv, self.varnums, self.counter)
             typeCheck.visit(ctx)
             self.fkenv = typeCheck.kenv()
-            self.varnums = typeCheck.tenv()
+            self.varnums = typeCheck.renv()
             self.counter = typeCheck.counter
 
             return DXIf(bex, terms, [])
@@ -624,6 +624,11 @@ class ProgramTransfer(ProgramVisitor):
         return [DXInit(vx, lbound), DXWhile(DXComp("<", vx, rbound), tmpstmts, tmpinvs)]
 
 
+    #This might be oversimplified. We might need to cast
+    #some locus for the Requires
+    #and then recall the coming back states
+    #I mean this might live inside a quantum conditional
+    #To transfer a quantum conditional, we might need to do so
     def visitCall(self, ctx: Programmer.QXCall):
         return DXCall(str(ctx.ID()), [x.accept(self) for x in ctx.exps()])
 
