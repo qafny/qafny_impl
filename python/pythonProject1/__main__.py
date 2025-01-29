@@ -104,7 +104,7 @@ if __name__ == "__main__":
         # abstract syntax tree
         ast = parser.program() # program is the root node in the tree
         if parser.getNumberOfSyntaxErrors() > 0:
-            print(f"Failed to parse: {filename}")
+            print(f"Failed to parse: {blue_hr_filename}")
         else:
             # Transform ANTLR AST to Qafny AST
             transformer = ProgramTransformer()
@@ -142,6 +142,6 @@ if __name__ == "__main__":
 
             print(f"Dafny:\n{dafny_code}")
 
-            show_step_status(filename, "Verify", False)
+            show_step_status(filename, "Verify", True)
             print("") # newline break
 
