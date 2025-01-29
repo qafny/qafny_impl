@@ -231,11 +231,27 @@ def replaceEnvLoci(tenv: [([QXQRange],QXQTy, int)], l1: [QXQRange], l2: [QXQRang
             tmp += [replaceLoci(elem, l1, l2)]
     return tmp
 
+def substQVar(l:[(str,QXAExp)], v:str):
+
+    for name, elem in l:
+        if name == v and isinstance(elem, QXBind):
+            return elem.ID()
+    return v
+
+def substAllVars(l:[SubstAExp], v:QXAExp):
+
+    for st in l:
+        v = st.visit(v)
+
+    return v
+
+
 # check the types of the quantum array (nor, Had, EN types)
 # for a given index in a function name f, we check the type information at location index in the function
+# the type env, is the initial type env getting from TypeCollector, no ending type env is needed.
 class TypeChecker(ProgramVisitor):
 
-    def __init__(self, kenv: dict, tenv:[([QXQRange], QXQTy, int)], counter : int):
+    def __init__(self, kenv: dict, tenv: dict, renv:[([QXQRange], QXQTy, int)], counter : int):
         # need st --> state we are deling with
         #kind map from fun vars to kind maps
         #generated from CollectKind
@@ -256,20 +272,28 @@ class TypeChecker(ProgramVisitor):
         #self.ind = ind
         #kind env, this is the step kind env inside a function f
         self.kinds = kenv
+        # this is the type env generated from TypeCollector
+        self.tenv = tenv
         #the checked type env at index
         #the generated type environment.
-        self.renv = tenv
+        self.renv = renv
         self.counter = counter
 
     def kenv(self):
         return self.kinds
 
-    def tenv(self):
+    def renv(self):
         return self.renv
 
+    #Need to deal with assertion
+    #assertion might modify locus types
     def visitAssert(self, ctx: Programmer.QXAssert):
         return ctx.spec().accept(self)
 
+    #It is correct here
+    #since KindCollections might only collect
+    #variables in the beginning, and in the return clause
+    #it will not recall variables inside a function.
     def visitInit(self, ctx: Programmer.QXInit):
         y = ctx.binding().ID()
         kv = ctx.binding().type()
@@ -389,9 +413,48 @@ class TypeChecker(ProgramVisitor):
         return True
 
     def visitCall(self, ctx: Programmer.QXCall):
-        for elem in ctx.exps():
-            elem.accept(self)
-        return ctx.ID()
+        x = ctx.ID()
+        kenv = self.kinds.get(x)
+        tmpQVars = []
+        tmpVars = []
+        for i in range(len(kenv.items())):
+            var, ty = kenv.items()[i]
+            elem = ctx.exps()[i]
+            if isinstance(ty, TyQ):
+                tmpQVars += [(var,elem)]
+            else:
+                tmpVars += [(var,elem)]
+
+        substs = []
+        for var,elem in tmpVars:
+            st = SubstAExp(var, elem)
+            substs += [st]
+
+        endEnv = self.tenv.get(x)[1]
+
+        tmpNewEnv = []
+
+        for loc, ty in endEnv:
+            for ran in loc:
+                id = substQVar(tmpQVars, ran.ID())
+                left = substAllVars(substs, ran.crange().left())
+                right = substAllVars(substs, ran.crange().right())
+                v = QXQRange(id, QXCRange(left, right))
+                tmpNewEnv += [(v,ty)]
+
+        modEnv = self.renv
+
+        for loc, ty in tmpNewEnv:
+            vs = subLocusGen(loc, modEnv)
+            if vs is None:
+                return False
+
+            floc, qty, ret, num = vs
+            modEnv = [(floc, ty, self.counter)] + ret
+            self.counter += 1
+
+        self.renv = modEnv
+        return True
 
     def visitCNot(self, ctx: Programmer.QXCNot):
         return ctx.next().accept(self)
