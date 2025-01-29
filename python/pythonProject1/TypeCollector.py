@@ -285,7 +285,7 @@ class TypeCollector(ProgramVisitor):
         return ctx.left().accept(self) and ctx.right().accept(self)
 
     def visitBind(self, ctx: Programmer.QXBind):
-        ty = self.fkenv.get(ctx.ID())
+        ty = self.fkenv[0].get(ctx.ID())
         if isinstance(ty, TySingle):
             return ty.type() == "nat"
 
