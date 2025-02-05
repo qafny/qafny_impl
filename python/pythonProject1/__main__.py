@@ -83,6 +83,7 @@ if __name__ == "__main__":
     # extremely simple argument parsing (see above usage)
     cli_parser = argparse.ArgumentParser(prog="Qafny", description="A Quantum Program Verifier")
     cli_parser.add_argument('filename', nargs='?', default=DEFAULT_FILENAMES, help="The location of the qafny file to verify.")
+    cli_parser.add_argument('-d', '--print-dafny', action='store_true', help='print out the dafny code when verifying')
     args = cli_parser.parse_args()
     
     # if the user provided a filename, it's not going to be an array
@@ -128,7 +129,8 @@ if __name__ == "__main__":
             target_printer_visitor = PrinterVisitor()
             dafny_code = target_printer_visitor.visit(dafny_ast)
 
-            print(f"Dafny:\n{dafny_code}")
+            if args.print_dafny:
+                print(f"Dafny:\n{dafny_code}")
 
             dafny_result = subprocess.run(["dafny", "verify", "--stdin"], input=dafny_code, text=True)
 
