@@ -116,8 +116,7 @@ if __name__ == "__main__":
             collect_kind = CollectKind()
             collect_kind.visit(qafny_ast)
             # QXBind can have a none type
-            print(collect_kind.get_kenv())
-
+            
             type_collector = TypeCollector(collect_kind.get_kenv())
             type_collector.visit(qafny_ast)
 
