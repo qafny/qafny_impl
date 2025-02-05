@@ -145,7 +145,7 @@ class TyEn(QXQTy):
     def __repr__(self):
         return f"TyEn(flag={self._flag})"
 
-
+# Specialized version of the EN type where the grouping of basis vectors are important
 class TyAA(QXQTy):
 
     def accept(self, visitor: AbstractProgramVisitor):
