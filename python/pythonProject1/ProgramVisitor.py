@@ -253,7 +253,7 @@ class ProgramVisitor(AbstractProgramVisitor):
 
     def visitQIndex(self, ctx: Programmer.QXQIndex):
         i = ctx.index().accept(self)
-        return ctx.ID() + '[' + i  + ']'
+        return ctx.ID() + '[' + str(i)  + ']'
 
     def visitQNot(self, ctx: Programmer.QXQNot):
         return ctx.next().accept(self)

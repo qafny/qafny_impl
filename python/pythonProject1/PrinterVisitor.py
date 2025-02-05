@@ -18,12 +18,12 @@ class PrinterVisitor(TargetProgramVisitor):
 
         bindings = ''
         for binding in ctx.bindings():
-            bindings += binding.ID() + ':' + binding.type().accept(self) + ', ' if binding.type() else '' 
+            bindings += binding.ID() + (str(binding.num()) if binding.num() else '') + ':' + binding.type().accept(self) + ', ' if binding.type() else '' 
         bindings = bindings[:-2]
 
         returns = 'returns ('
         for rbinding in ctx.returns():
-            returns += rbinding.ID() + ':' + rbinding.type().accept(self) + ', ' if rbinding.type() else '' 
+            returns += rbinding.ID() + (str(rbinding.num()) if rbinding.num() else '') + ':' + rbinding.type().accept(self) + ', ' if rbinding.type() else '' 
 
         returns = (returns[:-2] + ')\n') if len(ctx.returns()) > 0 else '\n'
 
@@ -33,7 +33,7 @@ class PrinterVisitor(TargetProgramVisitor):
             conds += r + '\n' if r else ''
 
         if ctx.axiom():
-            method = 'method {{:axiom}}' + ctx.ID() + '(' + bindings + ') ' + returns + conds
+            method = 'method {{:axiom}} ' + ctx.ID() + '(' + bindings + ') ' + returns + conds
             return method
         
         stmts = ''
@@ -54,7 +54,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return 'ensures ' + ctx.spec().accept(self)
 
     def visitInit(self, ctx: TargetProgrammer.DXInit):
-        return 'var ' + ctx.binding().ID() + ' := ' + ctx.exp().accept(self) + ';' if ctx.exp() else  'var ' + ctx.binding().ID() + ';'
+        return 'var ' + ctx.binding().ID() + ' := ' + ctx.exp().accept(self) + ';' if ctx.exp() else  'var ' + ctx.binding().ID() + (str(ctx.binding().num()) if ctx.binding().num() else '') + ';'
 
     def visitAssign(self, ctx: TargetProgrammer.DXAssign):
         ids = ''
@@ -70,7 +70,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return ctx.op() + '(' + ctx.next().accept(self) + ')'
 
     def visitBind(self, ctx: TargetProgrammer.DXBind):
-        return ctx.ID()
+        return ctx.ID() + (str(ctx.num()) if ctx.num() else '')
 
     def visitNum(self, ctx: TargetProgrammer.DXNum):
         return str(ctx.num())
@@ -89,7 +89,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return ctx.left().accept(self) + ' ' + ctx.op() + ' ' + ctx.right().accept(self)
     
     def visitAll(self, ctx: TargetProgrammer.DXAll):
-        return 'forall ' + ctx.bind().ID() + ' :: ' + ctx.next().accept(self)
+        return 'forall ' + ctx.bind().accept(self) + ' :: ' + ctx.next().accept(self)
 
     def visitWhile(self, ctx: TargetProgrammer.DXWhile):
         stmts = ''

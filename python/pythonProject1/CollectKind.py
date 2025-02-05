@@ -153,6 +153,25 @@ class CollectKind(ProgramVisitor):
             v = v and elem.accept(self)
         v = v and ctx.exp().accept(self)
         return v
+    
+    def visitOracle(self, ctx: Programmer.QXOracle):
+        v = True
+        for i in ctx.ids():
+            if str(i) not in self.tenv:
+                self.tenv.update({str(i):QXQTy()})
+        
+        for i in ctx.vectors():
+            v = v and i.accept(self)
+        return v
+    
+    def visitSKet(self, ctx: Programmer.QXSKet):
+        return ctx.vector().accept(self)
+
+    def visitQRange(self, ctx: Programmer.QXQRange):
+        return ctx.crange().accept(self)
+    
+    def visitCRange(self, ctx: Programmer.QXCRange):
+        return ctx.left().accept(self) and ctx.right().accept(self)
 
     def isBitType(self, t: QXType):
         if isinstance(t, TySingle):

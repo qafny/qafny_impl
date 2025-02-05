@@ -468,7 +468,7 @@ class QXVKet(QXKet):
 class QXOracle(QXExp):
 
     def __init__(self, ids: [str], omega: QXAExp, kets: [QXKet]):
-        self._ids = ids
+        self._ids = [str(x) for x in ids]
         self._omega = omega
         self._kets = kets
 

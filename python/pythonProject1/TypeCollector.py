@@ -253,7 +253,7 @@ class TypeCollector(ProgramVisitor):
                 if not compareAExp(right, kty.flag()):
                     addElem((QXComp("<=",right,kty.flag())), self.pred)
 
-            self.tenv.append((ctx.spec().locus(), ctx.spec().qty()))
+            self.mkenv.append((ctx.spec().locus(), ctx.spec().qty()))
 
         if isinstance(ctx.spec(), QXComp):
             left = ctx.spec().left().ID()
@@ -269,9 +269,9 @@ class TypeCollector(ProgramVisitor):
                 if xT is None and yT is None:
                     return False
                 elif xT is None:
-                    self.tenv.append([QXQRange(left, QXCRange(QXNum(0),tyx.flag()))], yT)
+                    self.mkenv.append([QXQRange(left, QXCRange(QXNum(0),tyx.flag()))], yT)
                 elif yT is None:
-                    self.tenv.append([QXQRange(left, QXCRange(QXNum(0), tyx.flag()))], xT)
+                    self.mkenv.append([QXQRange(left, QXCRange(QXNum(0), tyx.flag()))], xT)
                 else:
                     re = compareType(xT, yT)
                     if re is None:

@@ -1,5 +1,5 @@
 import Programmer
-from LocusCollector import LocusCollector
+from LocusCollector import *
 from ProgramVisitor import ProgramVisitor
 from CollectKind import *
 from SimpAExp import SimpAExp
@@ -27,6 +27,16 @@ def compareLocus(q1: [QXQRange], q2: [QXQRange]):
             return None
 
     return vs
+
+def compareSubLocus(q1: [QXQRange], q2: [([QXQRange], QXQTy, int)]):
+    vs = []
+    for i in q1:
+        for loc, qty, num in q2:
+            if compareLocus([i], loc):
+                vs.append((loc, qty))
+                break
+    return vs
+
 
 def equalLocusEnv(q1: [QXQRange], qs: [([QXQRange], QXQTy, int)]):
     vs = None
@@ -138,6 +148,20 @@ def subLocusGen(q: [QXQRange], qs: [([QXQRange], QXQTy, int)]):
                     rev += qv
             else:
                 rev += [qs[i]]
+
+    sl = compareSubLocus(q, qs)
+    floc = []
+    if len(sl)>0:
+        for loc,ty in sl:
+            type = compareType(ty, type)
+            floc.extend(loc)
+        
+        slrev = []
+        for loc,qty,num in qs:
+            if loc not in floc:
+                slrev.append((loc,qty,num))
+        
+        return (floc, type, slrev, num)
     return None
 
 def sameLocus(q: [QXQRange], qs : [([QXQRange], QXQTy, int)]):
@@ -203,7 +227,7 @@ def addOneType(ty : QXQTy):
     if isinstance(ty, TyEn):
         return TyEn(QXNum(ty.flag().num()+1))
     if isinstance(ty, TyNor):
-        return TyHad
+        return TyHad()
     return None
 
 def replaceLocus(t: [QXQRange], r1: QXQRange, r2: QXQRange):
@@ -324,7 +348,7 @@ class TypeChecker(ProgramVisitor):
         return ctx.ID()
 
     def visitQAssign(self, ctx: Programmer.QXQAssign):
-        loc, ty, nenv , num = subLocusGen(ctx.locus(), self.renv)
+        loc, ty, nenv, num = subLocusGen(ctx.locus(), self.renv)
         
         if isinstance(ctx.exp(), QXSingle):
             ty = addOneType(ty)

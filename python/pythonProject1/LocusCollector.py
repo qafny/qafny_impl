@@ -17,7 +17,7 @@ def joinRange(q1:QXQRange, qs:[QXQRange]):
 
 def joinLocus(q1:[QXQRange], qs:[QXQRange]):
     for elem in q1:
-        qs=joinLocus(elem,qs)
+        qs=joinRange(elem,qs)
     return qs
 
 def getVars(q: [QXQRange]):

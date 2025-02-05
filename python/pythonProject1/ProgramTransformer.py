@@ -449,7 +449,7 @@ class ProgramTransformer(ExpVisitor):
     def visitLambdaT(self, ctx:ExpParser.LambdaTContext):
         ids = self.visitIds(ctx.ids())
         if ctx.omegaExpr() is None:
-            omega = QXBin("omega", QXNum(0), QXNum(1))
+            omega = QXCall('omega', [QXNum(0), QXNum(1)])
         else:
             omega = self.visitOmegaExpr(ctx.omegaExpr())
         if ctx.manyket() is None:

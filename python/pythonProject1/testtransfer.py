@@ -31,4 +31,8 @@ if k.visitProgram(x):
         pt = ProgramTransfer(k.env, ty.env)
         res = pt.visitProgram(x)
         pv = PrinterVisitor()
+    
+        for i in pt.addFuns: #this is required to print the generated oracle functions
+            print(pv.visitMethod(i))
+
         print(pv.visitProgram(res))
