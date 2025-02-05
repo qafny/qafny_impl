@@ -15,6 +15,8 @@ from TypeChecker import TypeChecker # usage: type checking the parsed file
 from ProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one
 from PrinterVisitor import PrinterVisitor # usage: outputting string text dafny code from a dafny (TargetProgrammer) AST
 
+import subprocess # usage: calling dafny to verify generated code
+
 #######################################
 # Qafny Options (a.k.a. Defines)
 #######################################
@@ -119,19 +121,6 @@ if __name__ == "__main__":
             type_collector = TypeCollector(collect_kind.get_kenv())
             type_collector.visit(qafny_ast)
 
-            # print(f"{type(collect_kind.get_kenv())}, {type(type_collector.get_tenv())}")
-            # print(type_collector.get_tenv())
-
-            # Type-check (for each method in the ast)
-            types_correct = True
-            for method in qafny_ast.method():
-                modified_tenv = [(x[0], x[1], 0) for x in type_collector.get_tenv(method.ID())]
-                print(modified_tenv)
-                type_checker = TypeChecker(collect_kind.get_kenv(), modified_tenv, 0)
-                types_correct = types_correct and type_checker.visit(qafny_ast)
-
-            show_step_status(filename, "Type-check", types_correct)
-
             # Convert to Dafny AST
             dafny_transfer = ProgramTransfer(collect_kind.get_kenv(), type_collector.get_env())
             dafny_ast = dafny_transfer.visit(qafny_ast)
@@ -142,6 +131,8 @@ if __name__ == "__main__":
 
             print(f"Dafny:\n{dafny_code}")
 
-            show_step_status(filename, "Verify", True)
+            dafny_result = subprocess.run(["dafny", "verify", "--stdin"], input=dafny_code, text=True)
+
+            show_step_status(filename, "Verify", dafny_result.returncode == 0)
             print("") # newline break
 
