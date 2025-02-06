@@ -269,7 +269,6 @@ def substAllVars(l:[SubstAExp], v:QXAExp):
 
     return v
 
-
 # check the types of the quantum array (nor, Had, EN types)
 # for a given index in a function name f, we check the type information at location index in the function
 # the type env, is the initial type env getting from TypeCollector, no ending type env is needed.
@@ -298,6 +297,7 @@ class TypeChecker(ProgramVisitor):
         self.kinds = kenv
         # this is the type env generated from TypeCollector
         self.tenv = tenv
+        #QXCall(f,...)
         #the checked type env at index
         #the generated type environment.
         self.renv = renv

@@ -255,10 +255,10 @@ class ProgramTransfer(ProgramVisitor):
 
         self.varnums = vs
 
-
     #argument generation 1) for classical variables, just directly gen.
     #2) for quantum variable, do not gen argument in qafny,
     # but take in the loci in requires, and gen variables according to loci with correct types.
+    # We need to create a typechecker here.
     def visitMethod(self, ctx: Programmer.QXMethod):
         self.fvar = str(ctx.ID())
         self.fkenv = self.kenv.get(self.fvar)

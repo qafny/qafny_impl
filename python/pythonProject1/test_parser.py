@@ -22,7 +22,6 @@ def run_rz_adder_test(num_qubits, array_size_na, val, addend):
     #transform = ProgramTransformer() need to define a program AST form then define a transformer visitor pattern to transform
     #newTree = transform.visitRoot(tree)
 
-
 #Below is old code for an example of using pytest
 # Function to parse TSL file
 def parse_tsl_file(file_path):

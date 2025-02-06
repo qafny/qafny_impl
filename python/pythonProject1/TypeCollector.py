@@ -79,8 +79,13 @@ class TypeCollector(ProgramVisitor):
 
     def __init__(self, kenv: dict):
         # need st --> state we are dealing with
-        self.kenv = kenv
+        self.kenv = kenv # mapping from function names -> two items,
+        #the two items are both maps from variables to kinds
         self.env = dict()
+        # mapping from function names -> three items, types
+        # TyEn, TyNor, TyHad, TyAA
+        # the first two items mapping from loci -> types
+        # the third item is a list of predicates
         self.tenv = [] # temp pre-env for a method
         self.mkenv = [] # temp post-env for a method
         self.pred = [] # temp predicates
@@ -202,7 +207,8 @@ class TypeCollector(ProgramVisitor):
 
                 if not left.accept(self) or not right.accept(self):
                     return False
-
+                #Requires { x[i,j) : en(1) -> .... }
+                # i <= j, if i == j, then x[i,j) == {}
                 if not compareAExp(left, QXNum(0)):
                     addElem((QXComp("<=",QXNum(0),left)), self.pred)
                 if not compareAExp(right, kty.flag()):
