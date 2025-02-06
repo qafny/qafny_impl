@@ -18,12 +18,12 @@ class PrinterVisitor(TargetProgramVisitor):
 
         bindings = ''
         for binding in ctx.bindings():
-            bindings += binding.ID() + (str(binding.num()) if binding.num() else '') + ':' + binding.type().accept(self) + ', ' if binding.type() else '' 
+            bindings += binding.ID() + (str(binding.num()) if binding.num() else '') + ': ' + binding.type().accept(self) + ', ' if binding.type() else '' 
         bindings = bindings[:-2]
 
         returns = 'returns ('
         for rbinding in ctx.returns():
-            returns += rbinding.ID() + (str(rbinding.num()) if rbinding.num() else '') + ':' + rbinding.type().accept(self) + ', ' if rbinding.type() else '' 
+            returns += rbinding.ID() + (str(rbinding.num()) if rbinding.num() else '') + ': ' + rbinding.type().accept(self) + ', ' if rbinding.type() else '' 
 
         returns = (returns[:-2] + ')\n') if len(ctx.returns()) > 0 else '\n'
 
