@@ -30,7 +30,7 @@ class PrinterVisitor(TargetProgramVisitor):
         conds = ''
         for cond in ctx.conds():
             r = cond.accept(self)
-            conds += r + '\n' if r else ''
+            conds += '\t' + r + '\n' if r else ''
 
         if ctx.axiom():
             method = 'method {{:axiom}} ' + ctx.ID() + '(' + bindings + ') ' + returns + conds
@@ -38,7 +38,7 @@ class PrinterVisitor(TargetProgramVisitor):
         
         stmts = ''
         for stmt in ctx.stmts():
-            stmts += stmt.accept(self) + '\n'
+            stmts += '\t' + stmt.accept(self) + '\n'
 
         method = 'method ' + ctx.ID() + '(' + bindings + ') ' + returns + conds + '{\n' + stmts + '}'
 
@@ -94,17 +94,17 @@ class PrinterVisitor(TargetProgramVisitor):
     def visitWhile(self, ctx: TargetProgrammer.DXWhile):
         stmts = ''
         for stmt in ctx.stmts():
-            stmts += stmt.accept(self) + '\n'
+            stmts += '\t' + stmt.accept(self) + '\n'
         inv = ''
         if ctx.inv():
             for i in ctx.inv():
-                inv += 'invariant ' + i.accept(self) + '\n'
+                inv += '\tinvariant ' + i.accept(self) + '\n'
         return 'while(' + ctx.cond().accept(self) + ')\n' + inv + '{\n' + stmts + '}'
     
     def visitIf(self, ctx: TargetProgrammer.DXIf):
         stmts = ''
         for stmt in ctx.stmts():
-            stmts += stmt.accept(self) + ';\n'
+            stmts += '\t' + stmt.accept(self) + ';\n'
 
         return 'if ' + ctx.cond().accept(self) + '{\n' + stmts + '}'
 
