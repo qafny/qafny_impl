@@ -91,12 +91,13 @@ def show_step_status(filename: str, description: str, is_success: bool):
 #?      qafny build <file> for compilation (i.e. to QASM)
 if __name__ == "__main__":
     # extremely simple argument parsing (see above usage)
-    cli_parser = argparse.ArgumentParser(prog="Qafny", description="A Quantum Program Verifier")
+    cli_parser = argparse.ArgumentParser(prog="qafny", description="A Quantum Program Verifier")
     # the file to verify
-    cli_parser.add_argument('filename', nargs='?', default=DEFAULT_FILENAMES, help="The location of the qafny file to verify.")
+    cli_parser.add_argument('filename', nargs='?', default=DEFAULT_FILENAMES, help="the location of the qafny file to verify. if not specified, qafny verifies all the files in DEFAULT_FILENAMES from __main__.py")
     # debug flag to print dafny code generated from the file
     # the default behavior is to pipe the code to stdin
     cli_parser.add_argument('-d', '--print-dafny', action='store_true', help='print out the dafny code when verifying')
+    cli_parser.add_argument('-o', '--output', nargs='?', const='', help='if specified, write the generated dafny code to the file specified by OUTPUT. if not provided, the name is based on the input filename')
     args = cli_parser.parse_args()
     
     # if the user provided a filename, it's not going to be an array
@@ -164,8 +165,26 @@ if __name__ == "__main__":
                 print("Dafny:")
                 print(CodeReport(dafny_code))
 
-            # Call dafny for the verification result
-            dafny_result = subprocess.run(["dafny", "verify", "--stdin"], input=dafny_code, text=True)
+            if args.output is not None:
+                # in the case of a default const (the argument was specified, but no filename provided)
+                if args.output == '':
+                    args.output = os.path.splitext(human_readable_filename)[0] + '.dfy'
+                    # check if this file exists, if so, keep trying random bits on the end till one doesn't exist
+
+
+                # status message
+                blue_filename = stylize(f'"{args.output}"', fore('blue'))
+                print(f'Saving Dafny to: {blue_filename}')
+
+                # write to disk
+                with open(args.output, 'w') as dafny_file:
+                    dafny_file.write(dafny_code)
+
+                # Call dafny for the verification result by running it on the file
+                dafny_result = subprocess.run(["dafny", "verify", args.output])
+            else:
+                # Call dafny for the verification result, piping the code through stdin
+                dafny_result = subprocess.run(["dafny", "verify", "--stdin"], input=dafny_code, text=True)
 
             # report status to the user
             show_step_status(filename, "Verify", dafny_result.returncode == 0)
