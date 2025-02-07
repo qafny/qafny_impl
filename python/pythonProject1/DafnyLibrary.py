@@ -2,31 +2,35 @@ class DafnyLibrary:
 
   class Method:
     def __init__(self, code: str, dependencies: [str] = []):
+      """Constructor for a template method. code is the actual Dafny code that makes up the method. dependencies is a list of method names that this method depends on."""
       self._code = code
       self._dependencies = dependencies
 
-    def code(self):
+    def code(self) -> str:
+      """The code as a string that defines and implements this method."""
       return self._code
 
-    def dependencies(self):
+    def dependencies(self) -> [str]:
+      """The other method names used by this method as an array of strings."""
       return self._dependencies
 
+  # internal static list of library methods
   _methods = {
-    'omega': 'function {:axiom} omega(n:nat, a:nat): real',
-    'sqrt': 'function {:axiom} sqrt(a:real): real',
+    'omega': 'function {:axiom} omega(n:nat, a:nat) : real',
+    'sqrt': 'function {:axiom} sqrt(a:real) : real',
     'castBVInt': '''function castBVInt (x:seq<bv1>) : nat
 {
   if (|x|==0) then 0 else (x[0] as nat) + 2 * castBVInt(x[1..])
 }''',
-    'pow2': '''function pow2(N:nat):int
+    'pow2': '''function pow2(N:nat) : int
   ensures pow2(N) > 0
 {
   if (N==0) then 1 else 2 * pow2(N-1)
 }''',
-    'SqrtGt': Method('''lemma {:axiom} SqrtGt(a:real)
+    'SqrtGt': Method('''lemma {:axiom} SqrtGt(a: real)
   requires a > 0.0
   ensures sqrt(a) > 0.0''', ['sqrt']),
-      'hadNorHad': Method('''method hadNorHad(x:seq<bv1>) returns (y : seq<real>) 
+      'hadNorHad': Method('''method hadNorHad(x: seq<bv1>) returns (y: seq<real>) 
   ensures |y| == |x|
   ensures forall k :: 0 <= k < |x| ==> y[k] == omega(x[k] as int,2)
 {
