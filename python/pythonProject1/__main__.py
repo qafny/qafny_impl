@@ -14,8 +14,11 @@ from TypeCollector import TypeCollector # usage: collecting the type environment
 from TypeChecker import TypeChecker # usage: type checking the parsed file
 from ProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one
 from PrinterVisitor import PrinterVisitor # usage: outputting string text dafny code from a dafny (TargetProgrammer) AST
+from DafnyLibrary import DafnyLibrary # usage: generating template library functions for verification
 
 import subprocess # usage: calling dafny to verify generated code
+
+from error_reporter.CodeReport import CodeReport
 
 #######################################
 # Qafny Options (a.k.a. Defines)
@@ -40,6 +43,13 @@ DEFAULT_FILENAMES = [
     example_program("test5"),
     example_program("test6"),
     example_program("test7"),
+    example_program("test8"),
+    example_program("test9"),
+    example_program("test10"),
+    example_program("test11"),
+    example_program("test12"),
+    example_program("test13"),
+    example_program("test14"),
     example_program("BellPair"),
     example_program("GHZ"),
     example_program("Teleportation"),
@@ -82,7 +92,10 @@ def show_step_status(filename: str, description: str, is_success: bool):
 if __name__ == "__main__":
     # extremely simple argument parsing (see above usage)
     cli_parser = argparse.ArgumentParser(prog="Qafny", description="A Quantum Program Verifier")
+    # the file to verify
     cli_parser.add_argument('filename', nargs='?', default=DEFAULT_FILENAMES, help="The location of the qafny file to verify.")
+    # debug flag to print dafny code generated from the file
+    # the default behavior is to pipe the code to stdin
     cli_parser.add_argument('-d', '--print-dafny', action='store_true', help='print out the dafny code when verifying')
     args = cli_parser.parse_args()
     
@@ -109,6 +122,14 @@ if __name__ == "__main__":
         if parser.getNumberOfSyntaxErrors() > 0:
             print(f"Failed to parse: {blue_hr_filename}")
         else:
+            # DEBUG
+            # print out ast in lisp like format
+            # print(ast.toStringTree(recog=parser))
+            # print out tokens from TerminalNodes
+            # token_printer = TokenPrinter()
+            # token_printer.visit(ast)
+            # /DEBUG
+
             # Transform ANTLR AST to Qafny AST
             transformer = ProgramTransformer()
             qafny_ast = transformer.visit(ast)
@@ -116,7 +137,6 @@ if __name__ == "__main__":
             # Collect the types + kinds in the AST
             collect_kind = CollectKind()
             collect_kind.visit(qafny_ast)
-            # QXBind can have a none type
             
             type_collector = TypeCollector(collect_kind.get_kenv())
             type_collector.visit(qafny_ast)
@@ -125,15 +145,29 @@ if __name__ == "__main__":
             dafny_transfer = ProgramTransfer(collect_kind.get_kenv(), type_collector.get_env())
             dafny_ast = dafny_transfer.visit(qafny_ast)
 
-            # Print Dafny AST
+            # Convert Dafny AST to string
             target_printer_visitor = PrinterVisitor()
-            dafny_code = target_printer_visitor.visit(dafny_ast)
+            dafny_code = ''
 
+            # add library functions
+            dafny_code += DafnyLibrary.buildLibrary(dafny_transfer.libFuns)
+
+            # this is required to print out the generated lambda functions
+            for i in dafny_transfer.addFuns:
+                dafny_code += target_printer_visitor.visitMethod(i) + "\n"
+
+            # now, add the actual code
+            dafny_code += target_printer_visitor.visit(dafny_ast)
+
+            # debugging purposes, print out the generated dafny output
             if args.print_dafny:
-                print(f"Dafny:\n{dafny_code}")
+                print("Dafny:")
+                print(CodeReport(dafny_code))
 
+            # Call dafny for the verification result
             dafny_result = subprocess.run(["dafny", "verify", "--stdin"], input=dafny_code, text=True)
 
+            # report status to the user
             show_step_status(filename, "Verify", dafny_result.returncode == 0)
             print("") # newline break
 
