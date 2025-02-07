@@ -39,7 +39,7 @@ class ProgramTransformer(ExpVisitor):
             stmts = self.visitStmts(ctx.stmts())
         else:
             stmts = []
-        return QXMethod(ctx.ID(), axiom, bindings,returns,conds,stmts)
+        return QXMethod(ctx.ID(), axiom, bindings, returns, conds, stmts)
 
     # Visit a parse tree produced by ExpParser#returna.
     def visitReturna(self, ctx:ExpParser.ReturnaContext):
