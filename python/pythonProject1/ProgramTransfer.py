@@ -967,6 +967,17 @@ class ProgramTransfer(ProgramVisitor):
         return DXAll(x, p)
 
     def visitBin(self, ctx: Programmer.QXBin):
+        """Method visitor to binary operations."""
+        
+        # if exponential, we need to convert to a function that dafny supports
+        # 2 ^ n => pow2(n)
+        # 3 ^ x => pow(3, x) note: generic powers are not yet supported
+        if ctx.op() == '^':
+            if isinstance(ctx.left(), QXNum) and ctx.left().num() == 2:
+                return DXCall("pow2", [ctx.right().accept(self)])
+            else:
+                raise NotImplementedError('Converting exponents with bases other than two is not yet implemented.')
+
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self))
 
     def visitUni(self, ctx: Programmer.QXUni):
