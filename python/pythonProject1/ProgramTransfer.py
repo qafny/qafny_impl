@@ -163,6 +163,9 @@ class ProgramTransfer(ProgramVisitor):
         # in printing, one needs to print out the additional methods first
         self.addFuns = []
 
+        # additional Dafny methods that need to be pulled from DafnyLibrary
+        self.libFuns = set()
+
         # flag variable to handle transfering of ensures differently to map the correct output variable number to the ensures
         self.t_ensures = False
 
@@ -209,6 +212,17 @@ class ProgramTransfer(ProgramVisitor):
                     return None
 
         return binds
+
+    def genBindRequires(self):
+        '''Generates pre-conditions (i.e. requires) based off of the binds present in this method.'''
+        conditions = []
+
+        for locus, qty, num in self.varnums:
+            # require that n is equal to the length of the generated sequence
+            for elem in locus:
+                conditions.append(DXRequires(DXComp('==', DXLength(DXVar(elem.ID())), DXVar(elem.crange().right().ID()))))
+
+        return conditions
     
     #generate returns with different variables than input so that we can use then in ensures (since lists are immutable in dafny)
     def genOutArgs(self, binds):
@@ -229,6 +243,16 @@ class ProgramTransfer(ProgramVisitor):
                     return None
 
         return binds
+
+    def genOutEnsures(self):
+        '''Generates post-conditions (i.e. requires) based off of the return binds generated for this method'''
+        conditions = []
+
+        for locus, qty, num in self.outvarnums:
+            for elem in locus:
+                    conditions.append(DXEnsures(DXComp('==', DXLength(DXBind(elem.ID(), num=num)), DXVar(elem.crange().right().ID()))))
+
+        return conditions
 
     def removeLocus(self, n:int):
         vs = []
@@ -279,12 +303,17 @@ class ProgramTransfer(ProgramVisitor):
         if tmpbind is None:
             return None
 
+        # conditions (requires/ensures) for the generated Dafny method
         tmpcond = []
+        # add conditions derived from the input types (i.e. Q[n] ==> |Q| == n)
+        tmpcond.extend(self.genBindRequires())
+
         for condelem in ctx.conds():
+            # add the requires conditions to the generated Dafny conditions
             if isinstance(condelem, QXRequires):
                 tmpcond.extend(condelem.accept(self))
 
-
+        # add predicates existing from the type environment
         for preds in self.tenv[self.fvar][2]:
             tmpcond.append(preds.accept(self))
 
@@ -312,6 +341,10 @@ class ProgramTransfer(ProgramVisitor):
                     tmpstmt.append(s)
         
         self.t_ensures = True
+
+        # add conditions derived from the return types
+        tmpcond.extend(self.genOutEnsures())
+
         for condelem in ctx.conds():
             if isinstance(condelem, QXEnsures):
                 tmpcond.extend(condelem.accept(self))
@@ -372,6 +405,7 @@ class ProgramTransfer(ProgramVisitor):
             vs = compareLocus(ctx.locus(), loc)
             if not vs and isinstance(qty, TyHad) and isinstance(ctx.qty(), TyEn):
                 result = [DXAssign(makeVars(ctx.locus(),ctx.qty(),self.counter),DXCall("hadEn", makeVars(ctx.locus(),TyHad(),num)))]
+                self.libFuns.add('hadEn')
                 self.removeLocus(num)
                 self.varnums = [(loc,ctx.qty(),self.counter)] + self.varnums
                 self.counter += 1
@@ -384,6 +418,7 @@ class ProgramTransfer(ProgramVisitor):
                 if not vs and isinstance(ty, TyHad) and isinstance(ctx.qty(), TyEn):
                     result = [DXAssign(makeVars(ctx.locus(), ctx.qty(), self.counter),
                                        DXCall("hadEn", makeVars(ctx.locus(), TyHad(), num)))]
+                    self.libFuns.add('hadEn')
                     self.removeLocus(num)
                     self.varnums = [(floc, ty, self.counter)] + self.varnums
                     self.counter += 1
@@ -414,6 +449,7 @@ class ProgramTransfer(ProgramVisitor):
                 rlength = DXLength(compleft)
                 if not isamp and isinstance(type.type(), SType):
                     compleft = DXCall('castBVInt', [DXIndex(compleft, var)])
+                    self.libFuns.add('castBVInt')
                 else:
                     compleft = DXIndex(compleft, var)
 
@@ -484,6 +520,7 @@ class ProgramTransfer(ProgramVisitor):
                     tmp_ucr.append(DXCall('castBVInt',[i]))
                 else:
                     tmp_kVars.append(DXCall('castBVInt',[i]))
+                self.libFuns.add('castBVInt')
             
             unchanged_range = tmp_ucr
 
@@ -524,6 +561,7 @@ class ProgramTransfer(ProgramVisitor):
             for i in range(len(ids)):
                 if isinstance(vars[i].type(),SeqType) and isinstance(vars[i].type().type(), SType) and vars[i].type().type().type() == 'bv1':
                     vars[i] = DXCall('castBVInt', [vars[i]])
+                    self.libFuns.add('castBVInt')
                 subst = SubstDAExp(ids[i], vars[i])
                 tmpSubs += [subst]
             newVars = makeVars(locus, t, newNum)
@@ -538,6 +576,7 @@ class ProgramTransfer(ProgramVisitor):
             preds = []
             for i in range(len(newVars)):
                 preds += [DXComp("==", DXCall('castBVInt', [newVars[i]]), res[i])]
+                self.libFuns.add('castBVInt')
             return preds
 
 
@@ -588,6 +627,7 @@ class ProgramTransfer(ProgramVisitor):
                 val = kets[i].vector().accept(self)
                 tmp += [DXAssign([DXBind(var,genType(flag,SeqType(SType("bv1"))),self.counter)],
                                  DXCall("lambdaBaseEn",[val,DXBind(var,genType(flag,SeqType(SType("bv1"))),num)]))]
+                self.libFuns.add('lambdaBaseEn')
         return tmp
 
 
@@ -607,6 +647,7 @@ class ProgramTransfer(ProgramVisitor):
                     self.counter += 1
                     self.varnums = [(ctx.locus(),TyHad(),self.counter),(vs,TyNor(),num)] + self.varnums
                 result = [DXAssign(makeVars(ctx.locus(),TyNor(),self.counter),DXCall("hadNorHad", makeVars(ctx.locus(),TyNor(),num)))]
+                self.libFuns.add('hadNorHad')
                 self.counter += 1
                 return result
 
@@ -620,9 +661,11 @@ class ProgramTransfer(ProgramVisitor):
                 for rem in vs:
                     tmr += [DXAssign(makeVars([rem], TyEn(QXNum(flagNum + 1)), self.counter),
                                      DXCall("castBaseEn", makeVars([rem], qty, num)))]
+                    self.libFuns.add('castBaseEn')
                     self.counter += 1
                 result = tmr + [DXAssign(makeVars(ctx.locus(),TyEn(QXNum(flagNum + 1)),self.counter),
                                          DXCall("hadEn", makeVars(ctx.locus(),qty,self.counter-1)))]
+                self.libFuns.add('hadEn')
                 self.removeLocus(num)
                 self.counter += 1
                 self.varnums = [(loc,TyEn(QXNum(flagNum + 1)),self.counter)] + self.varnums
@@ -873,6 +916,7 @@ class ProgramTransfer(ProgramVisitor):
         for i in range(len(vars)):
             v = ctx.kets()[i].accept(self)
             eq = DXComp("==",DXCall('castBVInt', [makeIndex(vars[i], ctx.sums())]),v)
+            self.libFuns.add('castBVInt')
             for con in ctx.sums():
                 x = DXBind(con.ID(), SType("nat"))
                 arange = DXInRange(x,con.range().left().accept(self), con.range().right().accept(self))
@@ -938,6 +982,8 @@ class ProgramTransfer(ProgramVisitor):
         return DXNum(ctx.num())
 
     def visitHad(self, ctx: Programmer.QXHad):
+        # ensure omega is in our list of library functions
+        self.libFuns.add('omega')
         if ctx.state() == "+":
             return DXCall("omega", [DXNum(0), DXNum(2)])
         else:
