@@ -97,6 +97,25 @@ class DXBin(DXAExp):
     def right(self):
         return self._right
 
+class DXIfExp(DXAExp):
+
+    def __init__(self, bexp: DXBool, left:DXAExp, right: DXAExp):
+        self._bexp = bexp
+        self._left = left
+        self._right = right
+
+    def accept(self, visitor : AbstractTargetVisitor):
+        return visitor.visitBin(self)
+
+    def bexp(self):
+        return self._bexp
+
+    def left(self):
+        return self._left
+
+    def right(self):
+        return self._right
+
 class DXLogic(DXBool):
 
     def __init__(self, op: str, left: DXBool, right: DXBool):

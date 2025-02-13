@@ -162,6 +162,10 @@ class AbstractProgramVisitor(ABC):
         pass
 
     @abstractmethod
+    def visitIfExp(self, ctx):
+        pass
+
+    @abstractmethod
     def visitUni(self, ctx):
         pass
 

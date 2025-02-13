@@ -548,6 +548,13 @@ class ProgramTransformer(ExpVisitor):
             return self.visitRangeT(ctx.rangeT())
 
 
+    def visitCifexp(self, ctx:ExpParser.CifexpContext):
+        b = self.visitLogicOrExp(ctx.logicOrExp())
+        l = self.visitArithExpr(ctx.arithExpr(0))
+        r = self.visitArithExpr(ctx.arithExpr(1))
+        return QXIfExp(b,l,r)
+
+
     # Visit a parse tree produced by ExpParser#numexp.
     def visitNumexp(self, ctx:ExpParser.NumexpContext):
         return QXNum(int(ctx.getText()))

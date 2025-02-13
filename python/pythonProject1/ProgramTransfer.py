@@ -969,6 +969,9 @@ class ProgramTransfer(ProgramVisitor):
     def visitBin(self, ctx: Programmer.QXBin):
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self))
 
+    def visitIfExp(self, ctx: Programmer.QXIfExp):
+        return DXIfExp(ctx.bexp().accept(self), ctx.left().accept(self), ctx.right().accept(self))
+
     def visitUni(self, ctx: Programmer.QXUni):
         return DXUni(ctx.op(), ctx.next().accept(self))
 

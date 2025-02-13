@@ -80,6 +80,8 @@ class ProgramVisitor(AbstractProgramVisitor):
                 return self.visitAll(ctx)
             case QXBin():
                 return self.visitBin(ctx)
+            case QXIfExp():
+                return self.visitIfExp(ctx)
             case QXUni():
                 return self.visitUni(ctx)
             case QXSingle():
@@ -271,6 +273,12 @@ class ProgramVisitor(AbstractProgramVisitor):
         ctx.left().accept(self)
         ctx.right().accept(self)
         return ctx.op()
+
+    def visitIfExp(self, ctx: Programmer.QXIfExp):
+        ctx.bexp().accept(self)
+        ctx.left().accept(self)
+        ctx.right().accept(self)
+        return True
 
     def visitUni(self, ctx: Programmer.QXUni):
         ctx.next().accept(self)
