@@ -98,6 +98,7 @@ if __name__ == "__main__":
     # the default behavior is to pipe the code to stdin
     cli_parser.add_argument('-d', '--print-dafny', action='store_true', help='print out the dafny code when verifying')
     cli_parser.add_argument('-o', '--output', nargs='?', const='', help='if specified, write the generated dafny code to the file specified by OUTPUT. if not provided, the name is based on the input filename')
+    cli_parser.add_argument('-x', '--skip-verify', action='store_true', help='don\'t verify the code in dafny, useful when developing')
     args = cli_parser.parse_args()
     
     # if the user provided a filename, it's not going to be an array
@@ -180,13 +181,16 @@ if __name__ == "__main__":
                 with open(args.output, 'w') as dafny_file:
                     dafny_file.write(dafny_code)
 
-                # Call dafny for the verification result by running it on the file
-                dafny_result = subprocess.run(["dafny", "verify", args.output])
+                if not args.skip_verify:
+                    # Call dafny for the verification result by running it on the file
+                    dafny_result = subprocess.run(["dafny", "verify", args.output])
             else:
-                # Call dafny for the verification result, piping the code through stdin
-                dafny_result = subprocess.run(["dafny", "verify", "--stdin"], input=dafny_code, text=True)
+                if not args.skip_verify:
+                    # Call dafny for the verification result, piping the code through stdin
+                    dafny_result = subprocess.run(["dafny", "verify", "--stdin"], input=dafny_code, text=True)
 
-            # report status to the user
-            show_step_status(filename, "Verify", dafny_result.returncode == 0)
+            if not args.skip_verify:
+                # report status to the user
+                show_step_status(filename, "Verify", dafny_result.returncode == 0)
             print("") # newline break
 

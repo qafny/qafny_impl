@@ -314,7 +314,7 @@ class QXQIndex(QXQBool, QXAExp):
 
 class QXBin(QXAExp):
 
-    def __init__(self, op: str, left:QXAExp, right: QXAExp):
+    def __init__(self, op: str, left: QXAExp, right: QXAExp):
         self._op = op
         self._left = left
         self._right = right

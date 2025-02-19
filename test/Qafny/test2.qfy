@@ -1,5 +1,5 @@
 //Simple Had application with casting
-method hadtest(n:nat, q : Q[n])
+method hadtest(n: nat, q : Q[n])
   requires { q[0, n) : nor ↦ |0⟩ }
   ensures  { q[0, n) : en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) | k ⟩ }
 {

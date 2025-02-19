@@ -86,6 +86,14 @@ class AbstractTargetVisitor(ABC):
         pass
 
     @abstractmethod
+    def visitReal(self, ctx):
+        pass
+
+    @abstractmethod
+    def visitCast(self, ctx):
+        pass
+
+    @abstractmethod
     def visitCall(self, ctx):
         pass
 

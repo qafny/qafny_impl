@@ -26,6 +26,7 @@ class DXStmt(DXTop):
         pass
 
 class DXAExp(DXTop):
+    '''Parent class of all arithmetic operations representable in Dafny'''
 
     def accept(self, visitor : AbstractTargetVisitor):
         pass
@@ -151,7 +152,26 @@ class DXUni(DXAExp):
         return self._next
 
     
+class DXCast(DXAexp):
+    '''Represents a dafny cast, i.e. x as real'''
+
+    def __init__(self, aexp: DXAExp, type: DXType):
+        # <aexp> as <type>
+        self._aexp = aexp
+        self._type = type
+
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitCast(self)
+
+    def aexp(self) -> DXAExp:
+        return self._aexp
+
+    def type(self) -> DXType:
+        return self._type
+
+
 class DXNum(DXType, DXAExp):
+    '''Represents an integer literal value for Dafny syntax.'''
 
     def __init__(self, num: int):
         self._num = num
@@ -161,6 +181,24 @@ class DXNum(DXType, DXAExp):
 
     def num(self):
         return self._num
+
+    def as_real(self):
+        return DXReal(float(self._num))
+
+class DXReal(DXType, DXAExp):
+    '''Represents a real literal value for Dafny syntax'''
+
+    def __init__(self, value: float):
+        self._value = value
+
+    def accept(self, visitor : AbstractTargetVisitor):
+        return visitor.visitReal(self)
+
+    def real(self):
+        return self._value
+
+    def as_num(self) -> DXNum:
+        return DXNum(int(self._value))
 
 class DXNot(DXBool):
 

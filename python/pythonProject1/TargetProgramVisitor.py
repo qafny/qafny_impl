@@ -50,6 +50,10 @@ class TargetProgramVisitor(AbstractTargetVisitor):
                 return self.visitUni(ctx)
             case DXNum():
                 return self.visitNum(ctx)
+            case DXReal():
+                return self.visitReal(ctx)
+            case DXCast():
+                return self.visitCast(ctx)
             case DXInRange():
                 return self.visitInRange(ctx)
             case DXAssert():
@@ -161,3 +165,10 @@ class TargetProgramVisitor(AbstractTargetVisitor):
 
     def visitNum(self, ctx: TargetProgrammer.DXNum):
         return ctx.num()
+
+    def visitReal(self, ctx: TargetProgrammer.DXReal):
+        return ctx.real()
+
+    def visitCast(self, ctx: TargetProgrammer.DXCast):
+        ctx.aexp().accept(self)
+        ctx.type().accept(self)

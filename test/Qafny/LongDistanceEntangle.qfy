@@ -10,7 +10,7 @@ method Teleporation(q: Q[2], p: Q[1], r: Q[1]) returns (y:nat, prob:real)
 {
     p[0] *= H;
     if p[0] { r[0]  *= λ (x => (x + 1) % 2); }
-    assert { p[0],r[0] : En ↦ (∑ k ∈ [0 , 2) . 1/sqrt(2) . |k⟩|k⟩) } //this assetion should not be needed
+    assert { p[0],r[0] : En ↦ (∑ k ∈ [0 , 2) . 1/sqrt(2) . |k⟩|k⟩) } //this assertion should not be needed
     
     if q[1] { p[0]  *= λ (x => (x + 1) % 2); }
     

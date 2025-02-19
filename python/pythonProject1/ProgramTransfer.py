@@ -54,9 +54,10 @@ def makeVars(locus:[QXQRange], t:QXQTy, n:int):
 
     elif isinstance(t, TyEn):
         num = t.flag().num()
-        tmp += [DXBind("amp", genType(num, SType("real")), n)]
         for elem in locus:
             tmp += [DXBind(elem.ID(), genType(num, SeqType(SType("bv1"))),n)]
+        # amplitude comes after the value in hadEn, that should be the precedent
+        tmp += [DXBind("amp", genType(num, SType("real")), n)]
     
     elif isinstance(t, TyHad):
         for elem in locus:
@@ -124,7 +125,7 @@ class ProgramTransfer(ProgramVisitor):
         self.fkenv = None
         #ftenvp gets the locus-list at the input position of a function
         self.ftenvp = None
-        # ftenvp gets the locus-list at the output position of a function
+        # ftenvr gets the locus-list at the output position of a function
         self.ftenvr = None
         #varnums is the locus-list at the input position
         #There is an additional field for each pair (like now it is not a pair, but triple)
@@ -176,12 +177,13 @@ class ProgramTransfer(ProgramVisitor):
             self.counter += 1
         return tmp
 
-    def upvar(self, var:str):
+    def upvar(self, var: str):
         tmp = self.varnums.get(var)
         self.varnums.update({var:self.varnums.get(var)+1})
         return tmp
 
-    def calRange(self, v:QXCRange):
+    def calRange(self, v: QXCRange):
+        '''Converts a QXCRange to a QXAExpr that represents the length of the q-bit array.'''
         if isinstance(v.left(), QXNum) and v.left().num() == 0:
             return v.right()
         return QXBin("-", v.right(), v.left())
@@ -220,7 +222,7 @@ class ProgramTransfer(ProgramVisitor):
         for locus, qty, num in self.varnums:
             # require that n is equal to the length of the generated sequence
             for elem in locus:
-                conditions.append(DXRequires(DXComp('==', DXLength(DXVar(elem.ID())), DXVar(elem.crange().right().ID()))))
+                conditions.append(DXRequires(DXComp('==', DXLength(DXVar(elem.ID())), self.visit(elem.crange().right()))))
 
         return conditions
     
@@ -249,8 +251,33 @@ class ProgramTransfer(ProgramVisitor):
         conditions = []
 
         for locus, qty, num in self.outvarnums:
-            for elem in locus:
-                    conditions.append(DXEnsures(DXComp('==', DXLength(DXBind(elem.ID(), num=num)), DXVar(elem.crange().right().ID()))))
+            if isinstance(qty, TyNor) or isinstance(qty, TyHad):
+                for elem in locus:
+                    conditions.append(DXEnsures(DXComp('==', DXLength(DXBind(elem.ID(), num=num)), self.visit(elem.crange().right()))))
+            if isinstance(qty, TyEn):
+                # add restriction on the base kets + amplitude
+                print(locus)
+                # create an AST representing an expression that calculates the full length of the element
+                locus_len = []
+                for elem in locus:
+                    # add the length ensures on the basis kets
+                    converted_end_index = self.visit(elem.crange().right())
+                    conditions.append(DXEnsures(DXComp('==', 
+                        DXLength(DXBind(elem.ID(), num=num)), 
+                        DXCall("pow2",[converted_end_index]))))
+                    locus_len.append(converted_end_index)
+                # add the length ensure on the amplitude sequence
+                while len(locus_len) > 1:
+                    # sum up the different lengths
+                    for i in range(0, locus_len / 2):
+                        left = locus_len.pop(i)
+                        right = locus_len.pop(i + 1)
+                        locus_len.insert(i, DXBin("+", left, right))
+
+                conditions.append(DXEnsures(DXComp('==',
+                    DXLength(DXBind("amp", num=num)),
+                    DXCall("pow2", locus_len))))
+
 
         return conditions
 
@@ -404,7 +431,8 @@ class ProgramTransfer(ProgramVisitor):
             loc,qty,num = v
             vs = compareLocus(ctx.locus(), loc)
             if not vs and isinstance(qty, TyHad) and isinstance(ctx.qty(), TyEn):
-                result = [DXAssign(makeVars(ctx.locus(),ctx.qty(),self.counter),DXCall("hadEn", makeVars(ctx.locus(),TyHad(),num)))]
+                result = [DXAssign(makeVars(ctx.locus(),ctx.qty(),self.counter), 
+                                   DXCall("hadEn", makeVars(ctx.locus(), TyHad(), num)))]
                 self.libFuns.add('hadEn')
                 self.removeLocus(num)
                 self.varnums = [(loc,ctx.qty(),self.counter)] + self.varnums
@@ -978,7 +1006,14 @@ class ProgramTransfer(ProgramVisitor):
             else:
                 raise NotImplementedError('Converting exponents with bases other than two is not yet implemented.')
 
-        return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self))
+        left = ctx.left().accept(self)
+        right = ctx.right().accept(self)
+
+        # implicit type coercion
+        if left.type() != right.type():
+
+
+        return DXBin(ctx.op(), left, right)
 
     def visitUni(self, ctx: Programmer.QXUni):
         return DXUni(ctx.op(), ctx.next().accept(self))
