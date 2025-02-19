@@ -311,6 +311,24 @@ class QXQIndex(QXQBool, QXAExp):
     def __repr__(self):
         return f"QXQindex(id={repr(str(self._id))}, index={self._index})"
 
+class QXIfExp(QXAExp):
+
+    def __init__(self, bexp: QXLogic, left:QXAExp, right: QXAExp):
+        self._bexp = bexp
+        self._left = left
+        self._right = right
+
+    def accept(self, visitor : AbstractProgramVisitor):
+        return visitor.visitIfExp(self)
+
+    def bexp(self):
+        return self._bexp
+
+    def left(self):
+        return self._left
+
+    def right(self):
+        return self._right
 
 class QXBin(QXAExp):
 

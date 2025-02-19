@@ -287,6 +287,15 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#cifexp.
+    def enterCifexp(self, ctx:ExpParser.CifexpContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#cifexp.
+    def exitCifexp(self, ctx:ExpParser.CifexpContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#forexp.
     def enterForexp(self, ctx:ExpParser.ForexpContext):
         pass

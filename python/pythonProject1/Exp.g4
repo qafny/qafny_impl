@@ -62,13 +62,15 @@ measure : ids '*=' 'measure' '(' locus ')' | ids '*=' 'measure' '(' locus ',' ar
 
 ifexp: 'if' '(' bexp ')' '{' stmts '}' ;
 
+cifexp : 'if' logicOrExp 'then' arithExpr 'else' arithExpr;
+
 forexp : 'for' ID TIn crange invariants '{' stmts '}';
 
 fcall : ID '(' arithExprs ')';
 
 arithExprs : arithExpr (',' arithExpr)*;
 
-arithExpr: arithAtomic op arithExpr | arithAtomic;
+arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic;
 
 arithAtomic: numexp | ID
           | '(' arithExpr ')'

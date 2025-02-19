@@ -1,6 +1,6 @@
-# Generated from Exp.g4 by ANTLR 4.13.2
+# Generated from Exp.g4 by ANTLR 4.9.2
 from antlr4 import *
-if "." in __name__:
+if __name__ is not None and "." in __name__:
     from .ExpParser import ExpParser
 else:
     from ExpParser import ExpParser
@@ -161,6 +161,11 @@ class ExpVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by ExpParser#ifexp.
     def visitIfexp(self, ctx:ExpParser.IfexpContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by ExpParser#cifexp.
+    def visitCifexp(self, ctx:ExpParser.CifexpContext):
         return self.visitChildren(ctx)
 
 

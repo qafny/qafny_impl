@@ -44,6 +44,8 @@ class TargetProgramVisitor(AbstractTargetVisitor):
                 return self.visitIndex(ctx)
             case DXAll():
                 return self.visitAll(ctx)
+            case DXIfExp():
+                return self.visitIfExp(ctx)
             case DXBin():
                 return self.visitBin(ctx)
             case DXUni():
@@ -158,6 +160,12 @@ class TargetProgramVisitor(AbstractTargetVisitor):
         ctx.left().accept(self)
         ctx.right().accept(self)
         return ctx.op()
+
+    def visitIfExp(self, ctx: TargetProgrammer.DXIfExp):
+        ctx.bexp().accept(self)
+        ctx.left().accept(self)
+        ctx.right().accept(self)
+        return True
 
     def visitUni(self, ctx: TargetProgrammer.DXUni):
         ctx.next().accept(self)
