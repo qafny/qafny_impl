@@ -8,5 +8,7 @@ method conditionaltest1(n:nat, q : Q[n], p : Q[n], i:nat, base: nat, N:nat)
 {
   // induce superposition on the first qubit
   if (q[i]) { p[0, n) *= λ (x => |base ^ (2 ^ i) * x % N⟩); }
+  //actually post state
+  //assert { q[0, i+1), p[0, n) : en ↦ ∑ j ∈ [0, 2). ∑ k ∈ [0, 2) . 1/sqrt(2) * 1/sqrt(2^i) | k . j ⟩ | if j == 0 then (base ^ k) % N else (base ^ (k+1)) % N ⟩ }
   //(en)q[0,n); //it is best if we do not need this
 }
