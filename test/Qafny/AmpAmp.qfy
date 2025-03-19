@@ -1,8 +1,5 @@
 // Amplitude estimation without phase estimation
 // https://arxiv.org/pdf/quant-ph/0005055.pdf
-
-// TODO: review how chi works (placeholder notation for now)
-
 method AmplitudeAmplification(q : Q[n], p : Q[n], A:[Bool]->[Bool], n:nat, chi:[Bool]->[Bool], F:[Bool]->[Bool]) returns (y: real)
     requires { q[0 , n) : Nor ↦ |0⟩ }
     requires { p[0 , n) : en ↦ |0⟩ } // unsure about notation // original requires { p[0 , n) : en ↦ A|0⟩ }, new change may be wrong
@@ -38,7 +35,5 @@ method AmplitudeAmplification(q : Q[n], p : Q[n], A:[Bool]->[Bool], n:nat, chi:[
             y := z;
             return y;
         }
-
     }
-
 }

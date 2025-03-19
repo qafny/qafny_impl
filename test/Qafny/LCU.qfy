@@ -1,5 +1,4 @@
 //The Linear Combination of Uniteries algorithm proof in Qafny
-//Combining two unitary operations (two array operations) through an add function (adding the effects of two functions on an array).
 
 method {:axiom} uf(q: Q[n], n:nat)
 
@@ -14,22 +13,11 @@ method LCU(q : Q[n], p : Q[1], n : nat) returns { sa: nat}
   ensures { sa == 0 ==> q[0,n) == add(uf,vf)(old(q[0,n)), n) }
 {
   p[0] *= H;
-
-  // this oracle + syntax is not yet implemented
-  // We can indeed add one special case by casting the left to EN and stay the
-  // right one.
-  //the following looks very nice, but it seems to me that the implementation difficulty will be a lot.
-  //if this is hard to implement, we can just assume f is a oracle function.
-  //we can add the type flag for the lambda term like, Q n, Q 1, again since y is one bit, we should not need % 2
-  //we need to serve a lemma for the following here, like this one is a phase kickback.
-  //so p[0] can be Had.
   if (p[0]) { uf(q,n); }
   if (not p[0]) { vf(q,n); }
   
-  //below is the structure after the above two quantum conditional.
   assert {p[0],q[0,n) : en ↦ 1/sqrt(2) (|0⟩ (uf(q[0,n),n)) + |1⟩ (vf(q[0,n),n))) }
   
-  //after applying the H, |0⟩ is turned to |+⟩, and |1⟩ is turned to |-⟩, if we rearrange the qubit to the following, we can see that we have the sum of uf and vf effect. 
   p[0] *= H;
   assert {p[0],q[0,n) : en ↦ 1/2 (|0⟩ (uf(q[0,n),n) + vf(q[0,n),n)) + |1⟩ (uf(q[0,n),n) - vf(q[0,n),n))) }
 

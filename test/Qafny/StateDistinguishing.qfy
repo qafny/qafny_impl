@@ -1,9 +1,6 @@
 // State Distinguishing in the swap text paper
 // 2. Quantum Fingerprinting without Shared Keys
 // https://arxiv.org/pdf/quant-ph/0102001.pdf 
-
-// q and p are messages, we want to check if they are equal. r is initialized to all zeroes
-// r is one qubit. q and p are n qubits.
 method swap(q: Q[n], p: Q[n], n:nat) 
     ensures { q[0,n) : en ↦ old(p[0,n)) }
     ensures { p[0,n) : en ↦ old(q[0,n)) }
