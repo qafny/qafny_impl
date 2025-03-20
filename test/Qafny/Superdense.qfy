@@ -1,8 +1,5 @@
-//Superdense Coding
 include BellPair.qfy //should we allow inclusion? This is not an important feature. Maybe a simple script
 
-//we should have a boolean type for our system, and then we should make bv1 and boolean type to be the same.
-//In quantum algorithms, they are the same.
 method Superdense(q : Q[2], x : Bool, y: Bool) returns (u:Bool, v:Bool, probu: real, probv:real)
   requires { q[0, 2) : nor ↦ |0⟩ }
   ensures u == x
@@ -10,24 +7,13 @@ method Superdense(q : Q[2], x : Bool, y: Bool) returns (u:Bool, v:Bool, probu: r
   ensures probu == 1
   ensures probv == 1 //prob is real number, might need to change
 {
-  // first, we apply a bell pair. Should we allow function format, or should we say that every function should return something
-  // so we use the assignement format? 
   Bellpair(q[0,2)); //p references to q[0,2)
   
-  //q[0, 2) : En ↦ (∑ j ∈ [0 , 2) . 1/sqrt(2) |j⟩) === 1/sqrt(2) (|00⟩ + |11⟩)
-  //x and y are classical booleans.
   if y then { q[0] *= λ (x => |x + 1⟩); }
-  if x then { q[1] *= λ (x => omega(1,2)); } //we need to have a phase gate Rz gate. Z is Rz 1, need to think of a way to apply to phases
+  if x then { q[1] *= λ (x => omega(1,2)); } 
   
-  //the analysis of the protocol is to divide the case into two regarding y.
-  //assert y == 0 ==> 1/sqrt(2) (|00⟩ + (omega(x))|11⟩)
-  //assert y == 1 ==> 1/sqrt(2) ((omega(x))|10⟩ + |01⟩)
-
   if q[0] { q[1]  *= λ (x => |x + 1⟩); } //cx gate, 
   q[0] *= H;
-  
-  //assert y == 0 ==> 1/sqrt(2) (|00⟩ + (omega(x))|10⟩) ==> first qubit == x
-  //assert y == 1 ==> 1/sqrt(2) ((omega(x))|11⟩ + |01⟩) ==> first qubit == x, second qubit == 1
 
   u,probu := measure(q[0]); //u is x in 100%
   v,probv := measure(q[1]); //v is y in 100%

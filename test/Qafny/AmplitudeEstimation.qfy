@@ -2,9 +2,6 @@
 // https://www.mdpi.com/2624-960X/6/1/1
 // https://www.nature.com/articles/s41534-021-00379-1
 
-// ci method is Chernoff-Hoeffding
-// need arrays for k, up, and K. could also have variables just for i-1, i, and i+1
-
 method AmplitudeEstimation(q: Q[n], k : array<nat>, up : array<bool>, K: array<nat>, n:nat, eps:real, a:real, Nshots:nat) returns (a_l:real, a_u:real)
 {
     i := 0;

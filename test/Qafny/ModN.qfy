@@ -1,0 +1,76 @@
+//The mod mult in Qafny
+method MultiModFull(q : qreg[N], p : qreg[N], N : nat, base : nat)
+  requires N >= 3
+  requires base >= 3
+  requires { q [0 .. N] : had ↦ ⊗ i . 1 }
+  requires { p [0 .. N] : en ↦ \Sum i \in [0 .. 1]. (1) }
+  ensures { q[0 .. N], p[0 .. N] : en ↦
+    ∑ k ∈ [0 .. Pow2(N)] . (k, ((Pow(base, k)) % N))
+  }
+{
+  // This requires a split for it to work! 
+  EntangleOne1(q, p, N, base);
+  MultiMod(q, p, N, base);
+}
+
+method EntangleOne1(q : qreg[1], p : qreg[N], N : nat, base : nat)
+  requires N >= 3
+  requires { q [0 .. 1] : had ↦ ⊗ i . 1 }
+  requires { p [0 .. N] : en ↦ ∑ i ∈ [0 .. 1]. (1) }
+  ensures { q [0 .. 1], p [0 .. N] : en ↦ ∑ k ∈ [0 .. 2]. (k, ((Pow(base, k)) % N)) }
+{
+  if (q[0 .. 1])
+    separates p[0 .. N]
+  {
+     p[0 .. N] *= λ (x => ((Pow(base, 1)) * x) % N);
+  }
+}
+
+//we should only need the following for the MultiMod, and the above one is not needed.
+method MultiMod(q : Q[N], p : Q[N], N : nat, base : nat )
+  requires N >= 1
+  requires base >= 1
+  requires { q[1 , N) : Had ↦ ⊗ i . 1 }
+  //we should have a way of only specifying basis.
+  //but we also care about amplitudes here.
+  requires { q[0], p[0 , N) : En ↦
+    ∑ k ∈ [0 , 2) . 1/sqrt(2) . |(k, ((Pow(base, k)) % N))⟩
+  }
+  ensures { q[0 .. N], p[0 .. N] : en ↦
+    ∑ k ∈ [0, Pow2(N)) .  1/sqrt(2^n) .  |(k, ((Pow(base, k)) % N))⟩
+  }
+{
+  for i in [1, N) with q[i]
+    separates q[0, i), p[0, N)
+    invariant {
+      q[0, i), p[0, N) : En ↦ ∑ k ∈ [0 .. Pow2(i)] . | k , ((Pow(base, k)) % N) ⟩
+    }
+    invariant {
+      q [i , N) : Had ↦ |+⟩
+    }   
+  {
+    p[0, N) *= λ (x => ((Pow(base, Pow2(i))) * x) % N);
+
+    // This is super hacky, but I have no good way to do this now....
+    // TODO: find out one way to take the reference of the underlying range
+    // e.g. [[ p[0 .. N] ]] ?
+    #LemmaPowEquiv(p_seq'nat'_7__emit, base, i, N);
+  }
+}  
+
+
+#lemma LemmaPowEquiv(s : seq<nat>, a : nat, i : nat, N : nat)
+#  requires |s| == Pow2(i) && N >= 2
+#  requires forall k | 0 <= k < Pow2(i) :: s[k] == ((Pow(a, Pow2(i)) * (Pow(a, k) % N)) % N)
+#  ensures forall k | 0 <= k < Pow2(i) :: s[k] == (Pow(a, (Pow2(i) + k)) % N)
+#{ 
+#  forall k | 0 <= k < Pow2(i) {
+#    calc == {
+#      s[k] == ((Pow(a, Pow2(i)) * (Pow(a, k) % N)) % N);
+#     { LemmaMulModNoopRightAuto(); } // crush double Ns
+#      s[k] == ((Pow(a, Pow2(i)) * Pow(a, k)) % N);
+#     { LemmaPowAdds(a, Pow2(i), k); } // crush the add on Power
+#     s[k] == (Pow(a, (Pow2(i) + k)) % N);
+#    }
+#  }
+#} 

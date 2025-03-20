@@ -1,51 +1,20 @@
-//The DeutschJozsa proof in Qafny
-              //do we really want nat -> nat or bitvector, like seq<bv1> ? we can have bitvectors in our system
+
 method DeutschJozsa(q : Q[n], p : Q[1], n : nat, f : nat -> bool) returns ( k : nat, prob : real)
   requires n >= 1
   requires { q[0,n) : nor ↦ |0⟩  }
   requires { p[0] : nor ↦ |1⟩  }
-  //requires (forall i | 0 <= i < 2 ^ n :: f.requires(i) && (f(i) == 0 || f(i) == 1) 
-   //the # is to indicate that the requirement is in Dafny not Qafny, but we should have better way dealing with this.
   requires balance(f) || constant(f)
-  // f is either balanced or constant.  we need to assume that f is a length n bit vector, or k is max at 2^n
-  //balance means that forall k :: 0 <= k < 2^(n-1) ==> f(k) == 0 /\ forall k :: 2^(n-1) <= k < 2^n == f(k) == 1
-  //constant means that forall k :: 0 <= k < 2^n ==> f(k) == 0 , f(k) == 0 is enough, because f(k) == 1 is just a mirror of the f(k) == 0 case.
   ensures balance(f) && k == 0 ==> prob == 0
   ensures constant(f) && k == 1 ==> prob == 1
-  //if f is balance and k == 0, then prob == 0.0
-  //if f is constant and k == 1, then prob == 1.0
-  //ensures { q[0 .. n], p[0 .. 1] : en ↦ ∑ i ∈ [0 .. Pow2(n)] . Ω j ∈ [0 .. Pow2(n)] . (f(j) + i * j, 2) ~ ( i, _ ) }
 {
   q[0, n) *= H;
   p[0] *= H;
 
-  // this oracle + syntax is not yet implemented
-  // We can indeed add one special case by casting the left to EN and stay the
-  // right one.
-  //the following looks very nice, but it seems to me that the implementation difficulty will be a lot.
-  //if this is hard to implement, we can just assume f is a oracle function.
-  //we can add the type flag for the lambda term like, Q n, Q 1, again since y is one bit, we should not need % 2
-  //we need to serve a lemma for the following here, like this one is a phase kickback.
-  //so p[0] can be Had.
   q[0,n), p[0] *= λ (x, y => |x⟩ |(y + f(x))⟩);
-
-  //I understand the omega term, it means omega(2 pi i * f(i)/2). I guess it is OK.
-  //the following requires a lemma for phase kickback, which should be easy, see in my DJ algorithm proof.
   assert { q[0 , n), p[0] : en ↦ ∑ i ∈  [0, 2 ^ n) . 1 / sqrt(2^n) * ω (f(i), 2) |i⟩ |-⟩ };
-  //assert { q[0 , n) : had ↦ |-⟩ }; //should we allow |-⟩ for abbr. of 1/sqrt(2) (|0⟩ + |1⟩)?
 
-  //this step involves the switching basis step, we need to have a way of switching i to j, and j needs to be in the outside.
-  //this kind of switching is general in many problems.
   q[0, n) *= H;
-  //so omega phase position needs to have either omega, or sum of omega
   assert { q[0 , n) , p[0] : en(2) ↦ ∑ j ∈ [0, 2 ^ n) . ∑ i ∈ [0 , 2 ^ n) . 1 / sqrt(2^n) * ω (f(i) + i * j, 2)  |j⟩ |-⟩ };
-  
-  // measurement need to be measure to. The measurement in DJ is a specific one, to be 0. we only care about the 0 case.
-  //such as prob := measure q[0,n) to 0
-  //another possibility is to have measurement predicate like the prob(k==0) below; meaning that when k == 0.
   prob, k *= measure(q[0,n));
-  //assert { prob == 1 / 2^n * norm(∑ i ∈ [0, 2 ^ n) . ω(f(i) + i * k, 2))};
-  //assert {balance(f) && k == 0 ==> prob == 0}; //this is because when k == 0 that half of ω (f(i) + i * k, 2) is 1, and another half is -1, so all canceled out. 
-  //assert {balance(f) && k == 1 ==> prob == 1}; //this is because when k == 0 that all of ω (f(i) + i * k, 2) is 1, so there are (2^n) of them.
 }
 
