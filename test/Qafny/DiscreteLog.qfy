@@ -1,21 +1,31 @@
+//Discrete Log algorithm is very very similar to Shor's algorithm.
+//The idea is to have two H qubit arrays.
 method DLog(q : Q[n], p : Q[n], t : Q[n], n:nat, N : nat, x : nat, g:nat, r:nat, c:nat) returns (u:nat, v:nat, p : real)
   requires 1 < x < N <= 2^n
   requires 1 < g < N <= 2^n //if we do not want allow this syntax, fine.
   requires gcd(x,N) == 1
   requires gcd(g,N) == 1
+  //requires order(x,N) == r //define order function
+  //requires order(x,N) == r //define order function
   requires { q[0 , n) : nor ↦ |0⟩ }
   requires { p[0 , n) : nor ↦ |0⟩ }
   requires { t[0 , n) : nor ↦ |0⟩ }
 
+  //please fill the ensures. This means the final result. It is also in Andrew Childs' notes
   ensures u == v * log(g, x)
   ensures v == log(g, x)
   ensures p == Omega(1 / log(log(N)))
 {
+  //instead of applying H to q, we apply H to both q and p, and we have t.
   q[0, n) *= H;
   p[0, n) *= H;
   t[0, n) *= λ (x => |x + 1⟩);
   
+  //we will have additional loop below to entangle not only q but also p,
+  //we will also apply the same mod-multiplication, but this time, instead of applying on x,
+  //we will apply on g
   for i in [0, n)
+    //separates q[0, i), t[0, n)
     invariant {
       q[0, i), t[0, n) : en ↦ ∑ k ∈ [0, 2^i) . 1/sqrt(2^i) | k ⟩ | (x ^ k) % N ⟩
     }
@@ -23,10 +33,17 @@ method DLog(q : Q[n], p : Q[n], t : Q[n], n:nat, N : nat, x : nat, g:nat, r:nat,
       q [i , n) : had ↦ |+⟩
     }
   {
+    //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
     if (q[i]) { t[0, n) *= λ (a => | ((x ^ (2^i)) * a) % N ⟩ ); }
+
+    // This is super hacky, but I have no good way to do this now....
+    // TODO: find out one way to take the reference of the underlying range
+    // e.g. [[ p[0 .. N] ]] ?
+    //#LemmaPowEquiv(p_seq'nat'_7__emit, x, i, N);
   }
 
   for i in [0, n)
+    //separates p[0, i), t[0, n)
     invariant {
       q[0, n),p[0, i) t[0, n) : en(2) ↦ ∑ k ∈ [0, 2^i) . ∑ j ∈ [0, 2^n) . 1/sqrt(2^i) * 1/sqrt(2^n)  | k ⟩ | j ⟩ | (g ^ j) * (x ^ k) % N ⟩
     }
@@ -34,15 +51,35 @@ method DLog(q : Q[n], p : Q[n], t : Q[n], n:nat, N : nat, x : nat, g:nat, r:nat,
       p [i , n) : had ↦ |+⟩
     }
   {
+    //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
     if (q[i]) { t[0, n) *= λ (a => | ((g ^ (2^i)) * a) % N ⟩ ); }
+
+    // This is super hacky, but I have no good way to do this now....
+    // TODO: find out one way to take the reference of the underlying range
+    // e.g. [[ p[0 .. N] ]] ?
+    //#LemmaPowEquiv(p_seq'nat'_7__emit, x, i, N);
   }
+  
+  //another loop here
 
   v,prob *= measure(t[0,N));//we will then measure t, please see andrew's note, to see what is the result assertion
   delta := log(g,v);
+  //assert { v == 1 / sqrt(N) . en ↦ ∑ k ∈ [0, 2^i) . 1/sqrt(2^i) | k ⟩ | delta - k * log(g, x) ⟩ }; // first log impossible? how to deal with delta
+  
+  //we will also need two QFT application to both q and p.
   q[0,n),p[0,n) *= RQFT;
 
+  //Please see andrew's note to see what is the result.
   assert { q[0, n), p[0, n) : en ↦ ∑ k ∈ [0, 2^i) .  1 / sqrt(N) * omega(k, delta, N) | k * log(g, x)  ⟩ | k ⟩}; 
+  
+  //below is not in the current syntax now, we actually want to measure both q and p at the same time.
+  //but we want to get two values, instead of 1.
+  //we could measure q first, and then p.
   u,v,p *= measure(q[0,n),p[0,n));
+
+  // if v has a multiplicative inverse modulo N, we can divide q by v to get the desired answer.
+  // if v does not have a mult. inverse, repeat the procedure again.
+  // the probability of success for each attempt is Omega(1/log log N)
   
 }  
 

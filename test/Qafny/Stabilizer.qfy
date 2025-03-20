@@ -1,13 +1,18 @@
 // Abelian Stabilizer problem / Kitaev's algorithm
 // https://arxiv.org/pdf/quant-ph/9511026.pdf
 
+// Can I assume q comes with phi stored on it already?
+// What to do if the algorithm fails to produce H?
+
 method Stabilizer (q : Q[n], k:nat, n:nat, a:array<bv1>, F : nat, [Bool] -> [Bool], H:set<nat>, M:set<nat>) returns (h:set<nat>)
+    //requires q : Nor -> |psi> - how do I express that q has value of psi as a condition?
     requires a.Length == n //is array<bv1> the correct data type for a?
     requires forall k :: 0 <= k < |M| ==> F(0, M[k]) == M[k] //for any element x of M, F(0,x)==x
     requires forall k :: 0 <= k < |M| ==> 
         forall i :: 0 <= i < 2^n ==>
         forall j :: 0 <= j < 2^n ==>
         F(i + j, M[k]) == F(i, F(j, M[k]))
+    //postcondition: for all elements of h, F(h,a) == a
     ensures h != null ==> forall k :: 0 <= k < |h| ==> F(h[k], a) == a
 {
     h := [];
@@ -31,9 +36,13 @@ method Stabilizer (q : Q[n], k:nat, n:nat, a:array<bv1>, F : nat, [Bool] -> [Boo
         i := i + 1;
 
     }
+
+    // check if h is correct
+
     if h == H
     {
         return h;
     }
+    // what if it isn't? try again until it succeeds (prove termination?) or just return as a failure?
     return null;
 }
