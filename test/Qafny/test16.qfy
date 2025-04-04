@@ -1,0 +1,15 @@
+//Simple Amplitude Estimation
+
+//function {:axiom} arcsin(f : nat -> bool, n:nat) : real
+// requires arcsin(theta) == sqrt(sumFun(f,2^n) / 2^n)
+
+method singleEstimate(n:nat, t:nat, q : Q[n], p : Q[n], f : nat -> bool, r :real)
+  requires t < n
+  requires r == sqrt(sumFun(f,2^n) / 2^n)
+  requires { p[0,2), q[0,n) : aa ↦ ∑ k ∈ [0, 2) . 1/sqrt(2) | k ⟩|k⟩ part(f , sin (arcsin(r))) + ∑ k ∈ [0, 2) . 1/sqrt(2) | k ⟩|k ⟩ part(f, cos(arcsin(r))) } 
+  requires { p[0,2),  q[0,n) : aa ↦ ∑ k ∈ [0, 2) . 1/sqrt(2) | k ⟩|k ⟩ (if k == 0 then part(f , sin (arcsin(r))) else part(f , sin (3*arcsin(r)))) + ∑ k ∈ [0, 2) . 1/sqrt(2) | k ⟩|k⟩  (if k == 0 then part(f , cos (arcsin(r))) else part(f , cos (3*arcsin(r)))) } 
+{
+  // induce superposition on the first qubit
+  if(x[1]) {p[0,n) *= dis(H, f,r)};
+  //(en)q[0,n); //it is best if we do not need this
+}
