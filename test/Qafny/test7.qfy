@@ -1,7 +1,7 @@
 //Simple Had application
 method lambdatest(n:nat, q : Q[n], k:nat)
   requires { q[0, n) : nor ↦ |0⟩ }
-  ensures  { q[0, n) : en(1) ↦ ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n) * | (j + 1) % 2^n ⟩ }
+  ensures  { q[0, n) : en(1) ↦ ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n) | (j + 1) % 2^n ⟩ }
 {
   // induce superposition on the first qubit
   q[0,n) *= H;//should have an autocasting
