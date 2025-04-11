@@ -1,0 +1,13 @@
+//Simple Grover's diffusion
+
+//function {:axiom} arcsin(f : nat -> bool, n:nat) : real
+// requires arcsin(theta) == sqrt(sumFun(f,2^n) / 2^n)
+
+method singleGrovers(n:nat, q : Q[n], f : nat -> bool)
+  requires { q[0,n) : aa ↦ part(f , true, sin (arcsin(sqrt(sumFun(f,2^n) / 2^n)))) + part(f, false, cos(arcsin(sqrt(sumFun(f,2^n) / 2^n)))) } 
+  requires { q[0,n) : aa ↦ part(f , true, sin (3*arcsin(sqrt(sumFun(f,2^n) / 2^n)))) + part(f, false, cos(3*arcsin(sqrt(sumFun(f,2^n) / 2^n)))) } 
+{
+  // induce superposition on the first qubit
+  p[0,n) *= dis(H, f, sqrt(sumFun(f,2^n) / 2^n));
+  //(en)q[0,n); //it is best if we do not need this
+}
