@@ -74,7 +74,7 @@ arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic;
 
 arithAtomic: numexp | ID
           | '(' arithExpr ')'
-          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | qindex;
+          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | qindex | rangeT;
 
 sinExpr : 'sin' '(' arithExpr ')' ;
 

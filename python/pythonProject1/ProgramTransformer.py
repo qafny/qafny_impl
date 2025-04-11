@@ -371,6 +371,8 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#arithExpr.
     def visitArithExpr(self, ctx:ExpParser.ArithExprContext):
+        if ctx.cifexp() is not None:
+            return self.visitCifexp(ctx.cifexp())
         if ctx.arithExpr() is not None:
             op = self.visitOp(ctx.op())
             v2 = self.visitArithExpr(ctx.arithExpr())
@@ -401,6 +403,8 @@ class ProgramTransformer(ExpVisitor):
             return self.visitOmegaExpr(ctx.omegaExpr())
         if ctx.qindex() is not None:
             return self.visitQindex(ctx.qindex())
+        if ctx.rangeT() is not None:
+            return self.visitRangeT(ctx.rangeT())
 
     # Visit a parse tree produced by ExpParser#sinExpr.
     def visitSinExpr(self, ctx:ExpParser.SinExprContext):

@@ -57,6 +57,8 @@ class SubstDAExp(AbstractTargetVisitor):
                 return self.visitCall(ctx)
             case DXBind():
                 return self.visitBind(ctx)
+            case DXIfExp():
+                return self.visitIfExp(ctx)
             
             
 
@@ -140,3 +142,6 @@ class SubstDAExp(AbstractTargetVisitor):
     
     def visitWhile(self, ctx: DXWhile):
         return super().visitWhile(ctx)
+    
+    def visitIfExp(self, ctx):
+        return super().visitIfExp(ctx)

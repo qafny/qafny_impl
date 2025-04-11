@@ -33,7 +33,7 @@ class PrinterVisitor(TargetProgramVisitor):
             conds += '  ' + r + '\n' if r else ''
 
         if ctx.axiom():
-            method = 'method {{:axiom}} ' + ctx.ID() + '(' + bindings + ') ' + returns + conds
+            method = 'method {:axiom} ' + ctx.ID() + '(' + bindings + ') ' + returns + conds
             return method
         
         stmts = ''
@@ -54,14 +54,30 @@ class PrinterVisitor(TargetProgramVisitor):
         return 'ensures ' + ctx.spec().accept(self)
 
     def visitInit(self, ctx: TargetProgrammer.DXInit):
-        return 'var ' + ctx.binding().ID() + ' := ' + ctx.exp().accept(self) + ';' if ctx.exp() else  'var ' + ctx.binding().ID() + (str(ctx.binding().num()) if ctx.binding().num() else '') + ';'
+        if ctx.exp() and isinstance(ctx.exp(), DXList) and len(ctx.exp().exprs()) == 0 and ctx.binding().type():
+            return 'var ' + ctx.binding().ID() + (str(ctx.binding().num()) if ctx.binding().num() else '') + ':' + ctx.binding().type().accept(self) + ' := ' + ctx.exp().accept(self) + ';'
+
+        return 'var ' + ctx.binding().ID() + (str(ctx.binding().num()) if ctx.binding().num() else '') + ' := ' + ctx.exp().accept(self) + ';' if ctx.exp() else  'var ' + ctx.binding().ID() + (str(ctx.binding().num()) if ctx.binding().num() else '') + (':' + ctx.binding().type().accept(self) if ctx.binding().type() else '') + ';'
 
     def visitAssign(self, ctx: TargetProgrammer.DXAssign):
         ids = ''
+        res = ''
         for id in ctx.ids():
             ids += id.accept(self) + ', '
         ids = ids[:-2]
-        return ids + ' := ' + ctx.exp().accept(self) + ';'
+        if isinstance(ctx.exp(), list):
+            exp = ''
+            for ex in ctx.exp():
+                exp += ex.accept(self) + ', '
+            exp = exp[:-2]
+            res = ids + ' := ' + exp + ';'
+        else:
+            res = ids + ' := ' + ctx.exp().accept(self) + ';'
+
+        if ctx.init():
+            res = 'var ' + res
+
+        return res
 
     def visitBin(self, ctx: TargetProgrammer.DXBin):
         return '(' + ctx.left().accept(self) + ' ' + ctx.op() + ' ' + ctx.right().accept(self) + ')'
@@ -80,7 +96,7 @@ class PrinterVisitor(TargetProgramVisitor):
         for arg in ctx.exps():
             args += arg.accept(self) + ", "
         args = args[:-2]
-        return ctx.ID() + '(' + args + ')'
+        return ctx.ID() + '(' + args + ');' if ctx.end() else ctx.ID() + '(' + args + ')'
 
     def visitSType(self, ctx: TargetProgrammer.SType):
         return ctx.type()
@@ -103,11 +119,19 @@ class PrinterVisitor(TargetProgramVisitor):
     
     def visitIf(self, ctx: TargetProgrammer.DXIf):
         stmts = ''
-        for stmt in ctx.stmts():
-            stmts += '  ' + stmt.accept(self) + ';\n'
+        for stmt in ctx.left():
+            stmts += '  ' + stmt.accept(self) + '\n'
 
-        return 'if ' + ctx.cond().accept(self) + '{\n' + stmts + '}'
+        elsestmts = ''
+        for stmt in ctx.right():
+            elsestmts += '  ' + stmt.accept(self) + '\n'
 
+        elsepart = ''
+        if len(elsestmts) > 0:
+            elsepart = '\nelse {\n' + elsestmts + '}' 
+
+        return 'if (' + ctx.cond().accept(self) + '){\n' + stmts + '}' + elsepart
+    
     def visitVar(self, ctx: TargetProgrammer.DXVar):
         return ctx.ID()
     
@@ -128,3 +152,16 @@ class PrinterVisitor(TargetProgramVisitor):
     
     def visitSeqType(self, ctx: TargetProgrammer.SeqType):
         return 'seq<' + ctx.type().accept(self) + ">"
+
+    def visitIfExp(self, ctx: TargetProgrammer.DXIfExp):
+        return 'if ' + ctx.bexp().accept(self) + ' then ' + ctx.left().accept(self) + ' else ' + ctx.right().accept(self)
+    
+    def visitList(self, ctx: TargetProgrammer.DXList):
+        exprs = ''
+        for expr in ctx.exprs():
+            exprs += expr.accept(self) + ", "
+        exprs = exprs[:-2]
+        return '[]' if len(ctx.exprs()) == 0 else '[' + exprs + ']'
+    
+    def visitCast(self, ctx: TargetProgrammer.DXCast):
+        return '(' + ctx.next().accept(self) + ' as ' + ctx.type().type() + ')'

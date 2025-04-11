@@ -10,13 +10,14 @@ def compareComp(t1: QXComp, t2: QXComp):
     return t1.op() == t2.op() and compareAExp(t1.left(),t2.left()) and compareAExp(t1.right(),t2.right())
 
 
-def addElem(a:QXComp, l:[QXComp]):
+def addElem(a:QXComp, l:[QXComp], isRequires:bool):
     v = False
     for elem in l:
-        if compareComp(a,elem):
+        if compareComp(a,elem.spec()):
             v = True
     if v:
         return l
+    a = QXRequires(a) if isRequires else QXEnsures(a)
     return l.append(a)
 
 def isARange(env: [([QXQRange], QXQTy)], se:[str]):
@@ -48,6 +49,9 @@ def findQAVars(v: QXAExp, vars: [str]):
             return [v.ID()]
         else:
             return []
+    
+    if isinstance(v, QXLogic) or isinstance(v, QXCNot) or isinstance(v, QXComp):
+        return findQVars(v, vars)
 
 def findQVars(v: QXBool, vars: [str]):
 
@@ -107,6 +111,8 @@ class TypeCollector(ProgramVisitor):
                     for ran in elem.spec().locus():
                         if ran.ID() in tmp:
                             tmp.remove(ran.ID())
+                        elif ran.ID() in vars:
+                            continue
                         else:
                             return None
                 if isinstance(elem.spec(), QXBool):
@@ -140,6 +146,8 @@ class TypeCollector(ProgramVisitor):
                     for ran in elem.spec().locus():
                         if ran.ID() in tmp:
                             tmp.remove(ran.ID())
+                        elif ran.ID() in vars:
+                            continue
                         else:
                             return None
                 if isinstance(elem.spec(), QXBool):
@@ -210,15 +218,15 @@ class TypeCollector(ProgramVisitor):
                 #Requires { x[i,j) : en(1) -> .... }
                 # i <= j, if i == j, then x[i,j) == {}
                 if not compareAExp(left, QXNum(0)):
-                    addElem((QXComp("<=",QXNum(0),left)), self.pred)
+                    addElem((QXComp("<=",QXNum(0),left)), self.pred, True)
                 if not compareAExp(right, kty.flag()):
-                    addElem((QXComp("<=",right,kty.flag())), self.pred)
+                    addElem((QXComp("<=",right,kty.flag())), self.pred, True)
 
             self.tenv.append((ctx.spec().locus(), ctx.spec().qty()))
 
         if isinstance(ctx.spec(), QXComp):
-            left = ctx.spec().left().ID()
-            right = ctx.spec().right().ID()
+            left = ctx.spec().left().ID() if isinstance(ctx.spec().left(), QXBind) else ctx.spec().left()
+            right = ctx.spec().right().ID() if isinstance(ctx.spec().right(), QXBind) else ctx.spec().right()
 
             tyx = self.fkenv[0].get(left)
             tyy = self.fkenv[0].get(right)
@@ -255,9 +263,9 @@ class TypeCollector(ProgramVisitor):
                     return False
 
                 if not compareAExp(left, QXNum(0)):
-                    addElem((QXComp("<=",QXNum(0),left)), self.pred)
+                    addElem((QXComp("<=",QXNum(0),left)), self.pred, False)
                 if not compareAExp(right, kty.flag()):
-                    addElem((QXComp("<=",right,kty.flag())), self.pred)
+                    addElem((QXComp("<=",right,kty.flag())), self.pred, False)
 
             self.mkenv.append((ctx.spec().locus(), ctx.spec().qty()))
 

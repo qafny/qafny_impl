@@ -1,5 +1,5 @@
+import LocusCollector
 import Programmer
-from LocusCollector import *
 from ProgramVisitor import ProgramVisitor
 from CollectKind import *
 from SimpAExp import SimpAExp
@@ -32,8 +32,9 @@ def compareSubLocus(q1: [QXQRange], q2: [([QXQRange], QXQTy, int)]):
     vs = []
     for i in q1:
         for loc, qty, num in q2:
-            if compareLocus([i], loc):
-                vs.append((loc, qty))
+            tmpres = compareLocus([i], loc)
+            if tmpres == [] or tmpres:
+                vs.append((loc, qty, num))
                 break
     return vs
 
@@ -149,19 +150,27 @@ def subLocusGen(q: [QXQRange], qs: [([QXQRange], QXQTy, int)]):
             else:
                 rev += [qs[i]]
 
+    
+
     sl = compareSubLocus(q, qs)
-    floc = []
+    
     if len(sl)>0:
-        for loc,ty in sl:
+        floc = []
+        for loc,ty,num in sl:
             type = compareType(ty, type)
             floc.extend(loc)
+
         
         slrev = []
         for loc,qty,num in qs:
             if loc not in floc:
                 slrev.append((loc,qty,num))
         
-        return (floc, type, slrev, num)
+        return (floc, type, slrev, -1)
+    
+    if floc is not None:
+        return floc, type, rev, -1
+    
     return None
 
 def sameLocus(q: [QXQRange], qs : [([QXQRange], QXQTy, int)]):
@@ -386,14 +395,14 @@ class TypeChecker(ProgramVisitor):
 
 
         if isinstance(ctx.bexp(), QXQBool):
-            findLocus = LocusCollector()
+            findLocus = LocusCollector.LocusCollector()
             findLocus.visit(ctx.bexp())
 
             floc, ty, nenv, num = subLocusGen(findLocus.renv, self.renv)
 
             if isinstance(ty, TyNor):
                 for elem in ctx.stmts():
-                    elem.accept()
+                    elem.accept(self)
                 return True
 
             for elem in ctx.stmts():
@@ -401,7 +410,7 @@ class TypeChecker(ProgramVisitor):
             floc, ty, nenv, num = subLocusGen(findLocus.renv, self.renv)
             self.renv = [(floc,ty, num)] + nenv
             for elem in ctx.stmts():
-                elem.accept()
+                elem.accept(self)
             return True
 
     def visitFor(self, ctx: Programmer.QXFor):
