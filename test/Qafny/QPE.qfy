@@ -40,12 +40,12 @@ method QPE(q : Q[n], p : Q[n], n:nat, U : Q[n] -> Q[n], psi: Q[n], lambda : nat)
   for k in [0, n)
     //separates q[0, k), p[0, n)
     invariant {
-      q[0, k), p[0, n) : en ↦ ∑ j ∈ [0, 2^k)) . 1 / sqrt(2^k) . ω (j * lambda, 1)  . | j ⟩ ⊗ psi
+      q[0, k), p[0, n) : en ↦ ∑ j ∈ [0, 2^k) . 1 / sqrt(2^k) * ω (j * lambda, 1) | j ⟩ ⊗ psi
        //splitting the basis of q[0, k), p[0, n) into two parts, maybe we can split q[0, k), p[0, n) into q[0, k) and p[0, n)
        //q[0, k) : En ↦ ∑ k ∈ [0, 2^k)) . 1 / sqrt(2^k) . ω (k * lambda, 1)   . | k ⟩ and p[0, n) ↦ psi
     }
     invariant {
-      q [k , n) : had ↦ |+⟩
+      q [k, n) : had ↦ |+⟩
     }
   {
     //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
@@ -59,13 +59,13 @@ method QPE(q : Q[n], p : Q[n], n:nat, U : Q[n] -> Q[n], psi: Q[n], lambda : nat)
 
   //q[0, n) : En ↦ ∑ j ∈ [0, 2^n)) . 1 / sqrt(2^n) . ω (j * lambda, 1)  . | j ⟩ 
   //--> En ↦ ∑ j ∈ [0, 2^n)) . 1 / sqrt(2^n) * 1 / sqrt(2^n) . (∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (- j * v, 2^n)  . | v ⟩ )
-  q[0,n) *= RQFT;
+  q[0, n) *= RQFT;
   //the 1 / sqrt(2^n) * 1 / sqrt(2^n) can be rewritten as 1 / 2^n, but we can keep it in 1 / sqrt(2^n) * 1 / sqrt(2^n) or 1/ (sqrt(2^n) * sqrt(2^n))
-  assert { q[0,n) : en ↦  ∑ j ∈ [0, 2^n)) . 1 / sqrt(2^n) * 1 / sqrt(2^n) . (∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (- j * v, 2^n)  . | v ⟩ ) };
-  assert { q[0,n) : en ↦  ∑ v ∈ [0, 2^n)) . 1 / (2^n) . (∑ j ∈ [0, 2^n) . ω (j * lambda * 2^n - j * v, 2/n) )  . | v ⟩ };
+  assert { q[0, n) : en ↦  ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n) * 1 / sqrt(2^n) . (∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (-j * v, 2^n) | v ⟩ ) };
+  assert { q[0, n) : en ↦  ∑ v ∈ [0, 2^n) . 1 / (2^n) . (∑ j ∈ [0, 2^n) . ω (j * lambda * 2^n - j * v, 2/n) | v ⟩ ) };
    // the above step rearrange the arrays from ∑ j  and ∑ v
    //can do something smart, we can start with the one in line 47, 
-  y,p *= measure(q);
+  y, p *= measure(q);
   //we will need the post-analysis leading to the above result set up in https://en.wikipedia.org/wiki/Simon%27s_problem
 }  
 

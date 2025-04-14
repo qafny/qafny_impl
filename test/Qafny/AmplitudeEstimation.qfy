@@ -34,7 +34,7 @@ method AmplitudeEstimation(q: Q[n], k : array<nat>, up : array<bool>, K: array<n
 
         // measure q N times
 
-        if k[i] == k[i-1]
+        if k[i] == k[i - 1]
         {
             // TODO: combine iterations into a single result
         }
@@ -49,8 +49,8 @@ method AmplitudeEstimation(q: Q[n], k : array<nat>, up : array<bool>, K: array<n
         ci_ub := (floor(K[i] * ci_ub) % (2 * PI) + ci_max) / K[i];
     }
 
-    a_l = sin(ci_lb)^2;
-    a_u = sin(ci_ub)^2;
+    a_l := sin(ci_lb)^2;
+    a_u := sin(ci_ub)^2;
 
     return a_l, a_u;
 

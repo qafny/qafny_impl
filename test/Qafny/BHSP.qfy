@@ -1,38 +1,38 @@
 // Boolean Hidden Shift problem, filling in the final predicates (ensures)
 // https://arxiv.org/abs/1103.3017
 
-method HSP (q : Q[n], p : Q[1], n:nat, f : [Bool] -> Bool, g: [Bool] -> Bool, s: [Bool]) returns (b:nat, y:nat, prob:nat)
+method HSP (q : Q[n], p : Q[1], n: nat, f : [Bool] -> Bool, g: [Bool] -> Bool, s: [Bool]) returns (b: nat, y: nat, prob: nat)
   requires { q[0 , n) : nor ↦ |0⟩ }
   requires { p[0] : nor ↦ |0⟩ }
-  requires forall x g(x) = f(x+s)
+  requires forall x :: 0 <= x < 2^n ==> g(x) == f(x+s)
   ensures prob == 1 - 1/q
   ensures s == not(y)
-  ensure b == 0
+  ensures b == 0
   ensures forall x :: 0 <= x < 2^n ==> f(x) == chi(x+s)
 {
   q[0, n) *= H;
   
-  q[0, n),p[0] *= λ ((x: Q n, y:Q 1) => (x, y + f(x)));
+  q[0, n), p[0] *= λ (x, y => |x⟩ |y + f(x)⟩);
   
-  p[0] *= λ (y:Q 1 => ω (y, 2)  . y);
+  p[0] *= λ (y => ω(y, 2) |y⟩);
   
-  assert { q[0, k), p[0] : En ↦ ∑ j ∈ [0, 2^n)) . 1 / sqrt(2^n) . ω ((f(x), 2)  . | j,  f(x) + g(x) ⟩ }
+  assert { q[0, k), p[0] : En ↦ ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n) * ω (f(x), 2) |j, f(x) + g(x)⟩ };
 
-  assert { q[0, k), p[0] : En ↦ ∑ j ∈ [0, 2^n)) . 1 / sqrt(2^n) . ω ((f(x), 2)  . | j,  f(x) + g(x) ⟩ }
+  assert { q[0, k), p[0] : En ↦ ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n) * ω (f(x), 2) |j, f(x) + g(x)⟩ };
   
-  q[0,n) *= H;
+  q[0, n) *= H;
 
   for i in [0, n) with q[i]
     separates q[0, i), p[0, n)
     invariant {
-      q[0, i), p[0, n) : en ↦ ∑ k ∈ [0, 2^i)) . 1 / sqrt(2^n) . | k , f(k, p[k]) ⟩
+      q[0, i), p[0, n) : en ↦ ∑ k ∈ [0, 2^i) . 1 / sqrt(2^n) |k, f(k, p[k])⟩
     }
     invariant {
-      q [i , n) : had ↦ |+⟩
+      q[i, n) : had ↦ |+⟩
     }
   {
     //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
-    q[0, n) *= λ ((x: Q n, y:Q n) => (x, ((y + f(x)))));
+    q[0, n) *= λ (x, y => |x⟩ |y + f(x)⟩);
 
     // This is super hacky, but I have no good way to do this now....
     // TODO: find out one way to take the reference of the underlying range
@@ -40,5 +40,5 @@ method HSP (q : Q[n], p : Q[1], n:nat, f : [Bool] -> Bool, g: [Bool] -> Bool, s:
     //#LemmaPowEquiv(p_seq'nat'_7__emit, base, i, N);
   }
 
-  y,b,prob *= measure(q[0,n),p[0]);
+  y, b, prob *= measure(q[0, n), p[0]);
 }

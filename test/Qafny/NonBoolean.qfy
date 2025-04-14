@@ -14,27 +14,27 @@ method NonBoolean(q : Q[n], p : Q[1], n:nat, m:nat) returns (y: nat, prob: real)
 {   
     p[0] *= H;
     init(r[0]); //initial ancilla qubit.
-    r[0] *= (lambda x => x + 1);
+    r[0] *= λ(x => x + 1);
     r[0] *= H; //building minus state for r, so that we can utilize phase-kick-back.
     
-    for j in [0,m)
+    for j in [0, m)
     {
       if (is_odd(j))
       {
         if (not p[0]) { uf(q,n); }
-        if (p[0]) {inverse(uf(q,n),n);}
+        if (p[0]) { inverse(uf(q,n),n); }
       }
       else {
         if (p[0]) { uf(q,n); }
-        if (not p[0]) {inverse(uf(q,n),n);}
+        if (not p[0]) { inverse(uf(q,n),n); }
       }
       
       p[0] *= H;
-      q[0,n) *= RQFT;
-      if ({p[0],q[0,n)}) == 0) { r[0] *= (lambda x => x + 1); }
+      q[0, n) *= RQFT;
+      if ({p[0], q[0,n)} == 0) { r[0] *= λ(x => x + 1); }
       p[0] *= H;
-      q[0,n) *= QFT;
+      q[0, n) *= QFT;
     }
     
-    y,prob := meas(q);
+    y, prob := meas(q);
 }

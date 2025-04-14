@@ -7,7 +7,7 @@
 method Teleporation(q: Q[1], p: Q[1], r: Q[1]) returns (y:nat, prob:real)
     requires { p[0] : nor ↦ |0⟩ }
     requires { r[0] : nor ↦ |0⟩ }
-    ensures { r == q  }//qubit q[0] is teleported to r[0]
+    ensures r == q //qubit q[0] is teleported to r[0]
 {
     p[0] *= H;
     if (p[0]) { r[0]  *= λ (x => |(x + 1) % 2⟩); }
@@ -22,12 +22,12 @@ method Teleporation(q: Q[1], p: Q[1], r: Q[1]) returns (y:nat, prob:real)
     //assert { q[0], p[0],r[0] : en ↦ (∑ j ∈ [0 , 2) . ∑ k ∈ [0 , 2) . 1/2 * a[j] . |P(j)⟩|j ⊕ k⟩|k⟩) }
     //P(j) is the hadamard-basis of the qubits as + , -, where P(0) = + and P(1) = -
 
-    y,p1 *= measure(p[0]); //y = j ⊕ k and p1 is igoared, it should be 1/2
+    y, p1 *= measure(p[0]); //y = j ⊕ k and p1 is igoared, it should be 1/2
     
     //assert { q[0], r[0] : en ↦ ∑ j ∈ [0 , 2) . ∑ k ∈ [0 , 2) . 1/sqrt(2) * a[j] . |P(j)⟩|k⟩ && y == j ⊕ k}
     // measurement leads to that y == j ⊕ k, and we remove the ket |j ⊕ k⟩ 
 
-    z,p2 *= measure(q[0]); // z == 0 || z == 1, and p2 = 1/2
+    z, p2 *= measure(q[0]); // z == 0 || z == 1, and p2 = 1/2
 
     //assert { r[0] : en ↦ ∑ j ∈ [0 , 2) . ∑ k ∈ [0 , 2) . a[j] . ω (z * j, 2) . |k⟩ && y == j ⊕ k}
     

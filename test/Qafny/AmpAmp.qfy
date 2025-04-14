@@ -3,9 +3,9 @@
 
 // TODO: review how chi works (placeholder notation for now)
 
-method AmplitudeAmplification(q : Q[n], p : Q[n], A:[Bool]->[Bool], n:nat, chi:[Bool]->[Bool], F:[Bool]->[Bool]) returns (y: real)
-    requires { q[0 , n) : Nor ↦ |0⟩ }
-    requires { p[0 , n) : en ↦ |0⟩ } // unsure about notation // original requires { p[0 , n) : en ↦ A|0⟩ }, new change may be wrong
+method AmplitudeAmplification(q: Q[n], p: Q[n], A: [bool] -> [bool], n: nat, chi: [bool] -> [bool], F: [bool] -> [bool]) returns (y: real)
+    requires { q[0, n) : nor ↦ |0⟩ }
+    requires { p[0, n) : en ↦ |0⟩ } // unsure about notation // original requires { p[0 , n) : en ↦ A|0⟩ }, new change may be wrong
     requires 1 < c < 2
 {   
     l := 0;
@@ -17,7 +17,7 @@ method AmplitudeAmplification(q : Q[n], p : Q[n], A:[Bool]->[Bool], n:nat, chi:[
         l := l + 1;
         M := ceiling(c^l);
 
-        q[0,n) *= A;
+        q[0, n) *= A;
 
         z, prob *= measure(q);
 

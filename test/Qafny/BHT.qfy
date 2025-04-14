@@ -1,15 +1,15 @@
 //This is the Brassard-Høyer-Tapp algorithm, the Grover's search for collision problem. 
 
-function exists(k:nat,y : nat[k])
+function exists(k: nat, y: nat[k]): bool
 {
-  if k == 0 then false else if y[0] == k then exists(k-1,y[1..]) else true
+  if k == 0 then false else if y[0] == k then exists(k - 1, y[1..]) else true
 }
 
-method BHT(q : Q[k * n], k:nat, n:nat, l : nat[k], f : [Bool] -> nat, m:nat, N : nat) returns (y:nat[k], p : real)
+method BHT(q : Q[k * n], k: nat, n: nat, l: nat[k], f: [Bool] -> nat, m: nat, N: nat) returns (y: nat[k], p: real)
   requires m < 2^n
   requires forall k :: 0 <= k < m ==> f(n2b(k)) == 1
-  requires forlal k :: m <= k < m ==> f(n2b(k)) == 0
-  requires { q[0 , n) : Nor ↦ |0⟩ }
+  requires forall k :: m <= k < m ==> f(n2b(k)) == 0
+  requires { q[0, n) : Nor ↦ |0⟩ }
   //we should have a way of only specifying basis.
   //but we also care about amplitudes here.
   ensures N == pi / 4 * sqrt(2^n/2^k) ==>  p == 1
@@ -17,37 +17,32 @@ method BHT(q : Q[k * n], k:nat, n:nat, l : nat[k], f : [Bool] -> nat, m:nat, N :
 {
   //state prepration mapping to different states.
   for i in [0, k)
-    invariant {
-      forall 0 <= i < k ==> 
-        q[k * i, k*i + n) : En ↦ forall j ∈ [0, 2^n) . 1 / sqrt(2^n) . |j + i * 2^n⟩ 
-    }
+    invariant { forall i :: 0 <= i < k ==> q[k * i, k * i + n) : En ↦ ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n) |j + i * 2^n⟩ }
   {
     q[k * i, k * i + n) *= H;
-    q[k * i, k * i + n) *= λ (y:Q n => y + i * 2^n);
+    q[k * i, k * i + n) *= λ (y => |y + i * 2^n⟩);
   }
   
   //put all q in sin format
-  assert { forall 0 <= i < k ==>  q[k * i, k*i + n) : En ↦ forall j ∈ [0, 2^n) . (sin theta : f(j) == 1, cos theta : f(j) == 0) . |j+i*2^n⟩ }
+  assert { forall i :: 0 <= i < k ==> q[k * i, k*i + n) : En ↦ ∑ j ∈ [0, 2^n) . part(sin theta : f(j) == 1, cos theta : f(j) == 0) |j+i*2^n⟩ };
 
   for i in [0, N)
-    invariant {
-         forall 0 <= z < i ==> q[k * z, k*z + n) : En ↦ forall j ∈ [0, 2^n) on (f(j+z*2^n) == l[i] && j+z*2^n != i).
-             (sin (2 * z * theta + theta), cos (2 * z * theta + theta)) . |j+z*2^n⟩ 
-    }
+    invariant { forall z :: 0 <= z < i ==> q[k * z, k*z + n) : En ↦ ∑ j ∈ [0, 2^n) on (f(j+z*2^n) == l[i] && j+z*2^n != i) .
+             part(sin (2 * z * theta + theta), cos (2 * z * theta + theta)) |j+z*2^n⟩ }
   {
 
     //the following is to query the function at once
     for t in [0,k)
       invariant {
-         forall 0 <= z < t ==> q[k * z, k*z + n) : En ↦ forall j ∈ [0, 2^n) on (f(j+z*2^n) == l[t] && j+z*2^n != t).
-             (- sin (2 * z * theta + theta), cos (2 * z * theta + theta)) . |j+z*2^n⟩ 
+         forall z :: 0 <= z < t ==> q[k * z, k*z + n) : En ↦ ∑ j ∈ [0, 2^n) on (f(j+z*2^n) == l[t] && j + z * 2^n != t) .
+             part(-sin(2 * z * theta + theta), cos(2 * z * theta + theta)) |j+z*2^n⟩ 
       }
     {
-      q[k*t,k*t+ n) *= λ (y:Q n => f(y[0,n)) == l[t] && y[0,n) != t); //this performs phase kick-back. only allowed operation (read from f and f is a function answers yes or no).
+      q[k*t, k * t + n) *= λ (y => f(y[0,n)) == l[t] && y[0,n) != t); //this performs phase kick-back. only allowed operation (read from f and f is a function answers yes or no).
     }
      q[0, k * n) *= amp; //apply amplitude amplification. Basically for any q as (sin var, cos var) |k⟩, applying amp to it is the following
   }
 
-  y[k],p *= measure(q);
+  y[k], p *= measure(q);
 }  
 

@@ -10,9 +10,9 @@ method swap(q: Q[n], p: Q[n], n:nat)
 {
 
    for j in [0,n)
-      if p[j] { q[j] *= q[j] +1; }
-      if q[j] { p[j] *= p[j] +1; }
-      if p[j] { q[j] *= q[j] +1; }        
+      if p[j] { q[j] *= q[j] + 1; }
+      if q[j] { p[j] *= p[j] + 1; }
+      if p[j] { q[j] *= q[j] + 1; }        
 }
 
 method permLoop(r: Q[k][n], q: Q[k][n], p: Q[k][n], t:nat, k:nat, n:nat) 

@@ -6,3 +6,4 @@
 
 # run antlr
 antlr4 -Dlanguage=Python3 -visitor Exp.g4
+# antlr4 -Dlanguage=Python3 -o dafny -visitor dafny/Dafny.g4

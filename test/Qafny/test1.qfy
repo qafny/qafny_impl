@@ -1,7 +1,8 @@
 //Simple Had application
 method hadtest(n: nat, q: Q[n])
   requires { q[0, n) : nor ↦ |0⟩ }
-  ensures  { q [0,n) : had ↦ ⊗ i ∈ [0,n) . |+⟩ }
+  ensures  { q [0, n) : had ↦ ⊗ i ∈ [0,n) . |+⟩ }
+
 {
   // induce superposition on the first qubit
   assert { q[0, n) : nor ↦ |0⟩ };
