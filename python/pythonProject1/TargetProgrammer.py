@@ -106,7 +106,7 @@ class DXIfExp(DXAExp):
         self._right = right
 
     def accept(self, visitor : AbstractTargetVisitor):
-        return visitor.visitBin(self)
+        return visitor.visitIfExp(self)
 
     def bexp(self):
         return self._bexp
@@ -272,6 +272,16 @@ class DXVar(DXBind):
     def type(self):
         return self._type
     
+class DXList(DXAExp):
+
+    def __init__(self, exprs: [DXAExp] = []):
+        self._exprs = exprs
+
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitList(self)
+    
+    def exprs(self):
+        return self._exprs
     
 class DXLength(DXVar):
 
@@ -308,9 +318,10 @@ class DXEnsures(DXConds):
      
 class DXCall(DXStmt,DXAExp):
 
-    def __init__(self, id: str, exps: [DXAExp]):
+    def __init__(self, id: str, exps: [DXAExp], end : bool = False):
         self._id = id
         self._exps = exps
+        self._end = end #variable to check if this is just a function call without assignment so that we can add a semi-colon at the end in PrinterVisitor
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitCall(self)
@@ -321,6 +332,9 @@ class DXCall(DXStmt,DXAExp):
     def exps(self):
         return self._exps
 
+    def end(self):
+        return self._end
+    
 class DXInit(DXStmt):
 
     def __init__(self, binding: DXBind, exp: DXAExp = None):
@@ -350,6 +364,21 @@ class DXIndex(DXAExp):
 
     def index(self):
         return self._index
+    
+class DXCast(DXAExp):
+
+    def __init__(self, type: SType, next: DXAExp):
+        self._type = type
+        self._next = next
+    
+    def accept(self, visitor : AbstractTargetVisitor):
+        return visitor.visitCast(self)
+    
+    def type(self):
+        return self._type
+    
+    def next(self):
+        return self._next
 
 class DXInRange(DXBool):
 
@@ -436,9 +465,10 @@ class DXAssert(DXStmt):
     
 class DXAssign(DXStmt):
 
-    def __init__(self, ids: [DXAExp], exp : DXAExp):
+    def __init__(self, ids: [DXAExp], exp : DXAExp, init: bool = None):
         self._ids = ids
         self._exp = exp
+        self._init = init
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitAssign(self)
@@ -448,6 +478,9 @@ class DXAssign(DXStmt):
 
     def exp(self):
         return self._exp
+    
+    def init(self):
+        return self._init
 
 class DXMethod(DXTop):
 

@@ -123,9 +123,9 @@ arithExprs : arithExpr (',' arithExpr)*;
 
 arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | slice) | sumspec | qtypeCreate;
 
-arithAtomic: numexp | ID | boolLiteral
-          | '(' arithExpr ')' | TSub arithAtomic | ket
-          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | notExpr | omegaExpr | qrange;
+arithAtomic: numexp | ID
+          | '(' arithExpr ')'
+          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | qindex | rangeT;
 
 sinExpr : 'sin' '(' arithExpr ')' | 'sin' arithAtomic;
 

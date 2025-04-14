@@ -118,6 +118,8 @@ class CollectKind(ProgramVisitor):
     def visitFun(self, ctx: Programmer.TyFun):
         return True
 
+    def visitQComp(self, ctx: Programmer.QXQComp):
+        return True
 
     def visitQ(self, ctx: Programmer.TyQ):
         return ctx.flag().accept(self)
