@@ -1,26 +1,39 @@
 grammar Exp;
 
-program: (method)+ EOF;
+// root-node of the qafny AST
+program: (topLevel)+ EOF;
 
-method: 'method' ('{' ':' Axiom '}')? ID '(' bindings ')' ('returns' returna)? conds '{' stmts '}';
+// include statements or methods
+topLevel: TInclude | method | function | lemma;
+
+method: 'method' ('{' ':' Axiom '}')? ID '(' bindings ')' ('returns' returna)? conds ('{' stmts '}')?;
+
+function : Function ('{' ':' Axiom '}')? ID '(' bindings ')' (':' typeT)? ('{' arithExpr '}')?;
+
+lemma : Lemma ('{' ':' Axiom '}')? ID '(' bindings ')' conds;
 
 returna: '(' bindings ')';
 
-conds: (reen spec)*;
+conds: (reen spec | Decreases arithExpr)*;
 
-invariants : (Invariant spec)*;
+reen: Ensures | Requires;
+
+loopConds : (Invariant spec | Decreases arithExpr | Separates locus)*;
 
 stmts : (stmt)*;
 
-stmt: asserting | casting | varcreate | assigning | qassign | measure | ifexp | forexp | fcall;
+stmt: asserting | casting | varcreate | assigning | qassign | qcreate | measure | measureAbort | ifexp | forexp | whileexp | (fcall ';') | return | break;
 
 spec : qunspec | allspec | logicImply | chainBExp;
 
-allspec : 'forall' binding '::' logicImply;
+allspec : 'forall' ID '::' logicImply | 'forall' ID TIn crange '==>' logicImply;
 
-bexp: logicOrExp | qbool;
+// allows quantum inner loops
+qallspec : 'forall' ID '::' chainBExp '==>';
 
-qbool: qindex | arithExpr comOp arithExpr '@' qindex | 'not' qbool;
+bexp: logicOrExp | qbool | ID | boolLiteral;
+
+qbool: qrange | arithExpr comOp arithExpr '@' idindex | 'not' qbool;
 
 logicImply: logicOrExp | logicOrExp '==>' logicImply;
 
@@ -32,87 +45,140 @@ logicNotExp: 'not' logicNotExp | fcall | chainBExp;
 
 chainBExp: arithExpr (comOp arithExpr)+;
 
-comOp :  GE | LE | EQ | LT | GT;
+// comparison operators
+comOp :  GE | LE | EQ | NE | LT | GT;
 
-qunspec : '{' locus ':' qty '↦' qspec '}' ;
+qtypeCreate: qty '↦' qspec ('+' qspec)*;
 
-qspec : tensorall | manyket | arithExpr manyket | sumspec | partspec;
+qunspec : '{' qallspec* locus ':' qtypeCreate '}' | '{' logicImply '}';
 
-partspec: 'part' '(' arithExpr ',' arithExpr ',' arithExpr ',' arithExpr ')';
+// see SWAPTest.qfy for an instance where the amplitude is specified before the sum spec
+qspec : tensorall | manyketpart | arithExpr manyketpart | (arithExpr '.')? sumspec;
 
-tensorall : '⊗' ID '.' manyket | '⊗' ID TIn crange '.' manyket;
+// 4 different calls for the partition function:
+// 1. part(n, function_predicate, true_amplitude, false_amplitude)
+// 2. part(n, predicate_1, predicate_2)
+// 3. part(function_predicate, true, amplitude) + part(function_predicate, false, amplitude)
+// 4. part(function_predicate, amplitude) - typically inside a ketCifexp
+partspec: 'part' '(' (arithExpr ',' arithExpr ',' arithExpr ',' arithExpr | arithExpr ',' partpred ',' partpred | partpred ',' partpred | ID ',' boolLiteral ',' arithExpr | arithExpr ',' arithExpr | partsections) ')';
 
-sumspec : maySum arithExpr manyket;
+// custom predicate used in the part function
+// amplitide ':' predicate
+partpred: amplitude=arithExpr ':' predicate=bexp;
 
-maySum : TSum ID TIn crange '.' (TSum ID TIn crange '.')*;
+// custom used in the part function
+partsection: amplitude=arithExpr ':' ket predicate=fcall;
+partsections: partsection ('+' partsection);
+
+tensorall: '⊗' ID '.' manyket | '⊗' ID TIn crange '.' manyket;
+
+sumspec: maySum (arithExpr? manyketpart? | '(' arithExpr? manyketpart? ')') | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
+
+maySum: TSum ID TIn crange ('on' '(' bexp ')')? '.';
 
 asserting: 'assert' spec ';';
 
 casting: '(' qty ')' locus ';';
 
-varcreate : 'var' binding ';' | 'var' binding ':=' arithExpr ';';
+varcreate : 'var' bindings ';' | 'var' typeOptionalBindings ':=' arithExpr ';';
 
-assigning : ID ':=' arithExpr ';';
+assigning : idindices ':=' arithExpr ';';
 
 ids : ID (',' ID)* ;
 
-qassign : locus '*=' expr ';';
+idindices: (ID | idindex) (',' (ID | idindex))*;
 
-measure : ids '*=' 'measure' '(' locus ')' | ids '*=' 'measure' '(' locus ',' arithExpr ')' ;
+qassign : (locus | ID) '*=' (expr | dis) ';';
 
-ifexp: 'if' '(' bexp ')' '{' stmts '}' ;
+qcreate : 'var' (locus | ID) '*=' arithExpr ';';
 
-cifexp : 'if' logicOrExp 'then' arithExpr 'else' arithExpr;
+measure : idindices '*=' 'measure' '(' (locus | ID) ')' ';' | idindices '*=' 'measure' '(' (locus | ID) ',' arithExpr ')' ';' ;
 
-forexp : 'for' ID TIn crange invariants '{' stmts '}';
+// see SWAPTest.qfy
+measureAbort: ids '*=' 'measA' '(' (locus | ID) ')' ';' | ids '*=' 'measA' '(' (locus | ID) ',' arithExpr ')' ';';
 
-fcall : ID '(' arithExprs ')';
+return: Return ids ';';
+
+break: 'break' ';';
+
+ifexp: If ('(' bexp ')' | bexp) 'then'? '{' stmts '}' (Else '{' stmts '}')?;
+
+cifexp : If bexp 'then' (arithExpr | '{' arithExpr '}') Else (arithExpr | '{' arithExpr '}');
+
+// allows partspecs as as nodes in sum spec expressions (see test16.qfy for an example)
+ketArithExpr: ketCifexp | partspec | '(' ketArithExpr ')';
+
+// allows partspecs for sum spec expressions
+ketCifexp: If bexp 'then' ketArithExpr 'else' ketArithExpr;
+
+manyketpart: (ket | ketArithExpr | '(' ket (',' ket)* ')' | fcall)+;
+
+forexp : 'for' ID TIn crange (('with' | '&&') idindex)? loopConds '{' stmts '}';
+
+whileexp: 'while' ('(' bexp ')' | bexp) loopConds '{' stmts '}';
+
+fcall : ID '^{-1}'? '(' arithExprs ')';
 
 arithExprs : arithExpr (',' arithExpr)*;
 
-arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic;
+arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | slice) | sumspec | qtypeCreate;
 
-arithAtomic: numexp | ID
-          | '(' arithExpr ')'
-          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | qindex;
+arithAtomic: numexp | ID | boolLiteral
+          | '(' arithExpr ')' | TSub arithAtomic | ket
+          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | notExpr | omegaExpr | qrange;
 
-sinExpr : 'sin' '(' arithExpr ')' ;
+sinExpr : 'sin' '(' arithExpr ')' | 'sin' arithAtomic;
 
-cosExpr : 'cos' '(' arithExpr ')' ;
+cosExpr : 'cos' '(' arithExpr ')' | 'cos' arithAtomic;
 
-sqrtExpr : 'sqrt' '(' arithExpr ')' ;
+sqrtExpr : 'sqrt' '(' arithExpr ')' | 'sqrt' arithAtomic;
+
+notExpr : 'not' '(' arithExpr ')';
 
 absExpr : '|' arithExpr '|' ;
 
-omegaExpr : 'ω' '(' arithExpr ',' arithExpr ')' ;
+omegaExpr : ('ω' | 'omega') '(' arithExpr (',' arithExpr)? (',' arithExpr)? ')' ;
 
-expr : SHad | SQFT | RQFT | lambdaT;
+expr : SHad | SQFT | RQFT | lambdaT | ID;
 
-lambdaT : 'λ' '(' ids '=>' omegaExpr manyket ')'
-       | 'λ' '(' ids '=>'  manyket ')'
-       | 'λ' '(' ids '=>' omegaExpr ')';
+lambdaT : 'λ' '^{-1}'? '(' ids '=>' omegaExpr manyket ')'
+       | 'λ' '^{-1}'? '(' ids '=>'  manyket ')'
+       | 'λ' '^{-1}'? '(' ids '=>' omegaExpr ')'
+       | 'λ' '^{-1}'? '(' ids '=>' fcall ')'
+       | 'λ' '^{-1}'? '(' ids '=>' logicOrExp ')'; // phase kick-back
+
+dis : 'dis' '(' expr ',' arithExpr ',' arithExpr ')';
 
 manyket: (ket)+;
 
-ket : '|' qstate '⟩' | '⊗' arithExpr;
+ket : TSub? '|' qstate (',' qstate)* '⟩' | '⊗' arithExpr;
 
-qstate: arithExpr | addOp;
+ketsum : maySum arithExpr;
+
+qstate: arithExpr | addOp | ketsum;
 
 bindings : binding ( ',' binding)*;
 
 binding: ID ':' typeT;
 
-locus : (qrange)+;
+typeOptionalBindings : typeOptionalBinding (',' typeOptionalBinding)*;
+
+typeOptionalBinding: ID (':' typeT)?;
+
+// i.e. q[0], z[0, n)
+locus : qrange (',' qrange)*;
 
 crange : '[' arithExpr ',' arithExpr ')';
 
 index: '[' arithExpr ']';
 
-qindex : ID index;
+slice: '[' arithExpr? '..' arithExpr? ']';
 
-rangeT: ID crange (',' ID crange)* ;
+idindex : ID index;
 
-qrange: qindex | rangeT;
+rangeT: ID crange;
+
+qrange: idindex | rangeT;
 
 // element : numexp | ID;
 
@@ -123,38 +189,51 @@ numexp: Number | TSub Number;
 
 typeT : baseTy | baseTy '->' typeT ;
 
-baseTy : TNat | TReal | TInt | TBool | '[' baseTy ','  arithExpr ']' | 'Q' '[' arithExpr ']';
+baseTy : TNat | TReal | TInt | TBool | '[' baseTy ']' | 'array' '<' baseTy '>' | '[' baseTy ','  arithExpr ']' | baseTy '[' arithExpr ']' | 'Q' '[' arithExpr ']';
 
 qty : Nor | Had | En | En '(' arithExpr ')' | AA;
 
 addOp: TAdd | TSub;
 
-op : addOp | TDiv | TMul | TMod | OPlus | TExp;
+op : addOp | TDiv | TMul | TMod | OPlus | TExp | TXor | Dot;
 
-//boolexp: TrueLiteral | FalseLiteral;
+boolLiteral: TrueLiteral | FalseLiteral;
+
+//----------------------------------------------------------------
+// Lexer Tokens (in ANTLR, all tokens start with capital letters)
+//----------------------------------------------------------------
 
 Axiom: 'axiom';
 
 Function: 'function';
 
-reen: Ensures | Requires;
+Lemma: 'lemma';
 
+// keywords used in conditions
 Ensures : 'ensures';
 
 Requires : 'requires';
 
+Decreases : 'decreases';
+
+Separates : 'separates';
+
 Returns : 'returns';
+
+Return : 'return';
 
 Forall : 'forall';
 
+// qafny classical types 
 TNat : 'nat';
 
 TReal : 'real';
 
 TInt : 'int';
 
-TBool : 'bool';
+TBool : 'bool' | 'Bool';
 
+// qafny operators
 TAdd : '+';
 
 TSub : '-';
@@ -167,23 +246,36 @@ TMod : '%';
 
 TExp : '^';
 
-Nor : 'nor';
+TXor : 'xor';
+
+// qafny quantum types
+Nor : 'nor' | 'Nor';
 
 Had : 'had';
 
+AA : 'aa';
+
+En : 'en' | 'En';
+
+// qafny gates
 SHad : 'H';
 
 SQFT : 'QFT';
 
 RQFT : 'RQFT';
 
-AA : 'aa';
-
-En : 'en';
-
+// keywords
 If : 'if';
 
+Else : 'else';
+
 For : 'for';
+
+While : 'while';
+
+TrueLiteral : 'true' | 'True';
+
+FalseLiteral : 'false' | 'False';
 
 TCl : 'λ';
 
@@ -193,41 +285,49 @@ TIn : 'in' | '∈';
 
 TSum : 'Σ' | '∑';
 
- OPlus : '⊕';
+OPlus : '⊕';
 
- Invariant : 'invariant';
+Invariant : 'invariant';
 
- Dot : '.' ;
+Dot : '.' ;
 
- And : '&&';
+// Comparison operators
+And : '&&';
 
- OR : '||';
+OR : '||';
 
- GE : '>=';
+GE : '>=';
 
- LE : '<=';
+LE : '<=';
 
- EQ : '==';
+EQ : '==';
 
- LT : '<';
- 
- GT : '>';
+NE : '!=';
 
- ARROW : '=>';
+LT : '<';
+
+GT : '>';
+
+ARROW : '=>';
 
 
- Number : DIGIT+ ;
+Number : DIGIT+ ('.' DIGIT+)?;
 
- ID :   Letter LetterOrDigit*;
+ID :   Letter LetterOrDigit*;
 
- Letter :   [a-zA-Z$_];
+Letter :   [a-zA-Z$_];
 
- LetterOrDigit: [a-zA-Z0-9$_];
+LetterOrDigit: [a-zA-Z0-9$_];
 
- fragment DIGIT: ('0'..'9');
+// token for the include rule
+TInclude: 'include ' PATH;
 
- AT : '@';
- ELLIPSIS : '...';
- WS  :  [ \t\r\n\u000C]+ -> skip;
- Comment :   '/*' .*? '*/' -> skip;
- Line_Comment :   '//' ~[\r\n]* -> skip;
+fragment PATH: [a-zA-Z0-9/\\$_.]+;
+
+fragment DIGIT: ('0'..'9');
+
+AT : '@';
+ELLIPSIS : '...';
+WS  :  [ \t\r\n\u000C]+ -> channel(HIDDEN);
+Comment :   '/*' .*? '*/' -> channel(HIDDEN);
+Line_Comment :   '//' ~[\r\n]* -> channel(HIDDEN);
