@@ -14,6 +14,5 @@ DeutschJozsa.qfy
 simon.qfy
 DiscreteLog.qfy
 Grovers.qfy
-DiscreteLog.qfy
 QPE.qfy
 SWAPTest.qfy
