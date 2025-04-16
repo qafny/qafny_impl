@@ -11,7 +11,7 @@ method LCU(q: Q[n], p: Q[1], n: nat) returns (sa: nat)
               //do we really want nat -> nat or bitvector, like seq<bv1> ? we can have bitvectors in our system
   requires n >= 1
   requires { p[0] : nor ↦ |0⟩  }
-  ensures { sa == 0 ==> q[0, n) == add(uf,vf)(old(q[0,n)), n) }
+  ensures { sa == 0 ==> q[0, n) == add(uf, vf)(old(q[0, n)), n) }
 {
   p[0] *= H;
 
