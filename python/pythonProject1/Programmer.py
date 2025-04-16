@@ -873,7 +873,7 @@ class QXCall(QXStmt, QXBool, QXAExp):
     def ID(self):
         return self._id if isinstance(self._id, str) else self._id.getText()
 
-    def exps(self):
+    def exps(self) -> [QXAExp]:
         return self._exps
 
     def __repr__(self):
