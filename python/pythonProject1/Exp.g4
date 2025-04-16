@@ -24,24 +24,26 @@ stmts : (stmt)*;
 
 stmt: asserting | casting | varcreate | assigning | qassign | qcreate | measure | measureAbort | ifexp | forexp | whileexp | (fcall ';') | return | break;
 
-spec : qunspec | allspec | logicImply | chainBExp;
-
-allspec : 'forall' ID '::' logicImply | 'forall' ID TIn crange '==>' logicImply;
+spec : qunspec | logicImply | chainBExp;
 
 // allows quantum inner loops
 qallspec : 'forall' ID '::' chainBExp '==>';
 
 bexp: logicOrExp | qbool | ID | boolLiteral;
 
-qbool: qrange | arithExpr comOp arithExpr '@' idindex | 'not' qbool;
+qbool: qrange | '{' locus '}' comOp arithExpr | arithExpr comOp arithExpr '@' idindex | 'not' qbool;
 
-logicImply: logicOrExp | logicOrExp '==>' logicImply;
+logicImply: allspec | allspec '==>' logicImply;
+
+allspec : logicOrExp | 'forall' ID '::' chainBExp '==>' logicImply | 'forall' ID TIn crange '==>' logicImply;
 
 logicOrExp: logicAndExp '||' logicOrExp | logicAndExp;
 
 logicAndExp: logicNotExp '&&' logicAndExp | logicNotExp;
 
-logicNotExp: 'not' logicNotExp | fcall | chainBExp;
+logicNotExp: 'not' logicNotExp | fcall | chainBExp | logicInExpr;
+
+logicInExpr: ID TIn ID;
 
 chainBExp: arithExpr (comOp arithExpr)+;
 
@@ -50,10 +52,10 @@ comOp :  GE | LE | EQ | NE | LT | GT;
 
 qtypeCreate: qty '↦' qspec ('+' qspec)*;
 
-qunspec : '{' qallspec* locus ':' qtypeCreate '}' | '{' logicImply '}';
+qunspec : '{' (qallspec* locus ':' qtypeCreate ('⊗' qallspec* locus ':' qtypeCreate)* | logicImply) '}';
 
 // see SWAPTest.qfy for an instance where the amplitude is specified before the sum spec
-qspec : tensorall | manyketpart | arithExpr manyketpart | (arithExpr '.')? sumspec;
+qspec : tensorall | manyketpart | arithExpr manyketpart | (arithExpr '.')? sumspec | arithExpr;
 
 // 4 different calls for the partition function:
 // 1. part(n, function_predicate, true_amplitude, false_amplitude)
@@ -72,7 +74,7 @@ partsections: partsection ('+' partsection);
 
 tensorall: '⊗' ID '.' manyket | '⊗' ID TIn crange '.' manyket;
 
-sumspec: maySum (arithExpr? manyketpart? | '(' arithExpr? manyketpart? ')') | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
+sumspec: maySum (arithExpr? manyketpart? ('&&' bexp)? | '(' arithExpr? manyketpart? ('&&' bexp)? ')') | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
 
 maySum: TSum ID TIn crange ('on' '(' bexp ')')? '.';
 
@@ -111,21 +113,21 @@ ketArithExpr: ketCifexp | partspec | '(' ketArithExpr ')';
 // allows partspecs for sum spec expressions
 ketCifexp: If bexp 'then' ketArithExpr 'else' ketArithExpr;
 
-manyketpart: (ket | ketArithExpr | '(' ket (',' ket)* ')' | fcall)+;
+manyketpart: (ket | ketArithExpr | '(' arithExpr? ket (',' ket)* ')' | fcall)+;
 
-forexp : 'for' ID TIn crange (('with' | '&&') idindex)? loopConds '{' stmts '}';
+forexp : 'for' ID TIn crange (('with' | '&&') bexp)? loopConds '{' stmts '}';
 
 whileexp: 'while' ('(' bexp ')' | bexp) loopConds '{' stmts '}';
 
-fcall : ID '^{-1}'? '(' arithExprs ')';
+fcall : ID '^{-1}'? '(' arithExprsOrKets ')';
 
-arithExprs : arithExpr (',' arithExpr)*;
+arithExprsOrKets : (arithExpr | ket) (',' (arithExpr | ket))*;
 
-arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | slice) | sumspec | qtypeCreate;
+arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | slice | crange) | sumspec | qtypeCreate;
 
-arithAtomic: numexp | ID
+arithAtomic: numexp | ID | TSub arithExpr | boolLiteral
           | '(' arithExpr ')'
-          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | qindex | rangeT;
+          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | notExpr | setInstance | qrange;
 
 sinExpr : 'sin' '(' arithExpr ')' | 'sin' arithAtomic;
 
@@ -139,13 +141,15 @@ absExpr : '|' arithExpr '|' ;
 
 omegaExpr : ('ω' | 'omega') '(' arithExpr (',' arithExpr)? (',' arithExpr)? ')' ;
 
+setInstance : '[' (arithExpr (',' arithExpr)*)? ']';
+
 expr : SHad | SQFT | RQFT | lambdaT | ID;
 
-lambdaT : 'λ' '^{-1}'? '(' ids '=>' omegaExpr manyket ')'
-       | 'λ' '^{-1}'? '(' ids '=>'  manyket ')'
-       | 'λ' '^{-1}'? '(' ids '=>' omegaExpr ')'
-       | 'λ' '^{-1}'? '(' ids '=>' fcall ')'
-       | 'λ' '^{-1}'? '(' ids '=>' logicOrExp ')'; // phase kick-back
+lambdaT : 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' omegaExpr manyket ')'
+       | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>'  manyket ')'
+       | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' omegaExpr ')'
+       | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' fcall ')'
+       | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' logicOrExp ')'; // phase kick-back
 
 dis : 'dis' '(' expr ',' arithExpr ',' arithExpr ')';
 
@@ -176,9 +180,9 @@ slice: '[' arithExpr? '..' arithExpr? ']';
 
 idindex : ID index;
 
-rangeT: ID crange;
+// rangeT: ID crange;
 
-qrange: idindex | rangeT;
+qrange: ID (index | crange)+;
 
 // element : numexp | ID;
 
@@ -187,9 +191,9 @@ numexp: Number | TSub Number;
  // Lexical Specification of this Programming Language
  //  - lexical specification rules start with uppercase
 
-typeT : baseTy | baseTy '->' typeT ;
+typeT : baseTy | (baseTy | '(' baseTy (',' baseTy)* ')') '->' typeT;
 
-baseTy : TNat | TReal | TInt | TBool | '[' baseTy ']' | 'array' '<' baseTy '>' | '[' baseTy ','  arithExpr ']' | baseTy '[' arithExpr ']' | 'Q' '[' arithExpr ']';
+baseTy : TNat | TReal | TInt | TBool | TBV | '[' baseTy ']' | 'array' '<' baseTy '>' | 'set' '<' baseTy '>' | '[' baseTy ','  arithExpr ']' | baseTy '[' arithExpr ']' | 'Q' '[' arithExpr ']';
 
 qty : Nor | Had | En | En '(' arithExpr ')' | AA;
 
@@ -233,6 +237,8 @@ TInt : 'int';
 
 TBool : 'bool' | 'Bool';
 
+TBV : 'bv' DIGIT+;
+
 // qafny operators
 TAdd : '+';
 
@@ -251,7 +257,7 @@ TXor : 'xor';
 // qafny quantum types
 Nor : 'nor' | 'Nor';
 
-Had : 'had';
+Had : 'had' | 'Had';
 
 AA : 'aa';
 
@@ -317,7 +323,7 @@ ID :   Letter LetterOrDigit*;
 
 Letter :   [a-zA-Z$_];
 
-LetterOrDigit: [a-zA-Z0-9$_];
+LetterOrDigit: [a-zA-Z0-9$_'];
 
 // token for the include rule
 TInclude: 'include ' PATH;

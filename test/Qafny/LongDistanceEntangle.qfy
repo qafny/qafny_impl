@@ -9,30 +9,30 @@ method Teleporation(q: Q[2], p: Q[1], r: Q[1]) returns (y:nat, prob:real)
     ensures { q[0], r[0] : en ↦ ∑ j ∈ [0, 2) . a[j] |j⟩|j⟩ } //eventually, instead of having q[0] and q[1] entangled, now, q[0] and r[0] entangled
 {
     p[0] *= H;
-    if p[0] { r[0]  *= λ (x => (x + 1) % 2); }
-    assert { p[0],r[0] : En ↦ (∑ k ∈ [0 , 2) . 1/sqrt(2) |k⟩|k⟩) } //this assertion should not be needed
+    if p[0] { r[0]  *= λ (x => |(x + 1) % 2⟩); }
+    assert { p[0], r[0] : En ↦ (∑ k ∈ [0, 2) . 1/sqrt(2) |k⟩|k⟩) }; //this assertion should not be needed
     
-    if q[1] { p[0]  *= λ (x => (x + 1) % 2); }
+    if q[1] { p[0]  *= λ (x => |(x + 1) % 2⟩); }
     
-    assert { q[0,1), p[0],r[0] : en ↦ (∑ j ∈ [0 , 2) . ∑ k ∈ [0 , 2) . 1/sqrt(2) * a[j] . |j⟩|j⟩|j ⊕ k⟩|k⟩) }; //this assertion should not be needed
+    assert { q[0, 1), p[0], r[0] : en ↦ (∑ j ∈ [0 , 2) . ∑ k ∈ [0, 2) . 1/sqrt(2) * a[j] |j⟩|j⟩|j ⊕ k⟩|k⟩) }; //this assertion should not be needed
     
     q[1] *= H;
     
-    assert { q[0,1), p[0],r[0] : en ↦ (∑ j ∈ [0 , 2) . ∑ k ∈ [0 , 2) . 1/2 * a[j] . |j⟩|P(j)⟩|j ⊕ k⟩|k⟩) };
+    assert { q[0, 1), p[0], r[0] : en ↦ (∑ j ∈ [0 , 2) . ∑ k ∈ [0, 2) . 1/2 * a[j] |j⟩|P(j)⟩|j ⊕ k⟩|k⟩) };
     //P(j) is the hadamard-basis of the qubits as + , -, where P(0) = + and P(1) = -
 
     y, p1 *= measure(p); //y = j ⊕ k and p1 is igoared, it should be 1/2
     
-    assert { q[0,1), r[0] : en ↦ ∑ j ∈ [0 , 2) . ∑ k ∈ [0 , 2) . 1/sqrt(2) * a[j] . |j⟩|P(j)⟩|k⟩ && y == j ⊕ k};
+    assert { q[0, 1), r[0] : en ↦ ∑ j ∈ [0 , 2) . ∑ k ∈ [0, 2) . 1/sqrt(2) * a[j] |j⟩|P(j)⟩|k⟩ && y == j ⊕ k};
     // measurement leads to that y == j ⊕ k, and we remove the ket |j ⊕ k⟩ 
 
     z, p2 *= measure(q); // z == 0 || z == 1, and p2 = 1/2
 
-    assert { q[0],r[0] : en ↦ ∑ j ∈ [0 , 2) . ∑ k ∈ [0 , 2) . a[j] . ω (z * j, 2) . |j⟩|k⟩ && y == j ⊕ k};
+    assert { q[0], r[0] : en ↦ ∑ j ∈ [0 , 2) . ∑ k ∈ [0, 2) . a[j] * ω (z * j, 2) |j⟩|k⟩ && y == j ⊕ k};
     
-    if y { r[0] *= λ (x => (x + 1) % 2); } //permit viewing a bit as a bool value, an X gate
+    if y { r[0] *= λ (x => |(x + 1) % 2⟩); } //permit viewing a bit as a bool value, an X gate
     
-    assert { q[0],r[0] : en ↦ ∑ j ∈ [0 , 2) . a[j] . ω (z * j, 2) . |j⟩|j⟩};
+    assert { q[0], r[0] : en ↦ ∑ j ∈ [0 , 2) . a[j] * ω (z * j, 2) |j⟩|j⟩};
     //this is valid because if y {apply X gate} means |k⟩ ==> |k ⊕ y ⟩ == |k ⊕ j ⊕ k ⟩ == | j ⟩
     
     if z { r[0] *= λ (x => ω (1 * x, 2)); } //a Z gate

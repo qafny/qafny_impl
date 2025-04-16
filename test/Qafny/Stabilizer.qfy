@@ -4,7 +4,7 @@
 // Can I assume q comes with phi stored on it already?
 // What to do if the algorithm fails to produce H?
 
-method Stabilizer (q : Q[n], k:nat, n:nat, a:array<bv1>, F : nat, [Bool] -> [Bool], H:set<nat>, M:set<nat>) returns (h:set<nat>)
+method Stabilizer (q : Q[n], k: nat, n: nat, a: array<bv1>, F: (nat, [Bool]) -> [Bool], H_check: set<nat>, M: set<nat>) returns (h: set<nat>)
     //requires q : Nor -> |psi> - how do I express that q has value of psi as a condition?
     requires a.Length == n //is array<bv1> the correct data type for a?
     requires forall k :: 0 <= k < |M| ==> F(0, M[k]) == M[k] //for any element x of M, F(0,x)==x
@@ -28,7 +28,7 @@ method Stabilizer (q : Q[n], k:nat, n:nat, a:array<bv1>, F : nat, [Bool] -> [Boo
 
         y, p *= measure(q');
         // y is an element of H
-        assert y ∈ H;
+        assert y ∈ H_check;
         assert F(y, a) == a;
 
         h := h + [y]; // perhaps h := h \/ y is better
@@ -39,7 +39,7 @@ method Stabilizer (q : Q[n], k:nat, n:nat, a:array<bv1>, F : nat, [Bool] -> [Boo
 
     // check if h is correct
 
-    if h == H
+    if h == H_check
     {
         return h;
     }
