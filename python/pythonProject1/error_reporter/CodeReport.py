@@ -1,16 +1,40 @@
 from os import get_terminal_size
 from textwrap import wrap
+from colored import stylize, fore
+from ErrorReport import ErrorReport
 
-
-class CodeReport:
-    """
-    Represents a human-readable source code report
+class CodeReport(ErrorReport):
+    '''
+    Represents a human-readable error report with source code attached.
+    A combination of ErrorReport and CodeSnippet
     Has features for:
     * line numbering
     * syntax highlighting
     * restricting the area of interest
     * attaching error information
-    """
+
+
+    Report:
+    [error]
+    [sources]
+    
+    error: Type mismatch
+    × cannot convert real to seq<real>
+    ├─► context
+    ╰─► more context
+
+    ╭─[test2.qfy:2:5]────────────────────────────────────────────────────╮
+    │ 1 method hadtest(n: nat, q : Q[n])                                 │
+    │ 2   requires { q[0, n) : nor ↦ |0⟩ }                               │
+    ·     └──┬───┘                                                       ·
+    ·        ╰───────► this precondition was not satisfied               ·
+    │ 3   ensures  { q[0, n) : en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) | k ⟩ }│
+    │ 4 {                                                                │
+    ╰────────────────────────────────────────────────────────────────────╯
+    ╞════════════════════════════════════════════════════════════════════╡ (terminal width)
+    error: Precondition fail
+    ...
+    '''
 
     def __init__(self, code: str, *, gutter: bool = True):
         """Initializer for CodeReport, takes in the code as a string"""
@@ -39,7 +63,7 @@ class CodeReport:
             term_y -= gutter_size + 3 # the three extra spaces come from ' │ '
 
         for line_no, line in enumerate(lines):
-            gutter_str = str(line_no + 1).rjust(gutter_size)
+            gutter_str = stylize(str(line_no + 1).rjust(gutter_size), fore('dark_gray'))
             # split long lines across multiple
             if len(line) > term_y:
                 for chunk_no, chunk in enumerate(wrap(line, term_y)):
