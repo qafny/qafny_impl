@@ -1,5 +1,3 @@
-# import unittest
-
 # add the parent directory (root python directory) to the path
 import sys
 import os
@@ -38,12 +36,9 @@ class TestQafnyGrammar(TestSuite): # (unittest.TestCase):
             result = self.parse_file(filename)
             self.end_case(result, filename, f'Failed to parse: {filename}')
 
-# if __name__ == '__main__':
-#    unittest.main(buffer=True)
-
 
 def run():
-    suite = TestQafnyGrammar(verbose=True)
+    suite = TestQafnyGrammar(verbose=False)
     suite.run()
 
 

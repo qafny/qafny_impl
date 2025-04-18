@@ -1,6 +1,7 @@
 import time
 import sys
 from io import StringIO
+import traceback
 
 from colored import stylize, fore
 
@@ -133,7 +134,7 @@ class TestSuite:
                 print(stylize('F', fore('red')), end='')
 
             # log failure
-            self.failed_cases.append(CaseInfo(context, standard_output, standard_error))
+            self.failed_cases.append(self.CaseInfo(context, standard_output, standard_error))
 
             if self.fail_fast:
                 raise EarlyOut()
@@ -147,6 +148,17 @@ class TestSuite:
                 test_method()
             except self.EarlyOut as e:
                 break
+            except Exception as e:
+                standard_output = ''
+                standard_errror = ''
+                if self.__capturing:
+                    standard_output, standard_error = self.end_capture()
+
+                exception_info = traceback.format_exc()
+                print(stylize(f'Error happened whilst running test case: {test_method_name}\n{exception_info}', fore('red')))
+                
+                self.total_cases += 1
+                self.failed_cases.append(self.CaseInfo(f'Exception occured whilst testing.\n{exception_info}', standard_output, standard_error))
             print('')
 
         end = time.time()
@@ -156,7 +168,7 @@ class TestSuite:
             print(stylize(f'[FAIL]', fore('red')) + ' ' + failed_case.context)
             print(stylize('--------------------------------------------------------------------', fore('red')))
             print(failed_case.std_output)
-            print(failed_case.std_err)
+            print(failed_case.std_error)
 
         emoji = stylize('✓', fore('green')) if self.successful_cases == self.total_cases else stylize('🞫', fore('red'))
         elapsed_time_fmt = stylize('{0:.6g}s'.format(end - start), fore('yellow'))

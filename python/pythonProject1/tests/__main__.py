@@ -1,3 +1,5 @@
-import test_qafny_grammar as suite
+import test_qafny_grammar as tqg
+import test_program_transformer as tpt
 
-suite.run()
+tqg.run()
+tpt.run()
