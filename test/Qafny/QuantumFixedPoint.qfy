@@ -1,0 +1,29 @@
+//Quantum algorithm with fixed point
+
+method FixedPtSearch(q : Q[1], p: Q[n], n: nat, f: nat -> bool, N: nat) returns (y: nat, p: real, x: nat, prob: real)
+  requires m < 2^n
+  requires forall k :: 0 <= k < m ==> f(n2b(k)) == 1
+  requires forall k :: m <= k < m ==> f(n2b(k)) == 0
+  requires { q[0] : nor ↦ |0⟩ }
+  requires { p[0, n) : nor ↦ |0⟩ }
+  requires { r[0] : nor ↦ |0⟩ }
+  ensures y == 1 ==> p == ... //need to put the probablity
+{
+  q[0] *= H;
+  p[0,n) *= H;
+  new(r[0]);
+  
+  if p[0] { q[0,n), r[0] *= λ (y, z => |y⟩|f(y,z)⟩); }
+  
+  y,p1 := measure(r[0]);
+  
+  while(y == 0) {
+    dis(H, f, sqrt(sumFun(f,2^n) / 2^n));
+    if p[0] { q[0,n), r[0] *= λ (y, z => |y⟩|f(y,z)⟩); }
+    new(r[0]);
+    y,p := measure(r[0]);
+  }
+  
+  z, p1 := measure(p[0, n));
+}
+
