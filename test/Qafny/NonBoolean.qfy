@@ -1,40 +1,32 @@
 // Non-Boolean Amp
 // https://arxiv.org/abs/2102.04975
 
-method {:axiom} uf(q: Q[n], n:nat)
-    ensures { p[0, n), r[0] : en ↦ ∑ k ∈ [0, Pow2(n)) . (-omega(v) | k, 0 ⟩, | k, 0 ⟩) }
+method {:axiom} uf(q: Q[n], f: nat -> real, n:nat)
+    requires { q[0, n) : nor ↦ | k ⟩ }
+    ensures { q[0, n) : nor ↦ omega(f(k), 2^n) | k ⟩ }
     
     
 /*function {:axiom} inverse(uf : Q[n] -> nat -> Q[n]) //inverse function is always existed, so add to language op set.
  *                                                    //the current implementation plan is to make the inverse function as built-in as ^{-1}
  */
 
-method NonBoolean(q : Q[n], p: Q[1], n: nat, m: nat) returns (y: nat, prob: real)
+method NonBoolean(q : Q[n], p: Q[1], n: nat, m: nat, f: nat -> real) returns (y: nat, prob: real)
     requires { p[0] : nor ↦ |0⟩ }
+    requires { q[0,n): en(1) ↦ ∑ k ∈ [0, 2) . ∑ j ∈ [0, 2^n) . 1 / sqrt(2) * a | k ⟩ | j ⟩ }
 {   
     p[0] *= H;
-    init(r[0]); //initial ancilla qubit.
-    r[0] *= λ(x => |x + 1⟩);
-    r[0] *= H; //building minus state for r, so that we can utilize phase-kick-back.
     
     for j in [0, m)
     {
-      if (is_odd(j))
+      Diff(n,q,f,(2 * i + 1) * sqrt(sumFun(f,2^n) / 2^n),sqrt(sumFun(f,2^n) / 2^n));
+      if (j % 2 == 0)
       {
-        if (not p[0]) { uf(q, n); }
-        if (p[0]) { uf^{-1}(q, n); }
+        if (p[0]) { uf(q, n); }
       }
       else {
-        if (p[0]) { uf(q, n); }
         if (not p[0]) { uf^{-1}(q,n); }
       }
-      
-      p[0] *= H;
-      q[0, n) *= RQFT;
-      if ({p[0], q[0, n)} == 0) { r[0] *= λ(x => |x + 1⟩); }
-      p[0] *= H;
-      q[0, n) *= QFT;
     }
     
-    y, prob := meas(q);
+    y, prob := meas(p[0]);
 }
