@@ -29,6 +29,11 @@ class DafnyLibrary:
     'abs' : '''function {:axiom} abs(n : int) : nat
                 ensures abs(n) == if n >= 0 then n else -n''',
 
+    'powN' : '''function {:axiom} powN(N:nat, k: nat) : int
+                    ensures powN(N, k) > 0''',
+    'powNTimesMod' : '''lemma {:axiom} powNTimesMod()
+          ensures forall k: nat, j: nat, l : nat, N:nat :: N > 0 ==> powN(k, j) * (powN(k, l) % N) % N == powN(k, j + l) % N''',
+
     'pow2Mul' : Method('''lemma {:axiom} pow2Mul()
                 ensures forall k : nat, j : nat :: pow2(k) * pow2(j) == pow2(k + j)''', ['pow2']),
 
@@ -67,7 +72,7 @@ class DafnyLibrary:
                                       assert sqrt(pow2(|x|) as real) > 0.0 by {SqrtGt(pow2(|x|) as real);}
                                       amp[k] == 1.0 / (sqrt(pow2(|x|) as real))''', ['omega', 'pow2', 'castBVInt', 'SqrtGt', 'sqrt']),
 
-    'partialcastEn1toEn2' : Method('''method {:axiom} method {:axiom} partialcastEn1toEn2(x: seq<bv1>) returns (x1 : seq<seq<bv1>>)
+    'partialcastEn1toEn2' : Method('''method {:axiom} partialcastEn1toEn2(x: seq<bv1>) returns (x1 : seq<seq<bv1>>)
           ensures |x1| == pow2(|x|)
           ensures forall k :: 0 <= k < pow2(|x|) ==> |x1[k]| == |x|
           ensures forall k :: 0 <= k < |x1| ==> castBVInt(x1[k]) == k
@@ -116,7 +121,55 @@ class DafnyLibrary:
           ensures forall k :: 0 <= k < |x1| ==> forall j :: 0 <= j < |x1[k]| == |x1[k][j]| == |x|
           ensures forall k :: 0 <= k < |x1| ==> forall j :: 0 <= j < |x1[k]| ==> castBVInt(x1[k][j]) == castBVInt(x)
           ensures forall k :: 0 <= k < |x1| ==> forall j :: 0 <= j < |x1[k]| ==> samebit(x1[k][j], x, |x|)
-      ''', ['castBVInt', 'samebit'])
+      ''', ['castBVInt', 'samebit']),
+
+    'mergeBitEn' : Method('''method {:axiom} mergeBitEn(x: seq<seq<bv1>>, n : nat) returns (x1: seq<seq<bv1>>)
+          requires forall k :: 0 <= k < |x| ==> |x[k]| == n
+          ensures |x1| == |x| * 2
+          ensures forall k :: 0 <= k < |x1| ==> |x1[k]| == n + 1
+          ensures forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k][0..n], n)
+          ensures forall k :: |x| <= k < |x1| ==> samebit(x[k-|x|], x1[k][0..n], n) 
+          ensures forall k :: 0 <= k < |x| ==> x1[k][n] == 0
+          ensures forall k :: |x| <= k < |x1| ==> x1[k][n] == 1''', ['samebit']),
+
+    'mergeAmpEn' : Method('''method {:axiom} mergeAmpEn(amp: seq<real>, q : real) returns (amp1: seq<real>)
+          ensures |amp1| == |amp| * 2
+          ensures forall k :: 0 <= k < |amp| ==> amp1[k] == 1.0 / sqrt(2.0) * amp[k]
+          ensures forall k :: |amp| <= k < |amp1| ==> amp1[k] == 1.0 / sqrt(2.0) * amp[k-|amp|] * q''', ['sqrt']),
+
+    'triggerSqrtMul' : Method('''lemma {:axiom} triggerSqrtMul()
+                      ensures forall k, j :: k > 0.0 && j > 0.0 ==> sqrt(k) * sqrt(j) == sqrt(k * j)''', ['sqrt']),
+
+    'pow2add' : Method('''lemma {:axiom} pow2add()
+                      ensures forall k : nat :: pow2(k) * 2 == pow2(k + 1)''', ['pow2']),
+
+    'cutHad' : Method('''method {:axiom} cutHad(x: seq<real>) returns (x1: seq<real>)
+          requires 0 < |x|
+          ensures |x1| == |x| - 1
+          ensures forall k :: 0 <= k < |x1| ==> x1[k] == x[k+1]''', []),
+
+    'mergeBitTrigger' : Method('''lemma {:axiom} mergeBitTrigger(x: seq<seq<bv1>>, x1: seq<seq<bv1>>, n:nat)
+          requires forall k :: 0 <= k < |x| ==> |x[k]| == n
+          //requires forall k :: 0 <= k < |x| ==> castBVInt(x[k]) == k
+          requires |x1| == |x| * 2
+          requires forall k :: 0 <= k < |x1| ==> |x1[k]| == n + 1
+          requires forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k][0..n], n)
+          requires forall k :: |x| <= k < |x1| ==> samebit(x[k-|x|], x1[k][0..n], n) 
+          requires forall k :: 0 <= k < |x| ==> x1[k][n] == 0
+          requires forall k :: |x| <= k < |x1| ==> x1[k][n] == 1
+          ensures forall k :: 0 <= k < |x1| ==> castBVInt(x1[k]) == k''', ['castBVInt', 'samebit']),
+
+    'duplicateMergeBitEn' : Method('''method {:axiom} duplicateMergeBitEn(x: seq<seq<bv1>>) returns (x1: seq<seq<bv1>>)
+          ensures |x1| == |x| * 2
+          ensures forall k :: 0 <= k < |x| ==> |x1[k]| == |x[k]|
+          ensures forall k :: |x| <= k < |x1| ==> |x1[k]| == |x[k - |x|]|
+          ensures forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k], |x[k]|)
+          ensures forall k :: 0 <= k < |x| ==> castBVInt(x1[k]) == castBVInt(x[k])
+          ensures forall k :: |x| <= k < |x1| ==> samebit(x[k - |x|], x1[k], |x[k - |x|]|)
+          ensures forall k :: |x| <= k < |x1| ==> castBVInt(x1[k]) == castBVInt(x[k - |x|])''', ['castBVInt', 'samebit']),
+    'bool2BV1' : Method(''''function {:axiom} bool2BV1(b : bool) : seq<bv1>
+            ensures castBVInt(bool2BV1(b)) == if b then 1 else 0
+            ensures |bool2BV1(b)| == 1''', ['castBVInt'])
   }
   
   @staticmethod
