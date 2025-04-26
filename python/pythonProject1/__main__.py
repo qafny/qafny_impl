@@ -14,7 +14,7 @@ from TypeCollector import TypeCollector # usage: collecting the type environment
 from TypeChecker import TypeChecker # usage: type checking the parsed file
 from ProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one
 from PrinterVisitor import PrinterVisitor # usage: outputting string text dafny code from a dafny (TargetProgrammer) AST
-from DafnyLibrary import DafnyLibrary # usage: generating template library functions for verification
+from dafny import DafnyLibrary # usage: generating template library functions for verification
 
 import subprocess # usage: calling dafny to verify generated code
 
@@ -95,9 +95,11 @@ if __name__ == "__main__":
     # the file to verify
     cli_parser.add_argument('filename', nargs='?', default=DEFAULT_FILENAMES, help="the location of the qafny file to verify. if not specified, qafny verifies all the files in DEFAULT_FILENAMES from __main__.py")
     # debug flag to print dafny code generated from the file
-    # the default behavior is to pipe the code to stdin
     cli_parser.add_argument('-d', '--print-dafny', action='store_true', help='print out the dafny code when verifying')
+    # argument to write the generated dafny code to a file
+    # the default behavior is to just pipe the code into dafny, but this argument will ensure run dafny on the output file
     cli_parser.add_argument('-o', '--output', nargs='?', const='', help='if specified, write the generated dafny code to the file specified by OUTPUT. if not provided, the name is based on the input filename')
+    # skip the verification step (if you just want to generate dafny)
     cli_parser.add_argument('-x', '--skip-verify', action='store_true', help='don\'t verify the code in dafny, useful when developing')
     args = cli_parser.parse_args()
     
@@ -120,7 +122,7 @@ if __name__ == "__main__":
         # parse
         parser = ExpParser(token_stream)
         # abstract syntax tree
-        ast = parser.program() # program is the root node in the tree
+        ast = parser.program() # program is the root node in the tree as defined in Exp.g4
         if parser.getNumberOfSyntaxErrors() > 0:
             print(f"Failed to parse: {blue_hr_filename}")
         else:
@@ -135,6 +137,7 @@ if __name__ == "__main__":
             # Transform ANTLR AST to Qafny AST
             transformer = ProgramTransformer()
             qafny_ast = transformer.visit(ast)
+            print(qafny_ast)
 
             # Collect the types + kinds in the AST
             collect_kind = CollectKind()
