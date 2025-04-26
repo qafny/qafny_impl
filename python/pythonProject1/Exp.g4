@@ -193,7 +193,17 @@ numexp: Number | TSub Number;
 
 typeT : baseTy | (baseTy | '(' baseTy (',' baseTy)* ')') '->' typeT;
 
-baseTy : TNat | TReal | TInt | TBool | TBV | '[' baseTy ']' | 'array' '<' baseTy '>' | 'set' '<' baseTy '>' | '[' baseTy ','  arithExpr ']' | baseTy '[' arithExpr ']' | 'Q' '[' arithExpr ']';
+baseTy: TNat # NaturalType 
+      | TReal # RealType
+      | TInt # IntType
+      | TBool # BoolType
+      | TBV # BitVectorType
+      | '[' baseTy ']' # ArrayType
+      | 'array' '<' baseTy '>' # DynamicArrayType
+      | 'set' '<' baseTy '>' # SetType
+      | '[' baseTy ','  arithExpr ']' # ArrayWithSizeType
+      | baseTy '[' arithExpr ']' # ArrayWithSizeType
+      | 'Q' '[' arithExpr ']' # QBitStringType;
 
 qty : Nor | Had | En | En '(' arithExpr ')' | AA;
 
