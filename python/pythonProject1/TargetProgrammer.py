@@ -283,7 +283,7 @@ class DXList(DXAExp):
     def exprs(self):
         return self._exprs
     
-class DXLength(DXVar):
+class DXLength(DXAExp):
 
     def __init__(self, var : DXVar):
         self._var = var

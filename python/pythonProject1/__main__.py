@@ -14,7 +14,8 @@ from TypeCollector import TypeCollector # usage: collecting the type environment
 from TypeChecker import TypeChecker # usage: type checking the parsed file
 from ProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one
 from PrinterVisitor import PrinterVisitor # usage: outputting string text dafny code from a dafny (TargetProgrammer) AST
-from dafny import DafnyLibrary # usage: generating template library functions for verification
+from DafnyLibrary import DafnyLibrary # usage: generating template library functions for verification
+from CleanupVisitor import CleanupVisitor # usage: perforaming final cleanup operations before verifying such as convertiong x ^ y to powN(x, y)
 
 import subprocess # usage: calling dafny to verify generated code
 
@@ -136,8 +137,7 @@ if __name__ == "__main__":
 
             # Transform ANTLR AST to Qafny AST
             transformer = ProgramTransformer()
-            qafny_ast = transformer.visit(ast)
-            print(qafny_ast)
+            qafny_ast = transformer.visitProgram(ast)
 
             # Collect the types + kinds in the AST
             collect_kind = CollectKind()
@@ -150,6 +150,10 @@ if __name__ == "__main__":
             dafny_transfer = ProgramTransfer(collect_kind.get_kenv(), type_collector.get_env())
             dafny_ast = dafny_transfer.visit(qafny_ast)
 
+            # Pass the result through a Cleanup Visitor to perform final cleanup operations
+            cleanup = CleanupVisitor()
+            dafny_ast = cleanup.visitProgram(dafny_ast)
+
             # Convert Dafny AST to string
             target_printer_visitor = PrinterVisitor()
             dafny_code = ''
@@ -159,7 +163,8 @@ if __name__ == "__main__":
 
             # this is required to print out the generated lambda functions
             for i in dafny_transfer.addFuns:
-                dafny_code += target_printer_visitor.visitMethod(i) + "\n"
+                ci = cleanup.visit(i)
+                dafny_code += target_printer_visitor.visitMethod(ci) + "\n"
 
             # now, add the actual code
             dafny_code += target_printer_visitor.visit(dafny_ast)
