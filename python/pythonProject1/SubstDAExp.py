@@ -61,6 +61,8 @@ class SubstDAExp(AbstractTargetVisitor):
                 return self.visitIfExp(ctx)
             case DXCast():
                 return self.visitCast(ctx)
+            case DXReal():
+                return self.visitReal(ctx)
             
             
 
@@ -153,3 +155,6 @@ class SubstDAExp(AbstractTargetVisitor):
     
     def visitLength(self, ctx: DXLength):
         return DXLength(ctx.var().accept(self))
+    
+    def visitReal(self, ctx: DXReal):
+        return super().visitReal(ctx)

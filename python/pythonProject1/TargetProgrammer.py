@@ -171,7 +171,7 @@ class DXUni(DXAExp):
         return self._next
 
     
-class DXCast(DXAexp):
+class DXCast(DXAExp):
     '''Represents a dafny cast, i.e. x as real'''
 
     def __init__(self, aexp: DXAExp, type: DXType):

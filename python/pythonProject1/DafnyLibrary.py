@@ -25,7 +25,7 @@ class DafnyLibrary:
     'castBVInt': '''function {:axiom} castBVInt(x : seq<bv1>) : nat
                 ensures castBVInt(x) >= 0''',
     'pow2': '''function {:axiom} pow2(N:nat): int
-                ensures pow2(N) > 0''',
+                  ensures pow2(N) > 0''',
     'abs' : '''function {:axiom} abs(n : int) : nat
                 ensures abs(n) == if n >= 0 then n else -n''',
 
@@ -34,7 +34,7 @@ class DafnyLibrary:
     'powNTimesMod' : '''lemma {:axiom} powNTimesMod()
           ensures forall k: nat, j: nat, l : nat, N:nat :: N > 0 ==> powN(k, j) * (powN(k, l) % N) % N == powN(k, j + l) % N''',
 
-    'pow2Mul' : Method('''lemma {:axiom} pow2Mul()
+    'pow2mul' : Method('''lemma {:axiom} pow2mul()
                 ensures forall k : nat, j : nat :: pow2(k) * pow2(j) == pow2(k + j)''', ['pow2']),
 
     'sqrtMul' : Method('''lemma {:axiom} sqrtmul()

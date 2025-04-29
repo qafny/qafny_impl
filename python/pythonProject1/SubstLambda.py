@@ -60,6 +60,10 @@ class SubstLambda(AbstractTargetVisitor):
                 return self.visitIndex(ctx)
             case DXNum():
                 return self.visitNum(ctx)
+            case DXReal():
+                return self.visitReal(ctx)
+            case DXLength():
+                return self.visitLength(ctx)
             
             
 
@@ -257,4 +261,10 @@ class SubstLambda(AbstractTargetVisitor):
         l_res = self.lamb(ctx)
         if l_res is None:
             return DXLength(ctx.var().accept(self))
+        return l_res
+    
+    def visitReal(self, ctx: DXReal):
+        l_res = self.lamb(ctx)
+        if l_res is None:
+            return DXReal(ctx.real())
         return l_res
