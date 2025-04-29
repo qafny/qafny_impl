@@ -6,11 +6,9 @@ method {:axiom} sf(n:nat, p: Q[1], q: Q[n], phi: Q[n])
   requires { p[0], q[0 , n) : en(2) ↦ ⊗ phi }
   ensures { p[0], q[0 , n) : en(2) ↦ ⊗ phi }
   
-method {:axiom} U(n:nat, p: Q[1], q: Q[n], phi: Q[n], alpha: Q[n])
-  requires { phi == ∑ k ∈ [0, 2) . ∑ j ∈ [0, 2^n) . 1/sqrt(2) * a(j) * omega(f(j),2^n) | k ⟩ | j ⟩ }
-  requires { alpha == ∑ k ∈ [0, 2) . ∑ j ∈ [0, 2^n) . 1/sqrt(2) * a(j) | k ⟩ | j ⟩ }
-  requires { p[0], q[0 , n) : en(2) ↦ ⊗ phi }
-  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ phi }
+method {:axiom} U(n:nat, q: Q[n], f : nat -> real)
+  requires { q[0 , n) : nor ↦ | j ⟩ }
+  ensures { q[0 , n) : nor ↦ omega(f(j), 2^n) | j ⟩ }
 
 method NonBoolean(q : Q[n], p: Q[1], n: nat, m: nat, f: nat -> real) returns (y: nat, prob: real)
     requires { p[0] : nor ↦ |0⟩ }
