@@ -38,13 +38,17 @@ class TestProgramTransformer(TestSuite):
     def test_program_transformer(self):
         for filename in suite.TEST_FILES:
             self.start_case()
-            
+
             antlr_ast = self.parse_file(filename)
             qafny_ast = self.convert_file(antlr_ast)
 
             self.end_case(True, filename, error_context)
 
 
-if __name__ == '__main__':
+def run():
     test_suite = TestProgramTransformer()
     test_suite.run()
+
+
+if __name__ == '__main__':
+    run()

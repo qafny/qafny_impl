@@ -134,7 +134,7 @@ class TestSuite:
                 print(stylize('F', fore('red')), end='')
 
             # log failure
-            self.failed_cases.append(self.CaseInfo(context, standard_output, standard_error))
+            self.failed_cases.append(self.CaseInfo(error_context, standard_output, standard_error))
 
             if self.fail_fast:
                 raise EarlyOut()

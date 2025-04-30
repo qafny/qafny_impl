@@ -1,16 +1,19 @@
 grammar Exp;
 
-// root-node of the qafny AST
+// Root node for the ANTLR version of the Qafny AST
 program: (topLevel)+ EOF;
 
-// include statements or methods
-topLevel: TInclude | method | function | lemma;
+// Top-level statements concist of include statements, methods, functions, lemmas, and predicates
+topLevel: TInclude | method | function | lemma | predicate;
 
 method: 'method' ('{' ':' Axiom '}')? ID '(' bindings ')' ('returns' returna)? conds ('{' stmts '}')?;
 
 function : Function ('{' ':' Axiom '}')? ID '(' bindings ')' (':' typeT)? ('{' arithExpr '}')?;
 
 lemma : Lemma ('{' ':' Axiom '}')? ID '(' bindings ')' conds;
+
+// a function that exclusively returns a boolean, can be used for conditions, including invariants
+predicate : Predicate ID '(' bindings ')' '{' arithExpr '}';
 
 returna: '(' bindings ')';
 
@@ -33,7 +36,7 @@ bexp: logicOrExp | qbool | ID | boolLiteral;
 
 qbool: qrange | '{' locus '}' comOp arithExpr | arithExpr comOp arithExpr '@' idindex | 'not' qbool;
 
-logicImply: allspec | allspec '==>' logicImply;
+logicImply: allspec | allspec '==>' logicImply | qunspec;
 
 allspec : logicOrExp | 'forall' ID '::' chainBExp '==>' logicImply | 'forall' ID TIn crange '==>' logicImply;
 
@@ -66,10 +69,10 @@ partspec: 'part' '(' (arithExpr ',' arithExpr ',' arithExpr ',' arithExpr | arit
 
 // custom predicate used in the part function
 // amplitide ':' predicate
-partpred: amplitude=arithExpr ':' predicate=bexp;
+partpred: amplitude=arithExpr ':' pred=bexp;
 
 // custom used in the part function
-partsection: amplitude=arithExpr ':' ket predicate=fcall;
+partsection: amplitude=arithExpr ':' ket pred=fcall;
 partsections: partsection ('+' partsection);
 
 tensorall: '⊗' ID '.' manyket | '⊗' ID TIn crange '.' manyket;
@@ -127,7 +130,7 @@ arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | 
 
 arithAtomic: numexp | ID | TSub arithExpr | boolLiteral
           | '(' arithExpr ')'
-          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | notExpr | setInstance | qrange;
+          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | notExpr | setInstance | qrange | ketCallExpr;
 
 sinExpr : 'sin' '(' arithExpr ')' | 'sin' arithAtomic;
 
@@ -140,6 +143,8 @@ notExpr : 'not' '(' arithExpr ')';
 absExpr : '|' arithExpr '|' ;
 
 omegaExpr : ('ω' | 'omega') '(' arithExpr (',' arithExpr)? (',' arithExpr)? ')' ;
+
+ketCallExpr : 'ket' '(' arithExpr ')';
 
 setInstance : '[' (arithExpr (',' arithExpr)*)? ']';
 
@@ -222,6 +227,8 @@ Axiom: 'axiom';
 Function: 'function';
 
 Lemma: 'lemma';
+
+Predicate: 'predicate';
 
 // keywords used in conditions
 Ensures : 'ensures';
