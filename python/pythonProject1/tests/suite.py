@@ -2,6 +2,7 @@ import time
 import sys
 from io import StringIO
 import traceback
+import argparse
 
 from colored import stylize, fore
 
@@ -69,15 +70,39 @@ class TestSuite:
             self.std_output = std_output
             self.std_error = std_error
 
+    def parse_cli(self):
+        # extremely simple argument parsing
+        cl_parser = argparse.ArgumentParser()
+        # flag to indicate whether fail_fast should be set to true
+        cl_parser.add_argument('-f', '--fail-fast', action='store_true', help='stop all tests as soon as one fails')
+        # flag to indicate whether verbose should be set to true (extra debug information)
+        cl_parser.add_argument('-v', '--verbose', action='store_true', help='print out more information about test passing/failing')
+        
+        return cl_parser.parse_args()
+
+    def constructor_fallbacks(self, fail_fast: bool, verbose: bool):
+        args = self.parse_cli()
+
+        if args.fail_fast is None:
+            args.fail_fast = fail_fast
+        if args.verbose is None:
+            args.verbose = verbose
+
+        return args
+
     def __init__(self, *, fail_fast: bool = False, verbose: bool = False):
+        '''Creates a new test suite. This constructor should be called by sub-classes.'''
+        # parse arguments (if there are any)
+        ctor_args = self.constructor_fallbacks(fail_fast, verbose)
+
         # A number indicating the total number of test cases run
         self.total_cases = 0
         # A number indicating the total number of successful test cases
         self.successful_cases = 0
         # A flag indicating whether the test suite should bail at first failure
-        self.fail_fast = fail_fast
+        self.fail_fast = ctor_args.fail_fast
         # A flag indicating whether the output should be verbose
-        self.verbose = verbose
+        self.verbose = ctor_args.verbose
         # An array tracking all of the failed test cases, their outputs, and context messages
         self.failed_cases = []
 
@@ -137,9 +162,10 @@ class TestSuite:
             self.failed_cases.append(self.CaseInfo(error_context, standard_output, standard_error))
 
             if self.fail_fast:
-                raise EarlyOut()
+                raise self.EarlyOut()
 
-    def run(self):
+    def run(self) -> bool:
+        '''Runs the test suite, returns true if all tests passed, false if any test(s) failed.'''
         start = time.time()
 
         for test_method_name in self.__test_methods:
@@ -147,6 +173,7 @@ class TestSuite:
             try:
                 test_method()
             except self.EarlyOut as e:
+                print('')
                 break
             except Exception as e:
                 standard_output = ''
@@ -173,3 +200,5 @@ class TestSuite:
         emoji = stylize('✓', fore('green')) if self.successful_cases == self.total_cases else stylize('🞫', fore('red'))
         elapsed_time_fmt = stylize('{0:.6g}s'.format(end - start), fore('yellow'))
         print(f'[{self.successful_cases}/{self.total_cases}] {emoji} - {elapsed_time_fmt}')
+
+        return self.successful_cases == self.total_cases
