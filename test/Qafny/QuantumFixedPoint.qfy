@@ -30,6 +30,7 @@ method FixedPtSearch(q : Q[1], p: Q[n], n: nat, f: nat -> bool, N: nat) returns 
     r[0] *= new;
     if (q[0]) { dataAt(f, n, p, r);}
     y,p1 := measure(r[0]);
+    k := k + 1;
   }
   x, p2 := measure(p[0, n));
 }
