@@ -22,11 +22,11 @@ method {:axiom} sf(n:nat, p: Q[1], q: Q[n], a:nat -> real)
   
 lemma {:axiom} sfalpha(n:nat, p: Q[1], q: Q[n], a:nat -> real, f:nat -> real, theta:real)
   requires { p[0], q[0 , n) : en(2) ↦ ⊗ alpha(n, a, f) }
-  ensures { p[0], q[0 , n) : en(2) ↦2 cos(theta) ⊗ phi(n, a) + omega(1,2) ⊗ alpha(n, a, f) }
+  ensures { p[0], q[0 , n) : en(2) ↦ 2 * cos(theta) ⊗ phi(n, a) + omega(1,2) ⊗ alpha(n, a, f) }
   
 lemma {:axiom} sfbeta(n:nat, p: Q[1], q: Q[n], a:nat -> real, f:nat -> real,theta:real)
   requires { p[0], q[0 , n) : en(2) ↦ ⊗ beta(n, a, f) }
-  ensures { p[0], q[0 , n) : en(2) ↦2 cos(theta) ⊗ phi(n, a) + omega(1,2) ⊗ beta(n, a, f) }
+  ensures { p[0], q[0 , n) : en(2) ↦ 2 * cos(theta) ⊗ phi(n, a) + omega(1,2) ⊗ beta(n, a, f) }
   
 method {:axiom} U(n:nat, q: Q[n], f : nat -> real)
   requires { q[0 , n) : nor ↦ | j ⟩ }
@@ -34,15 +34,15 @@ method {:axiom} U(n:nat, q: Q[n], f : nat -> real)
 
 lemma {:axiom} cuphi(n:nat, p:Q[1], q: Q[n], a:nat -> real, f : nat -> real)
   requires { p[0], q[0 , n) : en(2) ↦ ⊗ phi(n, a) }
-  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ alpha(n:nat, a, f) }
+  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ alpha(n, a, f) }
   
 lemma {:axiom} cubeta(n:nat, p:Q[1], q: Q[n], f : nat -> real)
-  requires { p[0], q[0 , n) : en(2) ↦ ⊗ beta(n:nat, a, f) }
-  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ phi(n:nat, a) }
+  requires { p[0], q[0 , n) : en(2) ↦ ⊗ beta(n, a, f) }
+  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ phi(n, a) }
   
 lemma {:axiom} invcuphi(n:nat, p:Q[1], q: Q[n], a:nat -> real, f : nat -> real)
   requires { p[0], q[0 , n) : en(2) ↦ ⊗ phi(n, a) }
-  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ beta(n:nat, a, f) }
+  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ beta(n, a, f) }
   
 lemma {:axiom} invcualpha(n:nat, p:Q[1], q: Q[n], f : nat -> real)
   requires { p[0], q[0 , n) : en(2) ↦ ⊗ alpha(n, a, f) }
@@ -54,8 +54,8 @@ method NonBoolean(q : Q[n], p: Q[1], n: nat, m: nat, a: nat -> real, f: nat -> r
 { 
     
     for j in [0, m)
-      invariant j % 2 == 1 ==> { p[0], q[0 , n) : en(2) ↦  sin((k+1) * theta) / sin(theta) ⊗ phi(n, a) + omega(1,2) * sin(k * theta) / sin(theta) ⊗ alpha(n, a, f) }
-      invariant j % 2 == 0 ==> { p[0], q[0 , n) : en(2) ↦  sin((k+1) * theta) / sin(theta) ⊗ phi(n, a) + omega(1,2) * sin(k * theta) / sin(theta) ⊗ beta(n, a, f) }
+      invariant j % 2 == 1 ==> p[0], q[0 , n) : en(2) ↦  sin((k+1) * theta) / sin(theta) ⊗ phi(n, a) + omega(1,2) * sin(k * theta) / sin(theta) ⊗ alpha(n, a, f)
+      invariant j % 2 == 0 ==> p[0], q[0 , n) : en(2) ↦  sin((k+1) * theta) / sin(theta) ⊗ phi(n, a) + omega(1,2) * sin(k * theta) / sin(theta) ⊗ beta(n, a, f)
     {
 
       if (j % 2 == 0)

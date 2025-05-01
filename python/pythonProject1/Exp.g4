@@ -27,10 +27,7 @@ stmts : (stmt)*;
 
 stmt: asserting | casting | varcreate | assigning | qassign | qcreate | measure | measureAbort | ifexp | forexp | whileexp | (fcall ';') | return | break;
 
-spec : qunspec | logicImply | chainBExp;
-
-// allows quantum inner loops
-qallspec : 'forall' ID '::' chainBExp '==>';
+spec : (qunspec | logicImply | chainBExp) | '{' (qunspec | logicImply | chainBExp) '}';
 
 bexp: logicOrExp | qbool | ID | boolLiteral;
 
@@ -55,7 +52,7 @@ comOp :  GE | LE | EQ | NE | LT | GT;
 
 qtypeCreate: qty '↦' qspec ('+' qspec)*;
 
-qunspec : '{' (qallspec* locus ':' qtypeCreate ('⊗' qallspec* locus ':' qtypeCreate)* | logicImply) '}';
+qunspec : locus ':' qtypeCreate ('⊗' locus ':' qtypeCreate)*;
 
 // see SWAPTest.qfy for an instance where the amplitude is specified before the sum spec
 qspec : tensorall | manyketpart | arithExpr manyketpart | (arithExpr '.')? sumspec | arithExpr;
