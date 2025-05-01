@@ -129,11 +129,11 @@ arithAtomic: numexp | ID | TSub arithExpr | boolLiteral
           | '(' arithExpr ')'
           | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | notExpr | setInstance | qrange | ketCallExpr;
 
-sinExpr : 'sin' '(' arithExpr ')' | 'sin' arithAtomic;
+sinExpr : 'sin' ('^' Number)? '(' arithExpr ')' | 'sin' arithAtomic;
 
-cosExpr : 'cos' '(' arithExpr ')' | 'cos' arithAtomic;
+cosExpr : 'cos' ('^' Number)? '(' arithExpr ')' | 'cos' arithAtomic;
 
-sqrtExpr : 'sqrt' '(' arithExpr ')' | 'sqrt' arithAtomic;
+sqrtExpr : 'sqrt' ('^' Number)? '(' arithExpr ')' | 'sqrt' arithAtomic;
 
 notExpr : 'not' '(' arithExpr ')';
 
@@ -207,7 +207,9 @@ baseTy: TNat # NaturalType
       | baseTy '[' arithExpr ']' # ArrayWithSizeType
       | 'Q' '[' arithExpr ']' # QBitStringType;
 
-qty : Nor | Had | En | En '(' arithExpr ')' | AA;
+qty : Nor | Had | En | En '(' arithExpr ')' | aa_type;
+
+aa_type : AA | AA '(' qrange ')';
 
 addOp: TAdd | TSub;
 
