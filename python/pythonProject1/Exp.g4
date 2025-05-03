@@ -23,11 +23,11 @@ reen: Ensures | Requires;
 
 loopConds : (Invariant spec | Decreases arithExpr | Separates locus)*;
 
-stmts : (stmt)*;
+stmts : stmt*;
 
 stmt: asserting | casting | varcreate | assigning | qassign | qcreate | measure | measureAbort | ifexp | forexp | whileexp | (fcall ';') | return | break;
 
-spec : (qunspec | logicImply | chainBExp) | '{' (qunspec | logicImply | chainBExp) '}';
+spec : qunspec | logicImply | chainBExp | '{' (qunspec | logicImply | chainBExp) '}';
 
 bexp: logicOrExp | qbool | ID | boolLiteral;
 
@@ -55,7 +55,7 @@ qtypeCreate: qty '↦' qspec ('+' qspec)*;
 qunspec : locus ':' qtypeCreate ('⊗' locus ':' qtypeCreate)*;
 
 // see SWAPTest.qfy for an instance where the amplitude is specified before the sum spec
-qspec : tensorall | manyketpart | arithExpr manyketpart | (arithExpr '.')? sumspec | arithExpr;
+qspec : tensorall | arithExpr? manyketpart | (arithExpr '.')? sumspec;
 
 // 4 different calls for the partition function:
 // 1. part(n, function_predicate, true_amplitude, false_amplitude)
@@ -113,7 +113,7 @@ ketArithExpr: ketCifexp | partspec | '(' ketArithExpr ')';
 // allows partspecs for sum spec expressions
 ketCifexp: If bexp 'then' ketArithExpr 'else' ketArithExpr;
 
-manyketpart: (ket | ketArithExpr | '(' arithExpr? ket (',' ket)* ')' | fcall)+;
+manyketpart: (ket | ketArithExpr | '(' arithExpr? ket (',' ket)* ')' | fcall | ID)+;
 
 forexp : 'for' ID TIn crange (('with' | '&&') bexp)? loopConds '{' stmts '}';
 
@@ -147,7 +147,7 @@ setInstance : '[' (arithExpr (',' arithExpr)*)? ']';
 
 expr : SHad | SQFT | RQFT | lambdaT | ID;
 
-lambdaT : 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' omegaExpr manyket ')'
+lambdaT: 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' omegaExpr manyket ')'
        | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>'  manyket ')'
        | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' omegaExpr ')'
        | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' fcall ')'
@@ -157,6 +157,7 @@ dis : 'dis' '(' expr ',' arithExpr ',' arithExpr ')';
 
 manyket: (ket)+;
 
+// TODO: what does the subtraction mean?
 ket : TSub? '|' qstate (',' qstate)* '⟩' | '⊗' arithExpr;
 
 ketsum : maySum arithExpr;

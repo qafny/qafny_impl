@@ -3,6 +3,7 @@ import sys
 from io import StringIO
 import traceback
 import argparse
+from enum import Enum
 
 from colored import stylize, fore
 
@@ -43,6 +44,7 @@ TEST_FILES = [
     'BV',
     'FirstAmpEstimate',
     # 'FixedPtSearch', # currently unfinished
+    # 'QuantumFixedPoint', # unknown if finished
     'FOQA',
     # 'HSG', # marked as todo, should we revisit?
     # 'LCU',
@@ -65,10 +67,27 @@ class TestSuite:
     class CaseInfo:
         '''Helper record class to track important information about each test case'''
 
-        def __init__(self, context: str, std_output: str, std_error: str):
+        class Type(Enum):
+            PASS = 1
+            FAIL = 2
+
+        def __init__(self, context: str, std_output: str, std_error: str, type: Type = Type.FAIL):
             self.context = context
             self.std_output = std_output
             self.std_error = std_error
+            self.type = type
+
+        def __str__(self):
+            color = 'green' if self.type == TestSuite.CaseInfo.Type.PASS else 'red'
+            message = 'PASS' if self.type == TestSuite.CaseInfo.Type.PASS else 'FAIL'
+
+            result = stylize('====================================================================\n', fore(color))
+            result += stylize(f'[{message}]', fore(color)) + ' ' + self.context + '\n'
+            result += stylize('--------------------------------------------------------------------\n', fore(color))
+            result += self.std_output + '\n'
+            result += self.std_error + '\n'
+
+            return result
 
     def parse_cli(self):
         # extremely simple argument parsing
@@ -77,23 +96,27 @@ class TestSuite:
         cl_parser.add_argument('-f', '--fail-fast', action='store_true', help='stop all tests as soon as one fails')
         # flag to indicate whether verbose should be set to true (extra debug information)
         cl_parser.add_argument('-v', '--verbose', action='store_true', help='print out more information about test passing/failing')
-        
+        # flag to indicate whether to also print standard output and standard error from passing cases
+        cl_parser.add_argument('-s', '--force-output', action='store_true', help='print stdout and stderr even from passing cases')
+
         return cl_parser.parse_args()
 
-    def constructor_fallbacks(self, fail_fast: bool, verbose: bool):
+    def constructor_fallbacks(self, fail_fast: bool, verbose: bool, force_output: bool):
         args = self.parse_cli()
 
         if args.fail_fast is None:
             args.fail_fast = fail_fast
         if args.verbose is None:
             args.verbose = verbose
+        if args.force_output is None:
+            args.force_output = force_output
 
         return args
 
-    def __init__(self, *, fail_fast: bool = False, verbose: bool = False):
+    def __init__(self, *, fail_fast: bool = False, verbose: bool = False, force_output: bool = False):
         '''Creates a new test suite. This constructor should be called by sub-classes.'''
         # parse arguments (if there are any)
-        ctor_args = self.constructor_fallbacks(fail_fast, verbose)
+        ctor_args = self.constructor_fallbacks(fail_fast, verbose, force_output)
 
         # A number indicating the total number of test cases run
         self.total_cases = 0
@@ -103,8 +126,12 @@ class TestSuite:
         self.fail_fast = ctor_args.fail_fast
         # A flag indicating whether the output should be verbose
         self.verbose = ctor_args.verbose
-        # An array tracking all of the failed test cases, their outputs, and context messages
-        self.failed_cases = []
+        # A flag indicating whether stdout/stderr should always be printed (regardless of whether the case succeeds/fails)
+        self.force_output = ctor_args.force_output
+        # An array tracking the test cases, their outputs, and context messages
+        # If force_output is set to true, it will contain CaseInfo structs for all of the test cases
+        # If force_output is set to false, it will contain CaseInfo structs of the failed cases
+        self.cases = []
 
         # private instances
         # An array of strings of all the test cases on this class
@@ -151,6 +178,10 @@ class TestSuite:
             else:
                 print(stylize('.', fore('green')), end='')
 
+            if self.force_output:
+                # log success (context only used on fail)
+                self.cases.append(self.CaseInfo(name, standard_output, standard_error, TestSuite.CaseInfo.Type.PASS))
+
             self.successful_cases += 1
         else:
             if self.verbose:
@@ -159,7 +190,7 @@ class TestSuite:
                 print(stylize('F', fore('red')), end='')
 
             # log failure
-            self.failed_cases.append(self.CaseInfo(error_context, standard_output, standard_error))
+            self.cases.append(self.CaseInfo(error_context, standard_output, standard_error))
 
             if self.fail_fast:
                 raise self.EarlyOut()
@@ -176,26 +207,23 @@ class TestSuite:
                 print('')
                 break
             except Exception as e:
+                print('')
                 standard_output = ''
                 standard_errror = ''
                 if self.__capturing:
                     standard_output, standard_error = self.end_capture()
 
                 exception_info = traceback.format_exc()
-                print(stylize(f'Error happened whilst running test case: {test_method_name}\n{exception_info}', fore('red')))
+                print(stylize(f'Error happened whilst running test case: {test_method_name}\n', fore('red'))) # {exception_info}
                 
                 self.total_cases += 1
-                self.failed_cases.append(self.CaseInfo(f'Exception occured whilst testing.\n{exception_info}', standard_output, standard_error))
+                self.cases.append(self.CaseInfo(f'Exception occured whilst testing: {test_method_name}', standard_output, standard_error + exception_info))
             print('')
 
         end = time.time()
 
-        for failed_case in self.failed_cases:
-            print(stylize('====================================================================', fore('red')))
-            print(stylize(f'[FAIL]', fore('red')) + ' ' + failed_case.context)
-            print(stylize('--------------------------------------------------------------------', fore('red')))
-            print(failed_case.std_output)
-            print(failed_case.std_error)
+        for case in self.cases:
+            print(case)
 
         emoji = stylize('✓', fore('green')) if self.successful_cases == self.total_cases else stylize('🞫', fore('red'))
         elapsed_time_fmt = stylize('{0:.6g}s'.format(end - start), fore('yellow'))
