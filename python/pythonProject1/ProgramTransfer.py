@@ -626,7 +626,9 @@ class ProgramTransfer(ProgramVisitor):
             if not vs and isinstance(qty, TyHad) and isinstance(ctx.qty(), TyEn):
                 newvars = makeVars(ctx.locus(),ctx.qty(),self.counter)
                 result = [DXInit(x) for x in newvars]
-                result += [DXAssign(newvars,DXCall("hadEn", makeVars(ctx.locus(),TyHad(),num)))]
+                newampvar = [x for x in newvars if x.ID() == 'amp']
+                othervars = [x for x in newvars if x.ID() != 'amp']
+                result += [DXAssign(newampvar + othervars,DXCall("hadEn", makeVars(ctx.locus(),TyHad(),num)))]
                 self.libFuns.add('hadEn')
                 self.removeLocus(num)
                 self.varnums = [(loc,ctx.qty(),self.counter)] + self.varnums
@@ -1352,8 +1354,8 @@ class ProgramTransfer(ProgramVisitor):
                 ifstmts += [DXAssign([tmpvars['amp']], DXCall('ampMul', [tmpvars['amp'], DXCall('pow2', [DXLength(application_range_old_var)]), application_range_old_var]))]
                 stmts += [DXIf(ifbexp, ifstmts, [])]
 
-                loop_values[application_range_id] = DXBind('tmp' + str(self.counter + nqty.flag().num() - loop_num))
-                loop_values['amp'] = DXBin('*', DXBin('/', DXNum(1.0), DXCall('sqrt', [DXCast(SType('real'),DXCall('pow2', [DXLength(loop_newVars[application_range_id])]))])), DXCall('omega',[DXCall('castBVInt', [loop_newVars[application_range_id]]), DXNum(2)]))
+                loop_values[application_range_id] = DXBind('tmp', SType('nat'), self.counter + nqty.flag().num() - loop_num)
+                loop_values['amp'] = DXBin('*', DXBin('/', DXNum(1.0), DXCall('sqrt', [DXCast(SType('real'),DXCall('pow2', [DXLength(loop_newVars[application_range_id])]))])), DXCall('omega',[DXCall('castBVInt', [loop_oldVars[application_range_id]]), DXNum(2)]))
 
             else:
                 if is_qcomp:
@@ -1474,12 +1476,12 @@ class ProgramTransfer(ProgramVisitor):
 
 
 
-        def buildWhile(num, loop_newVars):
+        def buildWhile(wctx, num, loop_oldVars, loop_newVars, nLoc, nqty, nnum, fqty):
 
             looping_var = DXBind('tmp', None, num)
 
             stmts = []
-            nonlocal loop_oldVars
+
             loop_oldVars = {x : DXIndex(loop_oldVars[x], looping_var) for x in loop_oldVars}
             
             bool_exp_old_var = [loop_oldVars[x].bind() for x in loop_oldVars if x == bool_exp_id][0]
@@ -1491,17 +1493,16 @@ class ProgramTransfer(ProgramVisitor):
             invariants += [DXLogic('<=', DXLogic('<=', DXNum(0), looping_var), DXLength(loop_oldVars[x].bind())) for x in loop_oldVars] 
             invariants += [DXLogic('==', DXLength(loop_newVars[x]), looping_var) for x in loop_newVars]
 
-            #invariants += [self.genAllSpec(DXBind('tmp', None, self.counter), )] --> To do - Generate invariants forall the new sequences 
-
+            #inner most while loop
             if num == nqty.flag().num() - 1:
                 hadamard_exist_flag = False
                 tmp_vars = {x : DXBind('tmp_' + x) for x in loop_oldVars}
                 inv_dict = {x : [] for x in loop_oldVars}
                 loop_values = {x : loop_oldVars[x] for x in loop_oldVars}
-                for qstmt in ctx.stmts():
+                for qstmt in wctx.stmts():
                     if (isinstance(qstmt, QXQAssign) and isinstance(qstmt.exp(), QXOracle)) or (isinstance(qstmt, QXQAssign) and isinstance(qstmt.exp(), QXSingle) and qstmt.exp().op() == 'H'):
                         hadamard_exist_flag = True
-                        transfer_had_lambda(stmts, qstmt, ctx, loop_oldVars, loop_newVars, tmp_vars, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, inv_dict, loop_values, num)
+                        transfer_had_lambda(stmts, qstmt, wctx, loop_oldVars, loop_newVars, tmp_vars, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, inv_dict, loop_values, num)
 
                     elif isinstance(qstmt, QXIf):
                         is_sub_qcomp = False
@@ -1544,13 +1545,17 @@ class ProgramTransfer(ProgramVisitor):
                             stmts.append(DXWhile(sub_while_predicate, sub_stmts, sub_invariants))
 
                             stmts += [DXAssign([tmp_vars[x]], sub_loop_newVars[x]) for x in tmp_vars]
+                        
+                        #if hadamard_exist_flag:
+                            #sub_loop_newVars = {x : DXBind('tmp_' + str(num + 1) + x, SeqType(SType('bv1')), num + 1) for x in tmp_vars}
+                            #stmts += [buildWhile(qstmt, 0, loop_newVars, sub_loop_newVars, nLoc, TyEn(QXNum(1)), nnum, fqty)]
 
-
+                #Invariant generation
                 invnum = self.counter
                 newvar = DXBind(bool_exp_id, SType('bv1'), nnum)
                 inv_old_var = {x : DXBind(x, SType('bv1'), nnum) for x in loop_oldVars}
 
-                inv_new_var = {loop_newVars[x].ID() : DXBind(loop_newVars[x].ID(), SType('bv1'), nnum) for x in loop_newVars} #only for amp inv generation
+                inv_new_var = {loop_newVars[x].ID() : DXBind(loop_newVars[x].ID(), SType('bv1'), loop_newVars[x].num()) for x in loop_newVars} #only for amp inv generation
 
 
                 for ix in range(nqty.flag().num()):
@@ -1562,22 +1567,34 @@ class ProgramTransfer(ProgramVisitor):
                         inv_old_var = {x : DXIndex(inv_old_var[x], DXBind('tmp',None,invnum)) for x in inv_old_var}
                         invnum += 1
                     
+
+                for ix in range(1 + int(hadamard_exist_flag)):
                     inv_new_var = {x : DXIndex(inv_new_var[x], DXBind('tmp', None, self.counter + ix)) for x in inv_new_var}
-
-                amp_subst = []
-                for i in inv_new_var:
-                    if i != 'amp':
-                        amp_subst += [SubstDAExp(i, inv_new_var[i])]
-
+                
                 ifbexp_inv = None
                 if is_qcomp:
-                    if isinstance(ctx.bexp().left(), QXQRange):
-                        ifbexp_inv = DXComp(ctx.bexp().op(), DXCall('castBVInt', [newvar]), ctx.bexp().right().accept(self))
-                    elif isinstance(ctx.bexp().right(), QXQRange):
-                        ifbexp_inv = DXComp(ctx.bexp().op(),ctx.bexp().left().accept(self) , DXCall('castBVInt', [newvar]))
+                    if isinstance(wctx.bexp().left(), QXQRange):
+                        ifbexp_inv = DXComp(wctx.bexp().op(), DXCall('castBVInt', [newvar]), wctx.bexp().right().accept(self))
+                    elif isinstance(wctx.bexp().right(), QXQRange):
+                        ifbexp_inv = DXComp(wctx.bexp().op(),wctx.bexp().left().accept(self) , DXCall('castBVInt', [newvar]))
                 else:
                     ifbexp_inv = DXComp('==', DXIndex(newvar, bool_exp_index), DXNum(1))
 
+                #generation of length equality invariants for new variables eg. forall k :: 0 <= k < |p7| ==> |p7[k]| == pow2(n)
+                st = SType('bv1')
+                for inv_l in range(fqty.flag().num() - num):
+                    st = SeqType(st)
+                    tlvars = {dc : self.getBindFromIndex(loop_newVars[dc]) for dc in loop_newVars}
+                    tlvars_1 = {dc : self.createIndexFromType(tlvars[dc], st, DXBind('tmp', SType('nat'), self.counter)) for dc in tlvars}
+                    if inv_l + 1 < fqty.flag().num() - num:
+                        nLoc_index = inv_l + 1 + num
+                        rlen = nLoc[nLoc_index].crange().right().accept(self) if isinstance(nLoc[nLoc_index].crange().left(), QXNum) and nLoc[nLoc_index].crange().left().num() == 0 else DXBin('-', nLoc[nLoc_index].crange().right().accept(self), nLoc[nLoc_index].crange().left().accept(self))
+                        rlen = DXCall('pow2', [rlen])
+                        invariants += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), rlen)) for x in tlvars]
+                    else:
+                        invariants += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), (nLoc_dict[x].crange().right().accept(self) if isinstance(nLoc_dict[x].crange().left(), QXNum) and nLoc_dict[x].crange().left().num() == 0 else  DXBin('-', nLoc_dict[x].crange().right().accept(self), nLoc_dict[x].crange().left().accept(self))))) for x in tlvars if x != 'amp']
+                    
+                        
 
                 for i in inv_dict:
                     rval = loop_values[i]
@@ -1605,33 +1622,49 @@ class ProgramTransfer(ProgramVisitor):
 
                     else:
                         rval = loop_values['amp']
-                        for j in amp_subst:
-                            rval = j.visit(rval)
+                   
+                        for ln_var in loop_newVars:
+                            #in invariants we have 1.0/sqrt(pow2(x)), below code will change to 1.0/sqrt(pow2(x[tmp1][tmp2]))
+                            def lambda_subst(x):
+                                if isinstance(x, DXBind) and x.ID() == loop_newVars[ln_var].ID():
+                                    if x.num() and loop_newVars[ln_var].num():
+                                        if x.num() == loop_newVars[ln_var].num(): 
+                                            return inv_new_var[x.ID()]
+                                    else:
+                                        return inv_new_var[x.ID()]
+                                
+                            #in invariants we have omega(castBVInt(x)) with x having incorrect indexing, following code will correct it
+                            def lambda_subst1(x):
+                                if isinstance(x, DXIndex):
+                                    tmp_l1 = x
+                                    while not isinstance(tmp_l1, DXBind):
+                                        tmp_l1 = tmp_l1.bind()
+                                    
+                                    tmp_inv_ov = inv_old_var[ln_var]
+                                    while not isinstance(tmp_inv_ov, DXBind):
+                                        tmp_inv_ov = tmp_inv_ov.bind()
+
+                                    if tmp_l1.ID() == tmp_inv_ov.ID() and tmp_l1.num() and tmp_l1.num() == tmp_inv_ov.num():
+                                        return inv_old_var[ln_var]
+                                
+                            lamb_subst = SubstLambda(lambda_subst)
+                            rval = lamb_subst.visit(rval)
+
+                            lamb_subst = SubstLambda(lambda_subst1)
+                            rval = lamb_subst.visit(rval)
+
                         rval = DXBin('*', oldval, rval)
 
                     inv_dict[i] = self.genAllSpec(DXBind('tmp', None, self.counter), loop_newVars[i], DXIfExp(ifbexp_inv, rval, oldval) if loop_values[i] != loop_oldVars[i] else oldval, i == 'amp')
                     invariants += [inv_dict[i]]
                 
-                st = SType('bv1')
-                for inv_l in range(fqty.flag().num()):
-                    st = SeqType(st)
-                    tlvars = {dc : self.getBindFromIndex(loop_newVars[dc]) for dc in loop_newVars}
-                    tlvars_1 = {dc : self.createIndexFromType(tlvars[dc], st, DXBind('tmp', SType('nat'), self.counter)) for dc in tlvars}
-                    if inv_l + 1 < fqty.flag().num():
-                        rlen = nLoc[inv_l + 1].crange().right().accept(self) if isinstance(nLoc[inv_l + 1].crange().left(), QXNum) and nLoc[inv_l + 1].crange().left().num() == 0 else DXBin('-', nLoc[inv_l + 1].crange().right().accept(self), nLoc[inv_l + 1].crange().left().accept(self))
-                        rlen = DXCall('pow2', [rlen])
-                        invariants += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), rlen)) for x in tlvars]
-                    else:
-                        invariants += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), (nLoc_dict[x].crange().right().accept(self) if isinstance(nLoc_dict[x].crange().left(), QXNum) and nLoc_dict[x].crange().left().num() == 0 else  DXBin('-', nLoc_dict[x].crange().right().accept(self), nLoc_dict[x].crange().left().accept(self))))) for x in tlvars if x != 'amp']
-                    
-                        
+                
                     
 
                 if_bexp_new_var = self.getBindFromIndex(loop_newVars[bool_exp_id])
                 tmpforallvar = DXBind('tmp', SType('nat'), self.counter)
                 if_bexp_new_var_indexed = self.createIndexFromType(if_bexp_new_var, if_bexp_new_var.type().type(), tmpforallvar)
-                if_bexp_old_var = self.getBindFromIndex(loop_oldVars[bool_exp_id])
-                if_bexp_old_var_indexed = self.createIndexFromType(if_bexp_old_var, if_bexp_old_var.type().type(), tmpforallvar)
+                if_bexp_old_var_indexed = inv_old_var[bool_exp_id]
                 samebitexp = DXCall('samebit', [if_bexp_new_var_indexed, if_bexp_old_var_indexed, DXLength(if_bexp_old_var_indexed)])
                 
 
@@ -1642,21 +1675,66 @@ class ProgramTransfer(ProgramVisitor):
                 stmts += [DXCall('omega0', [], True)]
                 self.libFuns.add('omega0')
                 
+            #outer while loops
             elif num + 1 <  nqty.flag().num():
                 stmts += [DXAssign([DXBind('tmp' + str(num + 1) + x)], DXList(), True) for x in loop_newVars]
 
                 stmts.append(DXAssign([DXBind('tmp', None, num + 1)], DXNum(0), True))
                 tmp_new_vars = {x : DXBind('tmp' + str(num + 1) + x, loop_newVars[x].type().type()) for x in loop_newVars}
-                nestedWhile = buildWhile(num + 1, tmp_new_vars)
+                nestedWhile = buildWhile(ctx, num + 1, loop_oldVars, tmp_new_vars, nLoc, nqty, nnum, fqty)
                 stmts.append(nestedWhile)
 
                 #invariant generation for outer loops
                 innerloop_invariants = nestedWhile.inv()
                 inv_new = []
 
+
+                invnum = self.counter
+                newvar = DXBind(bool_exp_id, SType('bv1'), nnum)
+                inv_old_var = {x : DXBind(x, SType('bv1'), nnum) for x in loop_oldVars}
+
+                for ix in range(nqty.flag().num()):
+                    if ix < num:
+                        newvar = DXIndex(newvar, DXBind('tmp',None,ix)) 
+                        inv_old_var = {x : DXIndex(inv_old_var[x], DXBind('tmp',None,ix)) for x in inv_old_var}
+                    else:
+                        newvar = DXIndex(newvar, DXBind('tmp',None,invnum))
+                        inv_old_var = {x : DXIndex(inv_old_var[x], DXBind('tmp',None,invnum)) for x in inv_old_var}
+                        invnum += 1
+
+                
+                #generation of length equality invariants for new variables eg. forall k :: 0 <= k < |p7| ==> |p7[k]| == pow2(n)
+                st = SType('bv1')
+                for inv_l in range(fqty.flag().num() - num):
+                    st = SeqType(st)
+                    tlvars = {dc : self.getBindFromIndex(loop_newVars[dc]) for dc in loop_newVars}
+                    tlvars_1 = {dc : self.createIndexFromType(tlvars[dc], st, DXBind('tmp', SType('nat'), self.counter)) for dc in tlvars}
+                    if inv_l + 1 < fqty.flag().num() - num:
+                        rlen = nLoc[inv_l + 1].crange().right().accept(self) if isinstance(nLoc[inv_l + 1].crange().left(), QXNum) and nLoc[inv_l + 1].crange().left().num() == 0 else DXBin('-', nLoc[inv_l + 1].crange().right().accept(self), nLoc[inv_l + 1].crange().left().accept(self))
+                        rlen = DXCall('pow2', [rlen])
+                        inv_new += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), rlen)) for x in tlvars]
+                    else:
+                        inv_new += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), (nLoc_dict[x].crange().right().accept(self) if isinstance(nLoc_dict[x].crange().left(), QXNum) and nLoc_dict[x].crange().left().num() == 0 else  DXBin('-', nLoc_dict[x].crange().right().accept(self), nLoc_dict[x].crange().left().accept(self))))) for x in tlvars if x != 'amp']
+                
                 for inv in innerloop_invariants:
+
+                    tmp = inv
+
+                    #to change the pre existing variables indexing based on the loop level
+                    def lambda_replace_oldvar(x):
+                        if isinstance(x, DXIndex):
+                            tmp_lr = x
+                            while not isinstance(tmp_lr, DXBind):
+                                tmp_lr = tmp_lr.bind()
+
+                            if tmp_lr.num() and tmp_lr.num() == nnum:
+                                return inv_old_var[tmp_lr.ID()]
+                    
+                    lamb_subst = SubstLambda(lambda_replace_oldvar)
+                    tmp = lamb_subst.visit(tmp)
+
                     if isinstance(inv, DXAll):
-                        tmp = inv
+                        
                         while isinstance(tmp, DXAll):
                             tmp = tmp.next()
                             if isinstance(tmp, DXLogic) and tmp.op() == '==>':
@@ -1666,6 +1744,8 @@ class ProgramTransfer(ProgramVisitor):
                             right = tmp.right()
                             left = tmp.left()
                             for vars in tmp_new_vars:
+
+                                #to change the tmp vars from inner loop to the tmp vars of the current loop
                                 def lambda_replace(x):
                                     if isinstance(x, DXIndex) and isinstance(x.bind(), DXBind) and x.bind().ID() == tmp_new_vars[vars].ID():
                                         return DXIndex(loop_newVars[vars], x.index())
@@ -1674,28 +1754,35 @@ class ProgramTransfer(ProgramVisitor):
                                 right = subst_lamb.visit(right)
                                 left = subst_lamb.visit(left)
 
+                                #to remove one index of outer looping variable from x[i][j][tmp1] to x[i][tmp1]
                                 def lambda_replace1(x):
                                     if isinstance(x, DXIndex) and isinstance(x.bind(), DXIndex) and x.index().num() == self.counter:
-                                        tmp = x
-                                        while not isinstance(tmp, DXBind):
-                                            tmp = tmp.bind()
-                                        if tmp.num() and tmp.num() == nnum:
+                                        tmp1 = x
+                                        while not isinstance(tmp1, DXBind):
+                                            tmp1 = tmp1.bind()
+                                        if tmp1.num() and tmp1.num() == nnum:
                                             return DXIndex(x.bind().bind(), x.index())
                                     
                                 subst_lamb = SubstLambda(lambda_replace1)
                                 right = subst_lamb.visit(right)
 
+                                #to add another index for the vars -> x[tmp1][tmp2] to x[tmp1][tmp2][tmp3]
                                 def lambda_replace2(x):
                                     if isinstance(x, DXIndex):
-                                        tmp = x
-                                        while not isinstance(tmp, DXBind):
-                                            tmp = tmp.bind()
-                                        if tmp.ID() == vars and tmp.num() and tmp.num() == nnum:
+                                        tmp1 = x
+                                        while not isinstance(tmp1, DXBind):
+                                            tmp1 = tmp1.bind()
+                                        if tmp1.ID() == loop_newVars[vars].ID() and tmp1.num() and tmp1.num() == loop_newVars[vars].num():
                                             return DXIndex(x, DXBind(x.index().ID(), x.index().type(), x.index().num() + 1))
             
                                 subst_lamb = SubstLambda(lambda_replace2)    
                                 right = subst_lamb.visit(right)
 
+                            #to change the value of some equalities such as castBVInt(p6..) = k to castBVINt(p6) = j since the forall variable changes 
+                            if isinstance(right, DXBind) and right.ID() == 'tmp' and right.num() > self.counter:
+                                right = DXBind('tmp', right.type(), right.num() + 1)
+                            elif isinstance(right, DXIfExp) and isinstance(right.left(), DXBind) and right.left().ID() == 'tmp':
+                                right = DXIfExp(right.bexp(), DXBind('tmp', right.left().type(), right.left().num() + 1), right.right())
 
                             amp_flag = True
                             if isinstance(left, DXCall) and left.ID() == 'castBVInt':
@@ -1705,12 +1792,58 @@ class ProgramTransfer(ProgramVisitor):
                                 left = left.bind()
                             
                             if isinstance(left, DXBind):
+                                #handling inner loop invariants which are value equalities eg. forall k :: 0 <= k < |p1| ==> castBVInt(p1[k]) == k
                                 inv_new += [self.genAllSpec(DXBind('tmp', None, self.counter), left, right, amp_flag)]
                             else:
-                                pass
-                        #else isinstance(tmp, DXCall) todo tmp == samebit(..)
-                    
+                                #handling inner loop invariants which are length equalities eg. forall k :: 0 <= k < |p1| ==> |p1[k]| == pow2(n)
+                                '''if isinstance(left, DXLength):
+                                    tmp_allspec = left.var()
+                                    while not isinstance(tmp_allspec, DXBind):
+                                        tmp_allspec = tmp_allspec.bind()
 
+                                    all_spec_type_tmp = left.var() 
+                                    all_spec_type = SType('bv1')
+                                    while isinstance(all_spec_type_tmp, DXIndex):
+                                        all_spec_type_tmp = all_spec_type_tmp.bind()
+                                        all_spec_type = SeqType(all_spec_type)
+                                    
+                                    inv_new += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tmp_allspec, all_spec_type, DXComp(tmp.op(), left, right))]'''
+
+
+
+
+                        elif isinstance(tmp, DXCall) and tmp.ID() == 'samebit':
+                            exp = tmp
+
+                            
+                            for vars in tmp_new_vars:
+                                #in samebit ivnariants we have x[tmp1][tmp2] from previous loop, the following code will add another index x[tmp1][tmp2][tmp3]
+                                def lambda_replace(x):
+                                    if isinstance(x, DXIndex):
+                                        tmp_l = x
+                                        while not isinstance(tmp_l, DXBind):
+                                            tmp_l = tmp_l.bind()
+                                        if tmp_l.ID() == tmp_new_vars[vars].ID():
+                                            return DXIndex(x, DXBind('tmp', None, x.index().num() + 1))
+                                        
+                                subst_lamb = SubstLambda(lambda_replace)
+                                exp = subst_lamb.visit(exp)
+
+                                #change the variable from the inner loop invariants to the current loop variable
+                                def lambda_replace1(x):
+                                    if isinstance(x, DXBind) and x.ID() == tmp_new_vars[vars].ID():
+                                        return loop_newVars[vars]
+                                    
+                                subst_lamb = SubstLambda(lambda_replace1)
+                                exp = subst_lamb.visit(exp)
+
+                            tmp_var_genAll = exp.exps()[0]
+                            while not isinstance(tmp_var_genAll, DXBind):
+                                tmp_var_genAll = tmp_var_genAll.bind()
+
+                            inv_new += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter),tmp_var_genAll, tmp_var_genAll.type().type(), exp)]
+                    
+                
 
                 invariants += inv_new
                 stmts += [DXAssign([loop_newVars[x]], DXBin('+', loop_newVars[x], DXList([tmp_new_vars[x]]))) for x in loop_newVars]
@@ -1720,7 +1853,7 @@ class ProgramTransfer(ProgramVisitor):
             return DXWhile(while_predicate, stmts, invariants)
 
 
-        while_stmt = buildWhile(0, loop_newVars)
+        while_stmt = buildWhile(ctx, 0, loop_oldVars, loop_newVars, nLoc, nqty, nnum, fqty)
 
         res.append(while_stmt)
 
