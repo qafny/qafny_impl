@@ -109,6 +109,9 @@ class CleanupVisitor(TargetProgramVisitor):
                 return DXCall('pow2', [ctx.right().accept(self)])
             else:
                 return DXCall('powN', [ctx.left().accept(self), ctx.right().accept(self)]) 
+            
+        elif ctx.op() == '/' and isinstance(ctx.left(), DXNum) and ctx.left().num() == 1 and isinstance(ctx.right(), DXCall) and ctx.right().ID() == 'pow2':
+            return DXBin('/',DXNum(1.0), DXCast(SType('real'), ctx.right()))
 
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self))
 

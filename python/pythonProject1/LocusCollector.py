@@ -2,6 +2,7 @@ import Programmer
 from ProgramVisitor import ProgramVisitor
 from Programmer import *
 from TypeChecker import *
+from CollectKind import *
 
 def joinRange(q1:QXQRange, qs:[QXQRange]):
     tmp = []

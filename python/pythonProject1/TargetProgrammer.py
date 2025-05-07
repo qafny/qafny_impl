@@ -8,22 +8,32 @@ class DXTop:
     def accept(self, visitor : AbstractTargetVisitor):
         pass
 
+    def __repr__(self):
+        return f'DXTop()'
 
 class DXType(DXTop):
 
     def accept(self, visitor : AbstractTargetVisitor):
         pass
 
+    def __repr__(self):
+        return f'DXType()'
 
 class DXSpec(DXTop):
 
     def accept(self, visitor : AbstractTargetVisitor):
         pass
 
+    def __repr__(self):
+        return f'DXSpec()'
+
 class DXStmt(DXTop):
 
     def accept(self, visitor : AbstractTargetVisitor):
         pass
+
+    def __repr__(self):
+        return f'DXStmt()'
 
 class DXAExp(DXTop):
     '''Parent class of all arithmetic operations representable in Dafny'''
@@ -31,15 +41,24 @@ class DXAExp(DXTop):
     def accept(self, visitor : AbstractTargetVisitor):
         pass
 
+    def __repr__(self):
+        return f'DXAExp()'
+
 class DXConds(DXTop):
 
     def accept(self, visitor : AbstractTargetVisitor):
         pass 
 
+    def __repr__(self):
+        return f'DXConds()'
+
 class DXBool(DXSpec, DXType):
 
     def accept(self, visitor : AbstractTargetVisitor):
         pass 
+
+    def __repr__(self):
+        return f'DXBool()'
 
 # SType could be bv1, real, nat,
 class SType(DXType):
@@ -53,6 +72,9 @@ class SType(DXType):
     def type(self):
         return self._name
 
+    def __repr__(self):
+        return f'SType(name={self._name})'
+
 class SeqType(DXType):
 
     def __init__(self, ty: DXType):
@@ -63,6 +85,9 @@ class SeqType(DXType):
 
     def type(self):
         return self._ty
+
+    def __repr__(self):
+        return f'SeqType(ty={self._ty})'
 
 class FunType(DXType):
 
@@ -78,6 +103,9 @@ class FunType(DXType):
 
     def right(self):
         return self._right
+
+    def __repr__(self):
+        return f'FunType(left={self._left}, right={self._right})'
 
 class DXBin(DXAExp):
 
@@ -98,6 +126,9 @@ class DXBin(DXAExp):
     def right(self):
         return self._right
 
+    def __repr__(self):
+        return f'DXBin(op={self._op}, left={self._left}, right={self._right})'
+
 class DXIfExp(DXAExp):
 
     def __init__(self, bexp: DXBool, left:DXAExp, right: DXAExp):
@@ -117,6 +148,9 @@ class DXIfExp(DXAExp):
     def right(self):
         return self._right
 
+    def __repr__(self):
+        return f'DXIfExp(bexp={self._bexp}, left={self._left}, right={self._right})'
+
 class DXLogic(DXBool):
 
     def __init__(self, op: str, left: DXBool, right: DXBool):
@@ -126,16 +160,19 @@ class DXLogic(DXBool):
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitLogic(self)
-    
+
     def op(self):
         return self._op
-    
+
     def left(self):
         return self._left
-    
+
     def right(self):
         return self._right
-    
+
+    def __repr__(self):
+        return f'DXLogic(op={self._op}, left={self._left}, right={self._right})'
+
 class DXComp(DXBool):
 
     def __init__(self, op: str, left: DXAExp, right: DXAExp):
@@ -154,7 +191,10 @@ class DXComp(DXBool):
 
     def right(self):
         return self._right
-    
+
+    def __repr__(self):
+        return f'DXComp(op={self._op}, left={self._left}, right={self._right})'
+
 class DXUni(DXAExp):
 
     def __init__(self, op: str, next:DXAExp):
@@ -170,7 +210,9 @@ class DXUni(DXAExp):
     def next(self):
         return self._next
 
-    
+    def __repr__(self):
+        return f'DXUni(op={self._op}, next={self._next})'
+
 class DXCast(DXAExp):
     '''Represents a dafny cast, i.e. x as real'''
 
@@ -188,6 +230,8 @@ class DXCast(DXAExp):
     def type(self) -> DXType:
         return self._type
 
+    def __repr__(self):
+        return f'DXCast(aexp={self._aexp}, type={self._type})'
 
 class DXNum(DXType, DXAExp):
     '''Represents an integer literal value for Dafny syntax.'''
@@ -204,6 +248,9 @@ class DXNum(DXType, DXAExp):
     def as_real(self):
         return DXReal(float(self._num))
 
+    def __repr__(self):
+        return f'DXNum(num={self._num})'
+
 class DXReal(DXType, DXAExp):
     '''Represents a real literal value for Dafny syntax'''
 
@@ -219,6 +266,9 @@ class DXReal(DXType, DXAExp):
     def as_num(self) -> DXNum:
         return DXNum(int(self._value))
 
+    def __repr__(self):
+        return f'DXReal(value={self._value})'
+
 class DXNot(DXBool):
 
     def __init__(self, next: DXBool):
@@ -226,10 +276,12 @@ class DXNot(DXBool):
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitNot(self)
-	
+
     def next(self):
         return self._next
-    
+
+    def __repr__(self):
+        return f'DXNot(next={self._next})'
 
 class DXBind(DXAExp):
 
@@ -251,12 +303,14 @@ class DXBind(DXAExp):
         return self._num
 
     def newBind(self):
-
         if self._num is None:
             return DXBind(self._id, self._type, 0)
         else:
             return DXBind(self._id, self._type, self._num + 1)
-        
+
+    def __repr__(self):
+        return f'DXBind(id={self._id}, type={self._type}, num={self._num})'
+
 class DXVar(DXBind):
 
     def __init__(self, id : str, ty: DXType = None):
@@ -268,10 +322,13 @@ class DXVar(DXBind):
 
     def ID(self):
         return self._id
-    
+
     def type(self):
         return self._type
-    
+
+    def __repr__(self):
+        return f'DXVar(id={self._id}, type={self._type})'
+
 class DXList(DXAExp):
 
     def __init__(self, exprs: [DXAExp] = []):
@@ -279,10 +336,13 @@ class DXList(DXAExp):
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitList(self)
-    
+
     def exprs(self):
         return self._exprs
-    
+
+    def __repr__(self):
+        return f'DXList(exprs={self._exprs})'
+
 class DXLength(DXAExp):
 
     def __init__(self, var : DXVar):
@@ -290,9 +350,12 @@ class DXLength(DXAExp):
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitLength(self)
-    
+
     def var(self):
         return self._var
+
+    def __repr__(self):
+        return f'DXLength(var={self._var})'
 
 class DXRequires(DXConds):
 
@@ -301,9 +364,12 @@ class DXRequires(DXConds):
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitRequires(self)
-    
+
     def spec(self):
         return self._spec
+
+    def __repr__(self):
+        return f'DXRequires(spec={self._spec})'
 
 class DXEnsures(DXConds):
 
@@ -312,13 +378,16 @@ class DXEnsures(DXConds):
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitEnsures(self)
-    
+
     def spec(self):
         return self._spec
-     
-class DXCall(DXStmt,DXAExp):
 
-    def __init__(self, id: str, exps: [DXAExp], end : bool = False):
+    def __repr__(self):
+        return f'DXEnsures(spec={self._spec})'
+
+class DXCall(DXStmt, DXAExp):
+
+    def __init__(self, id: str, exps: [DXAExp], end: bool = False):
         self._id = id
         self._exps = exps
         self._end = end #variable to check if this is just a function call without assignment so that we can add a semi-colon at the end in PrinterVisitor
@@ -334,7 +403,10 @@ class DXCall(DXStmt,DXAExp):
 
     def end(self):
         return self._end
-    
+
+    def __repr__(self):
+        return f'DXCall(id={self._id}, exps={self._exps}, end={self._end})'
+
 class DXInit(DXStmt):
 
     def __init__(self, binding: DXBind, exp: DXAExp = None):
@@ -346,9 +418,12 @@ class DXInit(DXStmt):
 
     def binding(self):
         return self._binding
-    
+
     def exp(self):
         return self._exp
+
+    def __repr__(self):
+        return f'DXInit(binding={self._binding}, exp={self._exp})'
 
 class DXIndex(DXAExp):
 
@@ -364,21 +439,27 @@ class DXIndex(DXAExp):
 
     def index(self):
         return self._index
-    
+
+    def __repr__(self):
+        return f'DXIndex(id={self._id}, index={self._index})'
+
 class DXCast(DXAExp):
 
     def __init__(self, type: SType, next: DXAExp):
         self._type = type
         self._next = next
-    
+
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitCast(self)
-    
+
     def type(self):
         return self._type
-    
+
     def next(self):
         return self._next
+
+    def __repr__(self):
+        return f'DXCast(type={self._type}, next={self._next})'
 
 class DXInRange(DXBool):
 
@@ -398,7 +479,10 @@ class DXInRange(DXBool):
 
     def right(self):
         return self._right
-    
+
+    def __repr__(self):
+        return f'DXInRange(id={self._id}, left={self._left}, right={self._right})'
+
 class DXAll(DXBool, DXSpec):
 
     def __init__(self, bind: DXBind, next: DXSpec):
@@ -413,26 +497,32 @@ class DXAll(DXBool, DXSpec):
 
     def next(self):
         return self._next
-    
+
+    def __repr__(self):
+        return f'DXAll(bind={self._bind}, next={self._next})'
+
 class DXWhile(DXStmt):
 
-    def __init__(self, cond: DXBool, stmts: [DXStmt], inv : [DXSpec] = None):
+    def __init__(self, cond: DXBool, stmts: [DXStmt], inv: [DXSpec] = None):
         self._cond = cond
         self._stmts = stmts
         self._inv = inv
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitWhile(self)
-    
+
     def cond(self):
         return self._cond
 
     def stmts(self):
         return self._stmts
-    
+
     def inv(self):
         return self._inv
-    
+
+    def __repr__(self):
+        return f'DXWhile(cond={self._cond}, stmts={self._stmts}, inv={self._inv})'
+
 class DXIf(DXStmt):
 
     def __init__(self, cond: DXBool, left: [DXStmt], right:[DXStmt]):
@@ -442,7 +532,7 @@ class DXIf(DXStmt):
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitIf(self)
-    
+
     def cond(self):
         return self._cond
 
@@ -451,7 +541,10 @@ class DXIf(DXStmt):
 
     def right(self):
         return self._right
-    
+
+    def __repr__(self):
+        return f'DXIf(cond={self._cond}, left={self._left}, right={self._right})'
+
 class DXAssert(DXStmt):
 
     def __init__(self, spec: DXSpec):
@@ -459,10 +552,13 @@ class DXAssert(DXStmt):
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitAssert(self)
-    
+
     def spec(self):
         return self._spec
-    
+
+    def __repr__(self):
+        return f'DXAssert(spec={self._spec})'
+
 class DXAssign(DXStmt):
 
     def __init__(self, ids: [DXAExp], exp : DXAExp, init: bool = None):
@@ -478,9 +574,12 @@ class DXAssign(DXStmt):
 
     def exp(self):
         return self._exp
-    
+
     def init(self):
         return self._init
+
+    def __repr__(self):
+        return f'DXAssign(ids={self._ids}, exp={self._exp}, init={self._init})'
 
 class DXMethod(DXTop):
 
@@ -497,7 +596,7 @@ class DXMethod(DXTop):
 
     def ID(self):
         return self._id
-    
+
     def axiom(self):
         return self._axiom
 
@@ -513,7 +612,8 @@ class DXMethod(DXTop):
     def stmts(self):
         return self._stmts
 
-
+    def __repr__(self):
+        return f'DXMethod(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, returns={self._returns}, conds={self._conds}, stmts={self._stmts})'
 
 class DXProgram(DXTop):
 
@@ -526,4 +626,5 @@ class DXProgram(DXTop):
     def method(self):
         return self._exps
 
-
+    def __repr__(self):
+        return f'DXProgram(exps={self._exps})'

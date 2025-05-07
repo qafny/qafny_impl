@@ -134,8 +134,8 @@ class DafnyLibrary:
 
     'mergeAmpEn' : Method('''method {:axiom} mergeAmpEn(amp: seq<real>, q : real) returns (amp1: seq<real>)
           ensures |amp1| == |amp| * 2
-          ensures forall k :: 0 <= k < |amp| ==> amp1[k] == 1.0 / sqrt(2.0) * amp[k]
-          ensures forall k :: |amp| <= k < |amp1| ==> amp1[k] == 1.0 / sqrt(2.0) * amp[k-|amp|] * q''', ['sqrt']),
+          ensures forall k :: 0 <= k < |amp| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k]
+          ensures forall k :: |amp| <= k < |amp1| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k-|amp|] * q''', ['sqrt']),
 
     'triggerSqrtMul' : Method('''lemma {:axiom} triggerSqrtMul()
                       ensures forall k, j :: k > 0.0 && j > 0.0 ==> sqrt(k) * sqrt(j) == sqrt(k * j)''', ['sqrt']),
@@ -167,7 +167,7 @@ class DafnyLibrary:
           ensures forall k :: 0 <= k < |x| ==> castBVInt(x1[k]) == castBVInt(x[k])
           ensures forall k :: |x| <= k < |x1| ==> samebit(x[k - |x|], x1[k], |x[k - |x|]|)
           ensures forall k :: |x| <= k < |x1| ==> castBVInt(x1[k]) == castBVInt(x[k - |x|])''', ['castBVInt', 'samebit']),
-    'bool2BV1' : Method(''''function {:axiom} bool2BV1(b : bool) : seq<bv1>
+    'bool2BV1' : Method('''function {:axiom} bool2BV1(b : bool) : seq<bv1>
             ensures castBVInt(bool2BV1(b)) == if b then 1 else 0
             ensures |bool2BV1(b)| == 1''', ['castBVInt'])
   }
