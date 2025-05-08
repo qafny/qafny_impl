@@ -13,7 +13,7 @@ function : Function ('{' ':' Axiom '}')? ID '(' bindings ')' (':' typeT)? ('{' a
 lemma : Lemma ('{' ':' Axiom '}')? ID '(' bindings ')' conds;
 
 // a function that exclusively returns a boolean, can be used for conditions, including invariants
-predicate : Predicate ID '(' bindings ')' '{' arithExpr '}';
+predicate : Predicate ID '(' bindings ')' '{' qspec '}';
 
 returna: '(' bindings ')';
 
@@ -74,9 +74,9 @@ partsections: partsection ('+' partsection);
 
 tensorall: '⊗' ID '.' manyket | '⊗' ID TIn crange '.' manyket;
 
-sumspec: maySum (arithExpr? manyketpart? ('&&' bexp)? | '(' arithExpr? manyketpart? ('&&' bexp)? ')') | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
+sumspec: maySum (arithExpr? manyketpart ('&&' bexp)? | '(' arithExpr? manyketpart ('&&' bexp)? ')') | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
 
-maySum: TSum ID TIn crange ('on' '(' bexp ')')? '.';
+maySum: TSum ID TIn crange (('on' | '@') '(' bexp ')')? '.';
 
 asserting: 'assert' spec ';';
 
@@ -113,7 +113,7 @@ ketArithExpr: ketCifexp | partspec | '(' ketArithExpr ')';
 // allows partspecs for sum spec expressions
 ketCifexp: If bexp 'then' ketArithExpr 'else' ketArithExpr;
 
-manyketpart: (ket | ketArithExpr | '(' arithExpr? ket (',' ket)* ')' | fcall | ID)+;
+manyketpart: (ket | ketArithExpr | '(' arithExpr? ket (',' ket)* ')' | fcall | ID | idindex)+;
 
 forexp : 'for' ID TIn crange (('with' | '&&') bexp)? loopConds '{' stmts '}';
 
@@ -123,11 +123,14 @@ fcall : ID '^{-1}'? '(' arithExprsOrKets ')';
 
 arithExprsOrKets : (arithExpr | ket) (',' (arithExpr | ket))*;
 
-arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | slice | crange) | sumspec | qtypeCreate;
+arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | slice | crange) | arithExprSumSpec; // | sumspec | qtypeCreate;
 
 arithAtomic: numexp | ID | TSub arithExpr | boolLiteral
           | '(' arithExpr ')'
           | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | notExpr | setInstance | qrange | ketCallExpr;
+
+// the sum specification allowed in arith expressions (terminates in an arith expr, not a manyketpart)
+arithExprSumSpec: maySum arithExpr;
 
 sinExpr : 'sin' ('^' Number)? '(' arithExpr ')' | 'sin' arithAtomic;
 
