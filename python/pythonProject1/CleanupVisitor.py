@@ -134,6 +134,10 @@ class CleanupVisitor(TargetProgramVisitor):
     def visitCall(self, ctx: TargetProgrammer.DXCall):
         #if ctx.ID() == 'omega' and isinstance(ctx.exps()[0], DXNum) and ctx.exps()[0].num() == 0:
             #return DXCast(SType('real'), DXNum(1))
+
+        if ctx.ID() == 'ketIndex':
+            return DXIndex(ctx.exps()[0], ctx.exps()[1])
+        
         exps = []
         for exp in ctx.exps():
             exps.append(exp.accept(self))

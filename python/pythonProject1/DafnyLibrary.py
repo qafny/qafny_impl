@@ -169,7 +169,23 @@ class DafnyLibrary:
           ensures forall k :: |x| <= k < |x1| ==> castBVInt(x1[k]) == castBVInt(x[k - |x|])''', ['castBVInt', 'samebit']),
     'bool2BV1' : Method('''function {:axiom} bool2BV1(b : bool) : seq<bv1>
             ensures castBVInt(bool2BV1(b)) == if b then 1 else 0
-            ensures |bool2BV1(b)| == 1''', ['castBVInt'])
+            ensures |bool2BV1(b)| == 1''', ['castBVInt']),
+    'ampeqtrigger' : Method('''lemma {:axiom} ampeqtrigger()
+          ensures forall k : nat :: (1.0/sqrt(pow2(k) as real)) * (1.0/sqrt(pow2(k) as real)) == 1.0/pow2(k) as real''', ['sqrt', 'pow2']),
+    'En1toEn2_2' : Method('''method {:axiom} En1toEn2_2(x: seq<seq<bv1>>, y: seq<seq<bv1>>, amp: seq<real>)
+        returns (x1: seq<seq<seq<bv1>>>, y1: seq<seq<seq<bv1>>>, amp1: seq<seq<real>>)
+        requires |x| == |y| == |amp|
+        ensures |x1| == |y1| == |amp1| == |x|
+        ensures forall k :: 0 <= k < |x1| ==> |x1[k]| == |y1[k]| == |amp1[k]| == pow2(|y[k]|)
+        ensures forall k :: 0 <= k < |x1| ==> forall j :: 0 <= j < |x1[k]| ==>|x1[k][j]| == |x[k]|
+        ensures forall k :: 0 <= k < |y1| ==> forall j :: 0 <= j < |y1[k]| ==>|y1[k][j]| == |y[k]|
+        ensures forall k :: 0 <= k < |x1| ==> forall j :: 0 <= j < |x1[k]| ==> castBVInt(x1[k][j]) == castBVInt(x[k])
+        ensures forall k :: 0 <= k < |y1| ==> forall j :: 0 <= j < |y1[k]| ==> castBVInt(y1[k][j]) == j
+        ensures forall k :: 0 <= k < |amp1| ==> forall j :: 0 <= j < |amp1[k]| ==> amp1[k][j] == amp[k] * (1.0/sqrt(pow2(|y[k]|) as real)) * omega(j * k, 2)
+                ''', ['pow2', 'sqrt', 'omega', 'castBVInt']),
+
+    'pow2sqrt' : Method('''lemma {:axiom} pow2sqrt()
+        ensures forall k :nat  :: sqrt(pow2(2 * k) as real) == pow2(k) as real''', ['sqrt', 'pow2'])
   }
   
   @staticmethod

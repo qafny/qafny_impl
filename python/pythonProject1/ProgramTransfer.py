@@ -10,6 +10,7 @@ from TargetProgrammer import *
 from CollectKind import *
 from TargetToString import TargetToString
 from TypeChecker import TypeChecker, subLocusGen, compareType
+from EqualityVisitor import EqualityVisitor
 
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
@@ -987,8 +988,19 @@ class ProgramTransfer(ProgramVisitor):
                     self.libFuns.add('castBaseEn')
                     self.counter += 1'''
                 result = tmr + [DXAssign(makeVars(loc,TyEn(QXNum(flagNum + 1)),self.counter),
-                                         DXCall("hadEn", makeVars(loc,qty,self.counter-1)))]
-                self.libFuns.add('hadEn')
+                                         DXCall("En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)) , makeVars(loc,qty,num)), True)]
+                
+                self.libFuns.add("En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)))
+                result += [DXCall('triggerSqrtMul', [], True)]
+                result += [DXCall('ampeqtrigger', [], True)]
+                result += [DXCall('pow2mul', [], True)]
+                result += [DXCall('pow2sqrt', [], True)]
+
+                self.libFuns.add('triggerSqrtMul')                   
+                self.libFuns.add('ampeqtrigger')   
+                self.libFuns.add('pow2mul')   
+                self.libFuns.add('pow2sqrt')   
+
                 #self.removeLocus(num)
                 self.counter += 1
                 #self.varnums = [(loc,TyEn(QXNum(flagNum + 1)),self.counter)] + self.varnums
@@ -1369,8 +1381,7 @@ class ProgramTransfer(ProgramVisitor):
                     ifbexp = DXComp('==', DXIndex(loop_oldVars[bool_exp_id], bool_exp_index), DXNum(1))
 
                 
-                lambda_fn_name = 'lambda' + str(self.counter)
-                self.counter += 1
+                lambda_fn_name = 'qif_lambda' + str(self.counter)
 
                 application_locus = []
                 application_range_old_vars = []
@@ -1475,10 +1486,8 @@ class ProgramTransfer(ProgramVisitor):
                 self.libFuns.add('omega0') 
 
 
-
-        def buildWhile(wctx, num, loop_oldVars, loop_newVars, nLoc, nqty, nnum, fqty):
-
-            looping_var = DXBind('tmp', None, num)
+        loop_values = {x : loop_oldVars[x] for x in loop_oldVars}
+        def buildWhile(looping_var, wctx, num, loop_oldVars, loop_newVars, nLoc, nqty, nnum, fqty, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, is_sub_loop, if_bexp_vals, loop_values):
 
             stmts = []
 
@@ -1494,14 +1503,18 @@ class ProgramTransfer(ProgramVisitor):
             invariants += [DXLogic('==', DXLength(loop_newVars[x]), looping_var) for x in loop_newVars]
 
             #inner most while loop
-            if num == nqty.flag().num() - 1:
+            if num == nqty.flag().num() - 1 or is_sub_loop:
                 hadamard_exist_flag = False
-                tmp_vars = {x : DXBind('tmp_' + x) for x in loop_oldVars}
+                sub_loop_append = '1' if is_sub_loop else ''
+                tmp_vars = {x : DXBind('tmp_' + x + sub_loop_append, SeqType(SType('bv1'))) for x in loop_oldVars if x != 'amp'}
+                tmp_vars['amp'] = DXBind('tmp_amp' + sub_loop_append, SType('real'))
                 inv_dict = {x : [] for x in loop_oldVars}
-                loop_values = {x : loop_oldVars[x] for x in loop_oldVars}
+                hadamard_id_list = []
                 for qstmt in wctx.stmts():
-                    if (isinstance(qstmt, QXQAssign) and isinstance(qstmt.exp(), QXOracle)) or (isinstance(qstmt, QXQAssign) and isinstance(qstmt.exp(), QXSingle) and qstmt.exp().op() == 'H'):
+                    if (isinstance(qstmt, QXQAssign) and isinstance(qstmt.exp(), QXSingle) and qstmt.exp().op() == 'H'):
                         hadamard_exist_flag = True
+                        hadamard_id_list.append(qstmt.locus()[0].ID())
+                    if (isinstance(qstmt, QXQAssign) and isinstance(qstmt.exp(), QXOracle)) or (isinstance(qstmt, QXQAssign) and isinstance(qstmt.exp(), QXSingle) and qstmt.exp().op() == 'H'):
                         transfer_had_lambda(stmts, qstmt, wctx, loop_oldVars, loop_newVars, tmp_vars, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, inv_dict, loop_values, num)
 
                     elif isinstance(qstmt, QXIf):
@@ -1519,7 +1532,8 @@ class ProgramTransfer(ProgramVisitor):
                             sub_bool_exp_id = lc.renv[0].ID()
                             sub_bool_exp_index = qstmt.bexp().index().accept(self)
 
-                        if hadamard_exist_flag:
+                        if_bexp_vals.append(sub_bool_exp_id)
+                        '''if hadamard_exist_flag:
                             sub_stmts = []
 
                             sub_looping_var = DXBind('sub_tmp')
@@ -1544,16 +1558,84 @@ class ProgramTransfer(ProgramVisitor):
 
                             stmts.append(DXWhile(sub_while_predicate, sub_stmts, sub_invariants))
 
-                            stmts += [DXAssign([tmp_vars[x]], sub_loop_newVars[x]) for x in tmp_vars]
+                            stmts += [DXAssign([tmp_vars[x]], sub_loop_newVars[x]) for x in tmp_vars]'''
                         
-                        #if hadamard_exist_flag:
-                            #sub_loop_newVars = {x : DXBind('tmp_' + str(num + 1) + x, SeqType(SType('bv1')), num + 1) for x in tmp_vars}
-                            #stmts += [buildWhile(qstmt, 0, loop_newVars, sub_loop_newVars, nLoc, TyEn(QXNum(1)), nnum, fqty)]
+                        if hadamard_exist_flag:
+                            sub_loop_newVars = {x : DXBind('tmp_' + str(num + 1) + x, SeqType(SeqType(SType('bv1'))), num + 1) for x in tmp_vars if x != 'amp'}
+                            sub_loop_newVars['amp'] = DXBind('tmp_' + str(num + 1) + 'amp', SeqType(SType('real')), num + 1)
+                            sub_stmts = []
+                            sub_stmts += [DXAssign([sub_loop_newVars[x]], DXList(), True) for x in sub_loop_newVars]
+                            next_looping_var = DXBind('tmp_sub', None, num)
+                            sub_stmts += [DXAssign([next_looping_var], DXNum(0), True)]
+
+                            '''for lpv in loop_values:
+
+                                #replace the current values bind from outer old vars to inner temp vars
+                                def lambda_replace(x):
+                                    if isinstance(x, DXBind):
+                                        if x.ID() == lpv:
+                                            return tmp_vars[lpv]
+                                        
+                                lamb_subst = SubstLambda(lambda_replace)
+                                loop_values[lpv] = lamb_subst.visit(loop_values[lpv])'''
+                            
+                            sub_loop_values = {x : tmp_vars[x] for x in tmp_vars}
+
+                            sub_stmts += [buildWhile(next_looping_var, qstmt, 0, tmp_vars, sub_loop_newVars, nLoc, TyEn(QXNum(1)), nnum, TyEn(QXNum(1)), is_sub_qcomp, sub_bool_exp_id, sub_bool_exp_index, sub_bool_store_id, True, if_bexp_vals, sub_loop_values)]
+                            sub_stmts += [DXAssign([tmp_vars[x]], sub_loop_newVars[x]) for x in sub_loop_newVars]
+
+                            for lpv in sub_loop_values:
+                                if lpv == 'amp':
+                                    continue
+                                eqv = EqualityVisitor()
+                                ch_flag = not eqv.visit(sub_loop_values[lpv], tmp_vars[lpv])
+                                if ch_flag:
+                                    dxifbexp = None
+                                    if is_sub_qcomp:
+                                        if isinstance(qstmt.bexp().left(), QXQRange):
+                                            dxifbexp = DXComp(qstmt.bexp().op(), tmp_vars[sub_bool_exp_id], qstmt.bexp().right().accept(self))
+                                        else:
+                                            dxifbexp = DXComp(qstmt.bexp().op(), qstmt.bexp().left().accept(self), tmp_vars[sub_bool_exp_id])
+                                    else:
+                                        lc = LocusCollector()
+                                        lc.visit(qstmt.bexp())
+                                        dxifbexp = DXComp('==', DXCall('ketIndex',[tmp_vars[sub_bool_exp_id], sub_bool_exp_index]), DXNum(1))
+                                    
+                                    elseval = DXCall('castBVInt',[tmp_vars[lpv]]) if isinstance(tmp_vars[lpv].type(), SeqType) else tmp_vars[lpv]
+                                    sub_loop_values[lpv] = DXIfExp(dxifbexp, sub_loop_values[lpv], elseval)
+
+                                    tmp_val = sub_loop_values[lpv]
+                                    for lpv1 in tmp_vars:
+                                        #revert the above lambda to its previous state for the rest of the loop
+                                        def lambda_replace(x):
+                                            if isinstance(x, DXBind):
+                                                if x.ID() == self.getBindFromIndex(tmp_vars[lpv1]).ID():
+                                                    if self.getBindFromIndex(loop_oldVars[lpv1]).ID() in hadamard_id_list:
+                                                        return loop_newVars[lpv1]
+                                                    return loop_oldVars[lpv1]
+                                                
+                                                
+                                        lamb_subst = SubstLambda(lambda_replace)
+                                        if lpv != 'amp':
+                                            tmp_val = lamb_subst.visit(tmp_val)
+                                        else:
+                                            if ch_flag:
+                                                tp_amp_v = lamb_subst.visit(sub_loop_values[lpv])
+                                                tmp_val = DXBin('*',loop_newVars[lpv], tp_amp_v)
+                                        
+                                    loop_values[lpv] = tmp_val
+
+                            for fstmt in stmts:
+                                if isinstance(fstmt, DXIf):
+                                    fstmt.left().extend(sub_stmts)
+
+                            if_bexp_vals.remove(sub_bool_exp_id)
 
                 #Invariant generation
                 invnum = self.counter
-                newvar = DXBind(bool_exp_id, SType('bv1'), nnum)
-                inv_old_var = {x : DXBind(x, SType('bv1'), nnum) for x in loop_oldVars}
+                newvar = self.getBindFromIndex(loop_oldVars[bool_exp_id])
+                newvar = DXBind(newvar.ID(), SType('bv1'), newvar.num())
+                inv_old_var = {x : self.getBindFromIndex(loop_oldVars[x]) for x in loop_oldVars}
 
                 inv_new_var = {loop_newVars[x].ID() : DXBind(loop_newVars[x].ID(), SType('bv1'), loop_newVars[x].num()) for x in loop_newVars} #only for amp inv generation
 
@@ -1600,7 +1682,7 @@ class ProgramTransfer(ProgramVisitor):
                     rval = loop_values[i]
                     oldval = inv_old_var[i]
 
-                    def lambda_replace(x):
+                    '''def lambda_replace(x):
                         if isinstance(x, DXIndex):
                             tmp = x
                             while isinstance(tmp, DXIndex):
@@ -1611,12 +1693,36 @@ class ProgramTransfer(ProgramVisitor):
                                 tmpoldval = tmpoldval.bind()
 
                             if tmp.ID() == tmpoldval.ID() and tmp.num() == tmpoldval.num():
-                                return oldval 
+                                return oldval '''
+                    #to correct the indexing of the oldval based on loop level eg. p1 to p1[tmp8][tmp9]
+                    def lambda_replace(x):
+                        if isinstance(x, DXIndex) or isinstance(x, DXBind):
+                            v1 = self.getBindFromIndex(x)
+                            v2 = self.getBindFromIndex(oldval)
+
+                            if v1.ID() == v2.ID():
+                                if v1.num() and v2.num() and v1.num() == v2.num():
+                                    return oldval
+                                elif not v1.num():
+                                    return oldval
+                                
                             
                     lamb_subst = SubstLambda(lambda_replace)
                     rval = lamb_subst.visit(rval)
 
                     if i != 'amp':
+                        for ln_var in loop_newVars:
+                            #to get the indexing right for the newvars
+                            def lambda_subst(x):
+                                if isinstance(x, DXBind) and x.ID() == loop_newVars[ln_var].ID():
+                                    if x.num() and loop_newVars[ln_var].num():
+                                        if x.num() == loop_newVars[ln_var].num(): 
+                                            return inv_new_var[x.ID()]
+                                    else:
+                                        return inv_new_var[x.ID()]
+                            lamb_subst = SubstLambda(lambda_subst)
+                            rval = lamb_subst.visit(rval)
+
                         rval = DXCall('castBVInt', [rval]) if (isinstance(rval, DXIndex) or (isinstance(rval, DXBind) and isinstance(rval.type(), SeqType))) else rval
                         oldval = DXCall('castBVInt', [oldval]) if (isinstance(oldval, DXIndex) or (isinstance(oldval, DXBind) and isinstance(oldval.type(), SeqType))) else oldval
 
@@ -1660,15 +1766,15 @@ class ProgramTransfer(ProgramVisitor):
                 
                 
                     
+                for ifbv in if_bexp_vals:
+                    if_bexp_new_var = self.getBindFromIndex(loop_newVars[ifbv])
+                    tmpforallvar = DXBind('tmp', SType('nat'), self.counter)
+                    if_bexp_new_var_indexed = self.createIndexFromType(if_bexp_new_var, if_bexp_new_var.type().type(), tmpforallvar)
+                    if_bexp_old_var_indexed = inv_old_var[ifbv]
+                    samebitexp = DXCall('samebit', [if_bexp_new_var_indexed, if_bexp_old_var_indexed, DXLength(if_bexp_old_var_indexed)])
+                    
 
-                if_bexp_new_var = self.getBindFromIndex(loop_newVars[bool_exp_id])
-                tmpforallvar = DXBind('tmp', SType('nat'), self.counter)
-                if_bexp_new_var_indexed = self.createIndexFromType(if_bexp_new_var, if_bexp_new_var.type().type(), tmpforallvar)
-                if_bexp_old_var_indexed = inv_old_var[bool_exp_id]
-                samebitexp = DXCall('samebit', [if_bexp_new_var_indexed, if_bexp_old_var_indexed, DXLength(if_bexp_old_var_indexed)])
-                
-
-                invariants += [self.genAllSpec_Simple(DXBind('tmp', SType('nat'), self.counter), if_bexp_new_var, if_bexp_new_var.type().type(), samebitexp)]
+                    invariants += [self.genAllSpec_Simple(DXBind('tmp', SType('nat'), self.counter), if_bexp_new_var, if_bexp_new_var.type().type(), samebitexp)]
 
 
                 stmts += [DXAssign([loop_newVars[x]], DXBin('+', loop_newVars[x], DXList([tmp_vars[x]]))) for x in tmp_vars]
@@ -1679,9 +1785,10 @@ class ProgramTransfer(ProgramVisitor):
             elif num + 1 <  nqty.flag().num():
                 stmts += [DXAssign([DXBind('tmp' + str(num + 1) + x)], DXList(), True) for x in loop_newVars]
 
-                stmts.append(DXAssign([DXBind('tmp', None, num + 1)], DXNum(0), True))
+                next_looping_var = DXBind('tmp', None, num + 1)
+                stmts.append(DXAssign([next_looping_var], DXNum(0), True))
                 tmp_new_vars = {x : DXBind('tmp' + str(num + 1) + x, loop_newVars[x].type().type()) for x in loop_newVars}
-                nestedWhile = buildWhile(ctx, num + 1, loop_oldVars, tmp_new_vars, nLoc, nqty, nnum, fqty)
+                nestedWhile = buildWhile(next_looping_var, ctx, num + 1, loop_oldVars, tmp_new_vars, nLoc, nqty, nnum, fqty, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, False, if_bexp_vals, loop_values)
                 stmts.append(nestedWhile)
 
                 #invariant generation for outer loops
@@ -1853,7 +1960,7 @@ class ProgramTransfer(ProgramVisitor):
             return DXWhile(while_predicate, stmts, invariants)
 
 
-        while_stmt = buildWhile(ctx, 0, loop_oldVars, loop_newVars, nLoc, nqty, nnum, fqty)
+        while_stmt = buildWhile(DXBind('tmp', None, 0), ctx, 0, loop_oldVars, loop_newVars, nLoc, nqty, nnum, fqty, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, False, [bool_exp_id], loop_values)
 
         res.append(while_stmt)
 
