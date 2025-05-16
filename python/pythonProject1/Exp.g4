@@ -25,7 +25,7 @@ loopConds : (Invariant spec | Decreases arithExpr | Separates locus)*;
 
 stmts : stmt*;
 
-stmt: asserting | casting | varcreate | assigning | qassign | qcreate | measure | measureAbort | ifexp | forexp | whileexp | (fcall ';') | return | break;
+stmt: asserting | casting | varcreate | assigning | qassign | qcreate | measure | measureAbort | ifexp | forexp | whileexp | (fcall ';') | return_stmt | break_stmt;
 
 spec : qunspec | logicImply | chainBExp | '{' (qunspec | logicImply | chainBExp) '}';
 
@@ -35,7 +35,7 @@ qbool: qrange | '{' locus '}' comOp arithExpr | arithExpr comOp arithExpr '@' id
 
 logicImply: allspec | allspec '==>' logicImply | qunspec;
 
-allspec : logicOrExp | 'forall' ID '::' chainBExp '==>' logicImply | 'forall' ID TIn crange '==>' logicImply;
+allspec: logicOrExp | 'forall' ID '::' chainBExp '==>' logicImply | 'forall' ID TIn crange '==>' logicImply;
 
 logicOrExp: logicAndExp '||' logicOrExp | logicAndExp;
 
@@ -99,9 +99,9 @@ measure : idindices '*=' 'measure' '(' (locus | ID) ')' ';' | idindices '*=' 'me
 // see SWAPTest.qfy
 measureAbort: ids '*=' 'measA' '(' (locus | ID) ')' ';' | ids '*=' 'measA' '(' (locus | ID) ',' arithExpr ')' ';';
 
-return: Return ids ';';
+return_stmt: Return ids ';';
 
-break: 'break' ';';
+break_stmt: 'break' ';';
 
 ifexp: If ('(' bexp ')' | bexp) 'then'? '{' stmts '}' (Else '{' stmts '}')?;
 
@@ -123,11 +123,12 @@ fcall : ID '^{-1}'? '(' arithExprsOrKets ')';
 
 arithExprsOrKets : (arithExpr | ket) (',' (arithExpr | ket))*;
 
-arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | slice | crange) | arithExprSumSpec; // | sumspec | qtypeCreate;
+arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | slice_expr | crange); // | sumspec | qtypeCreate;
 
 arithAtomic: numexp | ID | TSub arithExpr | boolLiteral
           | '(' arithExpr ')'
-          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | notExpr | setInstance | qrange | ketCallExpr;
+          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | notExpr | setInstance | qrange | ketCallExpr
+          | arithExprSumSpec;
 
 // the sum specification allowed in arith expressions (terminates in an arith expr, not a manyketpart)
 arithExprSumSpec: maySum arithExpr;
@@ -182,7 +183,7 @@ crange : '[' arithExpr ',' arithExpr ')';
 
 index: '[' arithExpr ']';
 
-slice: '[' arithExpr? '..' arithExpr? ']';
+slice_expr: '[' left=arithExpr? '..' right=arithExpr? ']';
 
 idindex : ID index;
 
