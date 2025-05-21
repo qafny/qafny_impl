@@ -7,6 +7,7 @@ class SubstLambda(AbstractTargetVisitor):
 
     def __init__(self, lamb):
         self.lamb = lamb
+        self.outputs = []
 
     def visit(self, ctx):
         match ctx:
@@ -68,7 +69,7 @@ class SubstLambda(AbstractTargetVisitor):
             
 
     def visitBin(self, ctx: DXBin):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             l=ctx.left().accept(self)
             r=ctx.right().accept(self)
@@ -76,14 +77,14 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
 
     def visitUni(self, ctx: DXUni):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             l = ctx.next().accept(self)
             return DXUni(ctx.op(), l)
         return l_res
 
     def visitBind(self, ctx: DXBind):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             return DXBind(ctx.ID(), ctx.type().accept(self) if ctx.type() else None, ctx.num())
         return l_res
@@ -93,7 +94,7 @@ class SubstLambda(AbstractTargetVisitor):
 
 
     def visitIndex(self, ctx:DXIndex):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             l = ctx.bind().accept(self)
             b = ctx.index().accept(self)
@@ -101,7 +102,7 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
         
     def visitCall(self, ctx: DXCall):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             tmp = []
             for elem in ctx.exps():
@@ -110,7 +111,7 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
 
     def visitAll(self, ctx: DXAll):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             bind = ctx.bind().accept(self)
             nxt = ctx.next().accept(self)
@@ -118,14 +119,14 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitAssert(self, ctx: DXAssert):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             spec = ctx.spec().accept(self)
             return DXAssert(spec)
         return l_res
     
     def visitAssign(self, ctx: DXAssign):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             ids = [i.accept(self) for i in ctx.ids()]
             exp = ctx.exp().accept(self)
@@ -133,7 +134,7 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitComp(self, ctx: DXComp):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             l = ctx.left().accept(self)
             r = ctx.right().accept(self)
@@ -141,14 +142,14 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitEnsures(self, ctx: DXEnsures):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             spec = ctx.spec().accept(self)
             return DXEnsures(spec)
         return l_res
     
     def visitFunType(self, ctx: FunType):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             l = ctx.left().accept(self)
             r = ctx.right().accept(self)
@@ -156,7 +157,7 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitIf(self, ctx: DXIf):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             cond = ctx.cond().accept(self)
             left = [stmt.accept(self) for stmt in ctx.left()]
@@ -165,7 +166,7 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitInit(self, ctx: DXInit):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             b = ctx.binding().accept(self)
             e = ctx.exp().accept(self) if ctx.exp() else None
@@ -173,7 +174,7 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitInRange(self, ctx: DXInRange):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             x = ctx.bind().accept(self)
             l = ctx.left().accept(self)
@@ -182,7 +183,7 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitLogic(self, ctx: DXLogic):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             l = ctx.left().accept(self)
             r = ctx.right().accept(self)
@@ -190,7 +191,7 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitMethod(self, ctx: DXMethod):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             bindings = [b.accept(self) for b in ctx.bindings()]
             returns = [r.accept(self) for r in ctx.returns()]
@@ -200,39 +201,39 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitNot(self, ctx: DXNot):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             nxt = ctx.next().accept(self)
             return DXNot(nxt)
         return l_res
     
     def visitProgram(self, ctx: DXProgram):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             methods = [m.accept(self) for m in ctx.method()]
             return DXProgram(methods)
         return l_res
     
     def visitRequires(self, ctx: DXRequires):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             spec = ctx.spec().accept(self)
             return DXRequires(spec)
         return l_res
     
     def visitSeqType(self, ctx: SeqType):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             ty = ctx.type().accept(self)
             return SeqType(ty)
         return l_res
     
     def visitSType(self, ctx: SType):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         return ctx if l_res is None else l_res
     
     def visitWhile(self, ctx: DXWhile):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             cond = ctx.cond().accept(self)
             stmts = [s.accept(self) for s in ctx.stmts()]
@@ -241,7 +242,7 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitIfExp(self, ctx: DXIfExp):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             bexp = ctx.bexp().accept(self)
             l = ctx.left().accept(self)
@@ -250,7 +251,7 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitCast(self, ctx: DXCast):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             typ = ctx.type().accept(self)
             nxt = ctx.next().accept(self)
@@ -258,13 +259,13 @@ class SubstLambda(AbstractTargetVisitor):
         return l_res
     
     def visitLength(self, ctx: DXLength):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             return DXLength(ctx.var().accept(self))
         return l_res
     
     def visitReal(self, ctx: DXReal):
-        l_res = self.lamb(ctx)
+        l_res = self.lamb(self, ctx)
         if l_res is None:
             return DXReal(ctx.real())
         return l_res

@@ -553,19 +553,6 @@ class ProgramTransfer(ProgramVisitor):
         for condelem in ctx.conds():
             if isinstance(condelem, QXEnsures):
                 tmpens = condelem.accept(self)
-                '''tres = []
-                for i in tmpens:
-                    if isinstance(i, DXAll):
-                        tm = i
-                        while isinstance(tm, DXAll):
-                            tm = tm.next().right()
-                        mainelem = tm.left().bind() if isinstance(tm.left(), DXIndex) else tm.left.ID()
-
-                        tm = i
-                        while isinstance(tm, DXAll):'''
-                            
-                
-
                 tmpcond.extend(tmpens)
 
         tmpreturn = []
@@ -784,18 +771,18 @@ class ProgramTransfer(ProgramVisitor):
         
 
         if isinstance(t, TyEn):
-            pVar = vars[0]
-            kVars = vars[1:]
+            pVar = [x for x in vars if x.ID() == 'amp'][0]
+            kVars = [x for x in vars if x.ID() != 'amp']
 
             for x in range(len(kVars)): 
                 indVar = kVars[x]
-                tcount = 0
+                tcount = self.counter
                 for i in range(t.flag().num()):
                     indVar = DXIndex(indVar, DXBind('tmp', SType('nat'), tcount))
                     tcount += 1
                 kVars[x] = indVar
 
-            tcount = 0
+            tcount = self.counter
             for i in range(t.flag().num()):
                 pVar = DXIndex(pVar, DXBind('tmp', SType('nat'), tcount))
                 tcount += 1
@@ -804,8 +791,8 @@ class ProgramTransfer(ProgramVisitor):
 
             
             newVars = makeVars(locus, t, newNum)
-            newPVar = newVars[0]
-            newKVars = newVars[1:]
+            newPVar = [x for x in newVars if x.ID() == 'amp'][0]
+            newKVars = [x for x in newVars if x.ID() != 'amp']
 
             unchanged_range = [str(x.ID()) for x in unchanged_range]
             new_ucr = []
@@ -849,13 +836,43 @@ class ProgramTransfer(ProgramVisitor):
                     re = esub.visit(re)
                 res += [re]
 
-            preds = []
+            preds = []  
+
+            vars = sorted(vars, key = lambda x: x.ID())
+            newVars = sorted(newVars, key = lambda x: x.ID())
+
+            arg_type = SType('bv1')
+            for ent in range(t.flag().num() + 1):
+                tmp = []
+                for i in range(len(vars)):
+                    if ent == t.flag().num() and vars[i].ID() == 'amp':
+                        continue
+                    if ent == 0:
+                        tmp.append(DXLength(newVars[i]))
+                        tmp.append(DXLength(vars[i]))
+                    else:
+                        p_oldvar = self.createIndexFromType(vars[i], arg_type, DXBind('tmp', SType('nat'), self.counter))
+                        p_newvar = self.createIndexFromType(newVars[i], arg_type, DXBind('tmp', SType('nat'), self.counter))
+                        tmp.append(DXLength(p_oldvar))
+                        tmp.append(DXLength(p_newvar))
+
+                tres = DXComp('==', tmp[0], tmp[1])
+                for i in range(2, len(tmp)):
+                    tres = DXComp('==', tres, tmp[i])
+
+                if ent == 0:
+                    preds += [tres]
+                else:
+                    preds += [self.genAllSpec_Simple(DXBind('tmp', SType('nat'), self.counter), newVars[0], arg_type, tres)]
+                arg_type = SeqType(arg_type)
+                
+
+
             for i in range(len(newKVars)):
-                preds += [self.genAllSpec(DXBind('tmp', SType('nat')), newKVars[i], res[i], False)]
-                #preds += [DXAll(allbind, DXLogic("==>",DXInRange(allbind, DXNum(0), DXLength(kVars[i])),DXComp("==", DXIndex(newKVars[i], allbind), res[i])))]
+                preds += [self.genAllSpec(DXBind('tmp', SType('nat'), self.counter), newKVars[i], res[i], False)]
 
             for i in range(len(new_ucr)):
-                preds += [self.genAllSpec(DXBind('tmp', SType('nat')), new_ucr[i], unchanged_range[i], False)]
+                preds += [self.genAllSpec(DXBind('tmp', SType('nat'), self.counter), new_ucr[i], unchanged_range[i], False)]
 
             newp = phase.accept(self)
             for esub in tmpSubs:
@@ -863,9 +880,8 @@ class ProgramTransfer(ProgramVisitor):
 
             newp = DXBin('*', pVar, newp)
 
-            preds += [self.genAllSpec(DXBind('tmp', SType('nat')), newPVar, newp, True)]
+            preds += [self.genAllSpec(DXBind('tmp', SType('nat'), self.counter), newPVar, newp, True)]
 
-            #preds += [DXComp("==", newPVar, DXBin("*", pVar, newp)), DXComp("==", vars[0], newVars[0])]
             return preds
 
         if isinstance(t, TyNor):
@@ -886,7 +902,11 @@ class ProgramTransfer(ProgramVisitor):
                 res += [re]
 
             preds = []
+
+            vars = sorted(vars, key = lambda x: x.exps()[0].ID())
+            newVars = sorted(newVars, key = lambda x: x.ID())
             for i in range(len(newVars)):
+                preds += [DXComp('==', DXLength(newVars[i]), DXLength(vars[i].exps()[0]))]
                 preds += [DXComp("==", DXCall('castBVInt', [newVars[i]]), res[i])]
                 self.libFuns.add('castBVInt')
             return preds
@@ -1030,23 +1050,43 @@ class ProgramTransfer(ProgramVisitor):
                 self.counter += 1
                 vars = makeVars(loc, qty, num)
                 newVars = makeVars(loc, qty, newNum)
-                preds = self.genPreds(loc, qty, num, newNum, ctx.exp().ids(), ctx.exp().vectors(), ctx.exp().phase(), unchanged_range)
-                newConds = []
+
+                rpreds = []
+                preds = []
+                for vec in ctx.exp().vectors():
+                    vec_d = vec.vector().accept(self)
+                    ids = ctx.exp().ids()
+
+                    def lambda_check(lself, x):
+                        if isinstance(x, DXBin) and (x.op() == '/' or x.op() == '%') and isinstance(x.right(), DXBind) and x.right().ID() not in ids:
+                            lself.outputs.append(x.right())
+                        
+                    lamb_subst = SubstLambda(lambda_check)
+                    lamb_subst.visit(vec_d)
+                    for b in lamb_subst.outputs:
+                        rpreds += [DXRequires(DXComp('>', b, DXNum(0)))]
+
+
+                preds += self.genPreds(loc, qty, num, newNum, ctx.exp().ids(), ctx.exp().vectors(), ctx.exp().phase(), unchanged_range)
+                newConds = rpreds
                 for pred in preds:
                     newConds += [DXEnsures(pred)]
 
-                ic = BindingCollector()
                 varids = []
+                def lambda_check(lself, x):
+                    if isinstance(x, DXBind):
+                        lself.outputs.append(x)
+
                 for i in ctx.exp().vectors():
-                    tmp = [x.accept(self) for x in i.vector().accept(ic) if x.ID() not in ctx.exp().ids()]
-                    for j in tmp:
-                        if j.type() is None:
-                            if j.ID() in self.kenv[self.fvar][0]:
-                                 varids.append(DXBind(j.ID(), self.kenv[self.fvar][0][j.ID()].accept(self)))
-                        else:
-                            varids.append(j)
+                    tmp = i.vector().accept(self)
+                    lamb_subst = SubstLambda(lambda_check)
+                    lamb_subst.visit(tmp)
+                    varids += [DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self)) for t in lamb_subst.outputs if t.ID() not in ctx.exp().ids()]
                             
-                                    
+                lamb_subst = SubstLambda(lambda_check)
+                lamb_subst.visit(ctx.exp().phase().accept(self))  
+                varids += [DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self)) for t in lamb_subst.outputs if t.ID() not in ctx.exp().ids()]
+
                 cvars = vars + varids
 
                 self.addFuns += [DXMethod(name, True, cvars, newVars, newConds, [])]
@@ -1055,8 +1095,14 @@ class ProgramTransfer(ProgramVisitor):
                     result.append(DXInit(i))
 
                 result.append(DXAssign(newVars,DXCall(name, cvars)))
+
+                result.append(DXCall('omega0', [], True))
                 
                 self.varnums = [(loc,qty,newNum)] + self.varnums
+                self.libFuns.add('pow2')
+                self.libFuns.add('omega')
+                self.libFuns.add('sqrt')
+                self.libFuns.add('omega0')
                 return result
 
         return None
@@ -1416,7 +1462,7 @@ class ProgramTransfer(ProgramVisitor):
                     tmpSubs += [subst]
                     valSubst = SubstDAExp(lambda_op.exp().ids()[i], loop_values[lambda_op.locus()[i].ID()])
 
-                    def subsfunc(x):
+                    def subsfunc(lself, x):
                         if isinstance(x, DXBind) and isinstance(x.type(), SeqType):
                             return DXCall('castBVInt', [x])
                         elif isinstance(x, DXIndex):
@@ -1533,32 +1579,6 @@ class ProgramTransfer(ProgramVisitor):
                             sub_bool_exp_index = qstmt.bexp().index().accept(self)
 
                         if_bexp_vals.append(sub_bool_exp_id)
-                        '''if hadamard_exist_flag:
-                            sub_stmts = []
-
-                            sub_looping_var = DXBind('sub_tmp')
-                            stmts.append(DXAssign([sub_looping_var], DXNum(0), True))
-                            
-                            sub_loop_oldVars = {x : DXIndex(tmp_vars[x], sub_looping_var) for x in tmp_vars}
-
-                            sub_loop_newVars = {x : DXBind('tmp_' + str(num + 1) + x, SeqType(SType('bv1'))) for x in tmp_vars}
-                            stmts += [DXAssign([sub_loop_newVars[x]], DXList(), True) for x in sub_loop_newVars]
-
-                            sub_while_predicate = DXComp('<', sub_looping_var, DXLength(tmp_vars[sub_bool_exp_id]))
-
-                            sub_invariants = []
-
-                            sub_tmp_vars = {x : DXBind('sub_tmp_' + x) for x in sub_loop_newVars}
-                            for sub_qstmt in qstmt.stmts():
-                                if (isinstance(sub_qstmt, QXQAssign) and isinstance(sub_qstmt.exp(), QXOracle)) or (isinstance(sub_qstmt, QXQAssign) and isinstance(sub_qstmt.exp(), QXSingle) and sub_qstmt.exp().op() == 'H'):
-                                    transfer_had_lambda(sub_stmts, sub_qstmt, qstmt, sub_loop_oldVars, sub_loop_newVars, sub_tmp_vars, is_sub_qcomp, sub_bool_exp_id, sub_bool_exp_index, sub_bool_store_id, inv_dict, loop_values, num)
-
-                            sub_stmts += [DXAssign([sub_loop_newVars[x]], DXBin('+', sub_loop_newVars[x], DXList([sub_tmp_vars[x]]))) for x in sub_tmp_vars]
-                            sub_stmts.append(DXAssign([sub_looping_var], DXBin('+', sub_looping_var, DXNum(1))))
-
-                            stmts.append(DXWhile(sub_while_predicate, sub_stmts, sub_invariants))
-
-                            stmts += [DXAssign([tmp_vars[x]], sub_loop_newVars[x]) for x in tmp_vars]'''
                         
                         if hadamard_exist_flag:
                             sub_loop_newVars = {x : DXBind('tmp_' + str(num + 1) + x, SeqType(SeqType(SType('bv1'))), num + 1) for x in tmp_vars if x != 'amp'}
@@ -1568,16 +1588,6 @@ class ProgramTransfer(ProgramVisitor):
                             next_looping_var = DXBind('tmp_sub', None, num)
                             sub_stmts += [DXAssign([next_looping_var], DXNum(0), True)]
 
-                            '''for lpv in loop_values:
-
-                                #replace the current values bind from outer old vars to inner temp vars
-                                def lambda_replace(x):
-                                    if isinstance(x, DXBind):
-                                        if x.ID() == lpv:
-                                            return tmp_vars[lpv]
-                                        
-                                lamb_subst = SubstLambda(lambda_replace)
-                                loop_values[lpv] = lamb_subst.visit(loop_values[lpv])'''
                             
                             sub_loop_values = {x : tmp_vars[x] for x in tmp_vars}
 
@@ -1607,7 +1617,7 @@ class ProgramTransfer(ProgramVisitor):
                                     tmp_val = sub_loop_values[lpv]
                                     for lpv1 in tmp_vars:
                                         #revert the above lambda to its previous state for the rest of the loop
-                                        def lambda_replace(x):
+                                        def lambda_replace(lself, x):
                                             if isinstance(x, DXBind):
                                                 if x.ID() == self.getBindFromIndex(tmp_vars[lpv1]).ID():
                                                     if self.getBindFromIndex(loop_oldVars[lpv1]).ID() in hadamard_id_list:
@@ -1682,20 +1692,8 @@ class ProgramTransfer(ProgramVisitor):
                     rval = loop_values[i]
                     oldval = inv_old_var[i]
 
-                    '''def lambda_replace(x):
-                        if isinstance(x, DXIndex):
-                            tmp = x
-                            while isinstance(tmp, DXIndex):
-                                tmp = tmp.bind()
-
-                            tmpoldval = oldval
-                            while isinstance(tmpoldval, DXIndex):
-                                tmpoldval = tmpoldval.bind()
-
-                            if tmp.ID() == tmpoldval.ID() and tmp.num() == tmpoldval.num():
-                                return oldval '''
                     #to correct the indexing of the oldval based on loop level eg. p1 to p1[tmp8][tmp9]
-                    def lambda_replace(x):
+                    def lambda_replace(lself, x):
                         if isinstance(x, DXIndex) or isinstance(x, DXBind):
                             v1 = self.getBindFromIndex(x)
                             v2 = self.getBindFromIndex(oldval)
@@ -1713,7 +1711,7 @@ class ProgramTransfer(ProgramVisitor):
                     if i != 'amp':
                         for ln_var in loop_newVars:
                             #to get the indexing right for the newvars
-                            def lambda_subst(x):
+                            def lambda_subst(lself, x):
                                 if isinstance(x, DXBind) and x.ID() == loop_newVars[ln_var].ID():
                                     if x.num() and loop_newVars[ln_var].num():
                                         if x.num() == loop_newVars[ln_var].num(): 
@@ -1731,7 +1729,7 @@ class ProgramTransfer(ProgramVisitor):
                    
                         for ln_var in loop_newVars:
                             #in invariants we have 1.0/sqrt(pow2(x)), below code will change to 1.0/sqrt(pow2(x[tmp1][tmp2]))
-                            def lambda_subst(x):
+                            def lambda_subst(lself, x):
                                 if isinstance(x, DXBind) and x.ID() == loop_newVars[ln_var].ID():
                                     if x.num() and loop_newVars[ln_var].num():
                                         if x.num() == loop_newVars[ln_var].num(): 
@@ -1740,7 +1738,7 @@ class ProgramTransfer(ProgramVisitor):
                                         return inv_new_var[x.ID()]
                                 
                             #in invariants we have omega(castBVInt(x)) with x having incorrect indexing, following code will correct it
-                            def lambda_subst1(x):
+                            def lambda_subst1(lself, x):
                                 if isinstance(x, DXIndex):
                                     tmp_l1 = x
                                     while not isinstance(tmp_l1, DXBind):
@@ -1828,7 +1826,7 @@ class ProgramTransfer(ProgramVisitor):
                     tmp = inv
 
                     #to change the pre existing variables indexing based on the loop level
-                    def lambda_replace_oldvar(x):
+                    def lambda_replace_oldvar(lself, x):
                         if isinstance(x, DXIndex):
                             tmp_lr = x
                             while not isinstance(tmp_lr, DXBind):
@@ -1853,7 +1851,7 @@ class ProgramTransfer(ProgramVisitor):
                             for vars in tmp_new_vars:
 
                                 #to change the tmp vars from inner loop to the tmp vars of the current loop
-                                def lambda_replace(x):
+                                def lambda_replace(lself, x):
                                     if isinstance(x, DXIndex) and isinstance(x.bind(), DXBind) and x.bind().ID() == tmp_new_vars[vars].ID():
                                         return DXIndex(loop_newVars[vars], x.index())
                                     
@@ -1862,8 +1860,9 @@ class ProgramTransfer(ProgramVisitor):
                                 left = subst_lamb.visit(left)
 
                                 #to remove one index of outer looping variable from x[i][j][tmp1] to x[i][tmp1]
-                                def lambda_replace1(x):
-                                    if isinstance(x, DXIndex) and isinstance(x.bind(), DXIndex) and x.index().num() == self.counter:
+                                selfcount = self.counter
+                                def lambda_replace1(lself, x):
+                                    if isinstance(x, DXIndex) and isinstance(x.bind(), DXIndex) and x.index().num() == selfcount:
                                         tmp1 = x
                                         while not isinstance(tmp1, DXBind):
                                             tmp1 = tmp1.bind()
@@ -1874,7 +1873,7 @@ class ProgramTransfer(ProgramVisitor):
                                 right = subst_lamb.visit(right)
 
                                 #to add another index for the vars -> x[tmp1][tmp2] to x[tmp1][tmp2][tmp3]
-                                def lambda_replace2(x):
+                                def lambda_replace2(lself, x):
                                     if isinstance(x, DXIndex):
                                         tmp1 = x
                                         while not isinstance(tmp1, DXBind):
@@ -1925,7 +1924,7 @@ class ProgramTransfer(ProgramVisitor):
                             
                             for vars in tmp_new_vars:
                                 #in samebit ivnariants we have x[tmp1][tmp2] from previous loop, the following code will add another index x[tmp1][tmp2][tmp3]
-                                def lambda_replace(x):
+                                def lambda_replace(lself, x):
                                     if isinstance(x, DXIndex):
                                         tmp_l = x
                                         while not isinstance(tmp_l, DXBind):
@@ -1937,7 +1936,7 @@ class ProgramTransfer(ProgramVisitor):
                                 exp = subst_lamb.visit(exp)
 
                                 #change the variable from the inner loop invariants to the current loop variable
-                                def lambda_replace1(x):
+                                def lambda_replace1(lself, x):
                                     if isinstance(x, DXBind) and x.ID() == tmp_new_vars[vars].ID():
                                         return loop_newVars[vars]
                                     
@@ -2368,7 +2367,11 @@ class ProgramTransfer(ProgramVisitor):
 
         tmp = []
 
-        r = subLocus(self.locus, self.varnums)
+        if self.t_ensures:
+            r = subLocus(self.locus, self.outvarnums)
+        else:
+            r = subLocus(self.locus, self.varnums)
+
         if r is not None:
             l, qty, num = r
             for i in range(len(self.locus)):
@@ -2380,7 +2383,16 @@ class ProgramTransfer(ProgramVisitor):
                 if isinstance(qty, TyNor):
                     tmp+=[DXComp('==',DXCall('castBVInt', [DXBind(self.locus[i].ID(), num = num)]), v)]
                     self.libFuns.add('castBVInt')
-                tmp += [DXAll(x, DXLogic("==>", DXInRange(x, DXNum(0), right), DXComp("==", DXIndex(self.qvars[i], x), v)))]
+                elif isinstance(qty, TyHad):
+                    tmp += [DXAll(x, DXLogic("==>", DXInRange(x, DXNum(0), right), DXComp("==", DXIndex(self.qvars[i], x), v)))]
+                if not self.t_ensures:
+                    if isinstance(qty, TyNor) and isinstance(v, DXNum) and v.num() == 0:
+                        tmp += [DXAll(x, DXLogic("==>", DXInRange(x, DXNum(0), right), DXComp("==", DXIndex(self.qvars[i], x), v)))]
+                    elif isinstance(qty, TyNor):
+                        pass
+                    else:
+                        tmp += [DXAll(x, DXLogic("==>", DXInRange(x, DXNum(0), right), DXComp("==", DXIndex(self.qvars[i], x), v)))]
+                #tmp += [DXAll(x, DXLogic("==>", DXInRange(x, DXNum(0), right), DXComp("==", DXIndex(self.qvars[i], x), v)))]
 
             if not self.t_ensures:
                 loc, qty, num = subLocus(self.locus, self.varnums)

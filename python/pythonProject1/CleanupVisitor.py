@@ -208,3 +208,6 @@ class CleanupVisitor(TargetProgramVisitor):
     
     def visitInit(self, ctx: TargetProgrammer.DXInit):
         return ctx
+    
+    def visitSType(self, ctx: TargetProgrammer.SType):
+        return ctx
