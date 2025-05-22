@@ -2,31 +2,37 @@ import AbstractProgramVisitor
 
 import utils # for make_repr(...)
 
+from typing import Union
+
 # Qafny's AST
 
 
 class QXTop:
-    """Parent class of all Qafny tree nodes"""
+    '''Parent class of all Qafny tree nodes'''
 
     def accept(self, visitor: AbstractProgramVisitor):
         pass
 
 
 class QXType(QXTop):
-    """QXType refers kinds.
-    """
+    '''
+    QXType refers kinds.
+    This is the base class for all qafny types.
+    '''
 
     def accept(self, visitor: AbstractProgramVisitor):
         pass
 
 
 class QXQExp(QXTop):
+    '''This is the base class for all qafny ket expressions'''
 
     def accept(self, visitor: AbstractProgramVisitor):
         pass
 
 
 class QXHad(QXQExp):
+    '''A hadmard state (+ or -)'''
 
     def __init__(self, state: str):
         self._state = state
@@ -134,8 +140,7 @@ class TyFun(QXType):
 
 
 class QXQTy(QXTop):
-    """QXQTy refers to actual quantum types
-    """
+    '''QXQTy refers to actual quantum types. This is the base class for all custom quantum types'''
 
     def accept(self, visitor: AbstractProgramVisitor):
         pass
@@ -164,14 +169,21 @@ class TyEn(QXQTy):
     def __repr__(self):
         return f"TyEn(flag={self._flag})"
 
+
 # Specialized version of the EN type where the grouping of basis vectors are important
 class TyAA(QXQTy):
+
+    def __init__(self, qrange = None):
+        self._qrange = qrange
+
+    def qrange(self):
+        return self._qrange
 
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitAA(self)
 
     def __repr__(self):
-        return f"TyAA()"
+        return f"TyAA(qrange={self._qrange})"
 
 
 class TyNor(QXQTy):
@@ -185,18 +197,18 @@ class TyNor(QXQTy):
 
 class QXBExp(QXTop):
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         pass
 
 
 class QXSpec(QXTop):
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         pass
 
 class QXCond(QXTop):
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         pass
 
 
@@ -206,7 +218,7 @@ class QXBind(QXAExp):
         self._id = id
         self._type = ty
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitBind(self)
 
     def ID(self):
@@ -271,7 +283,7 @@ class QXComp(QXBool):
         self._left = left
         self._right = right
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitBool(self)
 
     def op(self):
@@ -289,21 +301,25 @@ class QXComp(QXBool):
 
 class QXAll(QXSpec):
 
-    def __init__(self, bind: QXBind, next: QXSpec):
+    def __init__(self, bind: QXBind, bounds: QXComp, next: QXSpec):
         self._bind = bind
+        self._bounds = bounds
         self._next = next
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitAll(self)
 
     def bind(self):
         return self._bind
 
+    def bounds(self):
+        return self._bounds
+
     def next(self):
         return self._next
 
     def __repr__(self):
-        return f"QXAll(bind={self._bind}, next={self._next})"
+        return f"QXAll(bind={self._bind}, bounds={self._bounds} next={self._next})"
 
 
 class QXQBool(QXBExp):
@@ -332,7 +348,7 @@ class QXQIndex(QXQBool, QXAExp):
 
 class QXIfExp(QXAExp):
 
-    def __init__(self, bexp: QXLogic, left: QXAExp, right: QXAExp):
+    def __init__(self, bexp: QXBExp, left: QXAExp, right: QXAExp):
         self._bexp = bexp
         self._left = left
         self._right = right
@@ -370,6 +386,148 @@ class QXBin(QXAExp):
 
     def __repr__(self):
         return f"QXBin(op={repr(str(self._op))}, left={self._left}, right={self._right})"
+
+
+class QXCRange(QXTop):
+
+    def __init__(self, left: QXAExp, right: QXAExp):
+        self._left = left
+        self._right = right
+
+    def accept(self, visitor : AbstractProgramVisitor):
+        return visitor.visitCRange(self)
+
+    def left(self):
+        return self._left
+
+    def right(self):
+        return self._right
+
+    def __repr__(self):
+        return f"QXCRange(left={self._left}, right={self._right})"
+
+class QXQRange(QXTop):
+
+    def __init__(self, id: str, cranges: [QXCRange]):
+        self._id = id
+        self._cranges = cranges
+
+    def accept(self, visitor : AbstractProgramVisitor):
+        return visitor.visitQRange(self)
+
+    def ID(self):
+        return self._id if isinstance(self._id, str) else self._id.getText()
+
+    def cranges(self):
+        return self._cranges
+
+    def __repr__(self):
+        return f"QXQRange(id={repr(str(self._id))}, cranges={self._cranges})"
+
+
+class QXSlice(QXTop):
+    """
+    Represents a slice of a certain array or set.
+
+    example:
+    function exists(k: nat, y: nat[k]): bool
+    {
+                                                                    ╭───────╮
+        if k == 0 then false else if y[0] == k then exists(k - 1, y │ [1..] │ ) else true
+                                                                    ╰───────╯
+    }
+    """
+
+    def __init__(self, left: QXAExp | None, right: QXAExp | None):
+        self._left = left
+        self._right = right
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitSlice(self)
+
+    def left(self):
+        return self._left
+
+    def right(self):
+        return self._right
+
+    def __repr__(self):
+        return f"QXSlice(left={self._left}, right={self._right})"
+
+
+class QXCon(QXTop):
+
+    def __init__(self, id: str, crange: QXCRange):
+        self._id = id
+        self._crange = crange
+
+    def ID(self):
+        return self._id if isinstance(self._id, str) else self._id.getText()
+
+    def range(self):
+        return self._crange
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitCon(self)
+
+    def __repr__(self):
+        return f"QXCon(id={repr(str(self._id))}, crange={self._crange})"
+
+
+class QXIndexAExp(QXAExp):
+
+    def __init__(self, aexp: QXAExp, index: QXAExp):
+        self._aexp = aexp
+        self._index = index
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitIndexAExp(self)
+
+    def aexp(self):
+        return self._aexp
+
+    def index(self):
+        return self._index
+
+    def __repr__(self):
+        return f"QXIndexAExp(aexp={self._aexp}, index={self._index})"
+
+class QXSliceAExp(QXAExp):
+
+    def __init__(self, aexp: QXAExp, slice: QXSlice):
+        self._aexp = aexp
+        self._slice = slice
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitSliceAExp(self)
+
+    def aexp(self):
+        return self._aexp
+
+    def slice(self):
+        return self._slice
+
+    def __repr__(self):
+        return f"QXSliceAExp(aexp={self._aexp}, slice={self._slice})"
+
+
+class QXCRangeAExp(QXAExp):
+
+    def __init__(self, aexp: QXAExp, crange: QXCRange):
+        self._aexp = aexp
+        self._crange = crange
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitCRangeAExp(self)
+
+    def aexp(self):
+        return self._aexp
+
+    def crange(self):
+        return self._crange
+
+    def __repr__(self):
+        return f"QXCRangeAExp(aexp={self._aexp}, crange={self._crange})"
 
 
 class QXUni(QXAExp):
@@ -419,6 +577,55 @@ class QXBoolLiteral(QXAExp):
 
     def __repr__(self):
         return f'QXBoolLiteral(value={self._value})'
+
+
+class QXSet(QXAExp):
+
+    def __init__(self, members: [QXAExp]):
+        self._members = members
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitSet(self)
+
+    def members(self):
+        return self._members
+
+    def __repr__(self):
+        return f'QXSet(members={self._members})'
+
+
+class QXNegation(QXAExp):
+
+    def __init__(self, aexp: QXAExp):
+        self._aexp = aexp
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitNegation(self)
+
+    def aexp(self):
+        return self._aexp
+
+    def __repr__(self):
+        return f'QXNegation(aexp={self._aexp})'
+
+
+class QXSumAExp(QXAExp):
+
+    def __init__(self, sum: QXCon, aexp: QXAExp):
+        self._sum = sum
+        self._aexp = aexp
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitSumAExp(self)
+
+    def sum(self):
+        return self._sum
+
+    def axep(self):
+        return self._aexp
+
+    def __repr__(self):
+        return f'QXSumAExp(sum={self._sum}, aexp={self._aexp})'
 
 
 class QXQComp(QXQBool):
@@ -540,67 +747,10 @@ class QXOracle(QXExp):
         return f"QXOracle(ids={self._ids}, omega={self._omega}, kets={self._kets})"
 
 
-class QXCRange(QXTop):
-
-    def __init__(self, left: QXAExp, right: QXAExp):
-        self._left = left
-        self._right = right
-
-    def accept(self, visitor : AbstractProgramVisitor):
-        return visitor.visitCRange(self)
-
-    def left(self):
-        return self._left
-
-    def right(self):
-        return self._right
-
-    def __repr__(self):
-        return f"QXCRange(left={self._left}, right={self._right})"
-
-
-class QXQRange(QXTop):
-
-    def __init__(self, id: str, cranges: [QXCRange]):
-        self._id = id
-        self._cranges = cranges
-
-    def accept(self, visitor : AbstractProgramVisitor):
-        return visitor.visitQRange(self)
-
-    def ID(self):
-        return self._id if isinstance(self._id, str) else self._id.getText()
-
-    def cranges(self):
-        return self._cranges
-
-    def __repr__(self):
-        return f"QXQRange(id={repr(str(self._id))}, cranges={self._cranges})"
-
-
 class QXQState(QXTop):
 
     def accept(self, visitor : AbstractProgramVisitor):
         pass
-
-
-class QXCon(QXTop):
-
-    def __init__(self, id: str, crange: QXCRange):
-        self._id = id
-        self._crange = crange
-
-    def ID(self):
-        return self._id if isinstance(self._id, str) else self._id.getText()
-
-    def range(self):
-        return self._crange
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitCon(self)
-
-    def __repr__(self):
-        return f"QXCon(id={repr(str(self._id))}, crange={self._crange})"
 
 
 class QXTensor(QXQState):
@@ -652,8 +802,350 @@ class QXSum(QXQState):
     def __repr__(self):
         return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets})"
 
+class QXStmt(QXTop):
+    '''Parent class of all statements.'''
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        pass
+
+
+class QXAssert(QXStmt):
+
+    def __init__(self, spec: QXSpec):
+        self._spec = spec
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitAssert(self)
+
+    def spec(self):
+        return self._spec
+
+    def __repr__(self):
+        return f"QXAssert(spec={self._spec})"
+
+
+class QXCast(QXStmt):
+
+    def __init__(self, qty :QXQTy, locus: [QXQRange]):
+        self._qty = qty
+        self._locus = locus
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitCast(self)
+
+    def qty(self):
+        return self._qty
+
+    def locus(self):
+        return self._locus
+
+    def __repr__(self):
+        return f"QXCast(qty={self._qty}, locus={self._locus})"
+
+
+class QXInit(QXStmt):
+
+    def __init__(self, binding :QXBind):
+        self._binding = binding
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitInit(self)
+
+    def binding(self):
+        return self._binding
+
+    def __repr__(self):
+        return f"QXInit(binding={self._binding})"
+
+
+class QXCAssign(QXStmt):
+
+    def __init__(self, id: str, expr : QXAExp):
+        self._id = id
+        self._expr = expr
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitCAssign(self)
+
+    def ID(self):
+        return self._id if isinstance(self._id, str) else self._id.getText()
+
+    def aexp(self):
+        return self._expr
+
+    def __repr__(self):
+        return f"QXCAssign(id={repr(str(self._id))}, expr={self._expr})"
+
+
+class QXQAssign(QXStmt):
+    '''
+    Represents a quantum assignment operation.
+    '''
+
+    def __init__(self, location: Union[list[QXQRange], str], expr : QXExp):
+        '''
+        location - either a QXQRange or an identifier indicating the variable to transform.
+        expr - the operation to apply to the variable
+        '''
+        self._location = location
+        self._expr = expr
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitQAssign(self)
+
+    def locus(self):
+        '''DEPRECATED'''
+        return self._location
+
+    def location(self):
+        return self._location
+
+    def exp(self):
+        return self._expr
+
+    def __repr__(self):
+        return f"QXQAssign(location={self._location}, expr={self._expr})"
+
+
+class QXMeasure(QXStmt):
+
+    def __init__(self, ids: [str | QXQIndex], locus : Union[str, list[QXQRange]], res: QXAExp = None):
+        self._ids = ids
+        self._locus = locus
+        self._res = res
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitMeasure(self)
+
+    def ids(self):
+        return self._ids
+
+    def locus(self):
+        return self._locus
+
+    def res(self):
+        return self._res
+
+    def __repr__(self):
+        return f"QXMeasure(ids={self._ids}, locus={self._locus}, res={self._res})"
+
+
+class QXIf(QXStmt):
+
+    def __init__(self, bexp: QXBExp, stmts: [QXStmt], else_branch: [QXStmt]):
+        self._bexp = bexp
+        self._stmts = stmts
+        self._else_branch = else_branch
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitIf(self)
+
+    def bexp(self):
+        return self._bexp
+
+    def stmts(self):
+        return self._stmts
+
+    def else_branch(self):
+        return self._else_branch
+
+    def __repr__(self):
+        return f"QXIf(bexp={self._bexp}, stmts={self._stmts})"
+
+
+class QXFor(QXStmt):
+
+    def __init__(self, id: str, crange: QXCRange, conds: [QXCond], stmts: [QXStmt]):
+        self._id = id
+        self._crange = crange
+        self._conds = conds
+        self._stmts = stmts
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitFor(self)
+
+    def ID(self) -> str:
+        return self._id if isinstance(self._id, str) else self._id.getText()
+
+    def crange(self) -> QXCRange:
+        return self._crange
+
+    def conds(self) -> [QXCond]:
+        '''Returns an array of loop conditions used to prove correctness.'''
+        return self._conds
+
+    def inv(self) -> [QXSpec]:
+        return list(map(lambda inv: inv.spec(), filter(lambda cond: isinstance(cond, QXInvariant), self._conds)))
+
+    def sep(self) -> [[QXQRange]]:
+        '''Returns all the loci used in separates clauses from the conditions array'''
+        return list(map(lambda sep: sep.locus(), filter(lambda cond: isinstance(cond, QXSeparates), self._conds)))
+
+    def dec(self) -> [QXAExp]:
+        '''Returns all the arith expressions used in decreases clauses from the conditions array'''
+        return list(map(lambda sep: sep.aexp(), filter(lambda cond: isinstance(cond, QXDecreases), self._conds)))
+
+    def stmts(self) -> [QXStmt]:
+        return self._stmts
+
+    def __repr__(self):
+        return f"QXFor(id={repr(str(self._id))}, conds={self._conds}, conds={self._conds}, stmts={self._stmts})"
+
+
+class QXCall(QXStmt, QXBool, QXAExp):
+
+    def __init__(self, id: str, exps: [QXAExp], inverse: bool = False):
+        self._id = id
+        self._exps = exps
+        self._inverse = inverse
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitCall(self)
+
+    def ID(self) -> str:
+        return self._id if isinstance(self._id, str) else self._id.getText()
+
+    def exps(self) -> [QXAExp]:
+        return self._exps
+
+    def inverse(self) -> bool:
+        return self._inverse
+
+    def __repr__(self) -> str:
+        return f"QXCall(id={repr(str(self._id))}, exps={self._exps}, inverse={self._inverse})"
+
+
+class QXReturn(QXStmt):
+    '''
+    Represents a return statement, with a number of ids indicating which variables to return.
+
+    example:
+    ...
+        ╭──────────────────╮
+        │ return a_l, a_u; │
+        ╰──────────────────╯
+    }
+    '''
+
+    def __init__(self, ids: [str]):
+        self._ids = ids
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitReturn(self)
+
+    def IDs(self):
+        return self._ids
+
+    def __repr__(self):
+        return f'QXReturn(ids={self._ids})'
+
+
+class QXBreak(QXStmt):
+    '''
+    Represents a break statement.
+
+    example:
+    ...
+    for i in [0, N)
+        ...
+    {
+        if (y == 1){
+            ╭────────╮
+            │ break; │
+            ╰────────╯
+        }
+    ...
+    '''
+    pass
+
+########################################################################
+# Partitions:
+#   The next section deals with partitions. This is particularly
+#   convoluted because of the myriad of ways that qafny can declare
+#   different partitions.
+#
+# Suggestion:
+#  Partitions turn into a list of a class specifying:
+#   - amplitude
+#   - arith expression or function identifier that acts as the predicate
+#   - whether that predicate should evaluate to true or false
+########################################################################
+
+class QXPartPredicate(QXTop):
+    '''
+    Represents a predicate used inside a partition function.
+
+    example:
+              ╭─────────────────────────╮
+    part(2^n, │ sin theta : f(|k⟩) == 1 │ , cos theta : f(|k⟩) == 0)
+              ╰─────────────────────────╯
+    '''
+
+    def __init__(self, amplitude: QXAExp, predicate: QXBExp):
+        self._amplitude = amplitude
+        self._predicate = predicate
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitPartPredicate(self)
+
+    def amplitude(self):
+        return self._amplitude
+
+    def predicate(self):
+        return self._predicate
+
+    def __repr__(self) -> str:
+        return f'QXPartPredicate(amplitude={self._amplitude}, predicate={self._predicate})'
+
+
+class QXPartsection(QXTop):
+    '''
+    Represents a part of a predicate used inside a partition function
+
+    example (from SimpleAmpEstimate.qfy):
+                                                                               ╭────────────────────────────────────╮
+    assert { q[0, j), p[0, n), r[0] : En ↦ ∑ v ∈ [0, 2^j) . 1/sqrt(2^j) part( │ sin (2*v+1) * theta : |v⟩ f(|k⟩, 1) │ + cos (2*v+1) * theta : |v⟩ f(|k⟩, 0)) |-⟩ };
+                                                                               ╰────────────────────────────────────╯
+    '''
+
+    def __init__(self, amplitude: QXAExp, ket: QXSKet, predicate: QXCall):
+        self._amplitude = amplitude
+        self._ket = ket
+        # predicate should be of type QXCall
+        self._predicate = predicate
+
+    def amplitude(self) -> QXAExp:
+        return self._amplitude
+
+    def ket(self) -> QXSKet:
+        return self._ket
+
+    def predicate(self) -> QXCall:
+        return self._predicate
+
+    def __str__(self) -> str:
+        return f'{self._amplitude} : {self._ket} {self._predicate}'
+
+    def __repr__(self) -> str:
+        return f'QXPartsection(amplitude={self._amplitude}, ket={self._ket}, predicate={self._predicate})'
+
 
 class QXPart(QXQState):
+    '''
+    Represents a call to the "partition" function inside of a quantum specification.
+    This is the original partition method, however, 4 other ways also exist.
+
+    see also:
+    - QXPartWithPredicates
+    - QXPartGroup
+    - QXPartLambda
+    - QXPartWithSections
+
+    example (from Grovers.qfy):
+                           ╭─────────────────────────────────────────────────────────────────╮
+    assert { q[0,n) : aa ↦│ part(n,f , sin (sumFun(f,2^n) / 2^n), cos(sumFun(f,2^n) / 2^n)) │ };
+                           ╰─────────────────────────────────────────────────────────────────╯
+    '''
 
     def __init__(self, num : QXAExp, fname: QXAExp, tamp: QXAExp, famp : QXAExp):
         self._num = num
@@ -661,7 +1153,7 @@ class QXPart(QXQState):
         self._tamp = tamp
         self._famp = famp
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitPart(self)
 
     def qnum(self):
@@ -676,8 +1168,149 @@ class QXPart(QXQState):
     def falseAmp(self):
         return self._famp
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"QXPart(num={self._num}, fname={self._fname}, tamp={self._tamp}, famp={self._famp})"
+
+
+class QXPartWithPredicates(QXQState):
+    '''
+    Represents a call to the "partition" function inside of a quantum specification.
+    The number is optional.
+
+    see also:
+    - QXPart
+    - QXPartGroup
+    - QXPartLambda
+    - QXPartWithSections
+
+    example (from FixedPointSearch.qfy):
+                            ╭────────────────────────────────────────────────────────────╮
+    assert { p[0,n) : en ↦ │ part(2^n, sin theta : f(|k⟩) == 1, cos theta : f(|k⟩) == 0) │ };
+                            ╰────────────────────────────────────────────────────────────╯
+    
+    '''
+
+    def __init__(self, num: QXAExp | None, true_predicate: QXPartPredicate, false_predicate: QXPartPredicate):
+        self._num = num
+        self._true_predicate = true_predicate
+        self._false_predicate = false_predicate
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitPartWithPredicates(self)
+
+    def qnum(self) -> QXAExp:
+        return self._num
+
+    def truePred(self) -> QXPartPredicate:
+        return self._true_predicate
+
+    def falsePred(self) -> QXPartPredicate:
+        return self._false_predicate
+
+    def __repr__(self) -> str:
+        return f"QXPartWithPredicates(num={self._num}, true_predicate={self._true_predicate}, false_predicate={self._false_predicate})"
+
+
+class QXPartGroup(QXQState):
+    '''
+    Represents a call to the "partition" function inside of a quantum specification.
+
+    see also:
+    - QXPart
+    - QXPartWithPredicates
+    - QXPartLambda
+    - QXPartWithSections
+
+    example (from test15.qfy):
+                               ╭─────────────────────────────────────────────────────────╮
+    requires { q[0, n) : aa ↦ │ part(f, true, sin (arcsin(sqrt(sumFun(f, 2^n) / 2^n)))) │ + part(f, false, cos(arcsin(sqrt(sumFun(f, 2^n) / 2^n)))) }
+                               ╰─────────────────────────────────────────────────────────╯
+    '''
+    
+    def __init__(self, id: str, bool_lit: QXBoolLiteral, amplitude: QXAExp):
+        self._fpred = id
+        self._bool_lit = bool_lit
+        self._amplitude = amplitude
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitPartGroup(self)
+
+    def fpred(self):
+        '''Returns the function predicate associated with this partition call'''
+        return self._fpred if isinstance(self._fred, str) else self._fred.getText()
+
+    def bool(self):
+        '''Returns the boolean associated with this partition'''
+        return self._bool_lit
+
+    def amplitude(self):
+        return self._amplitude
+
+    def __repr__(self) -> str:
+        return f'QXPartGroup(id={self._fpred}, bool_lit={self._bool_lit}, amplitude={self._amplitude})'
+
+
+class QXPartLambda(QXQState):
+    '''
+    Represents a call to the "partition" function inside of a quantum specification.
+
+    see also:
+    - QXPart
+    - QXPartWithPredicates
+    - QXPartGroup
+    - QXPartWithSections
+
+    example (from test16.qfy):
+                                                                         ╭─────────────────────────╮
+    requires { p[0, 2), q[0, n) : aa ↦ ∑ k ∈ [0, 2) . 1 / sqrt(2) |k⟩|k⟩ │ part(f, sin(arcsin(r))) │ + ∑ k ∈ [0, 2) . 1/sqrt(2) |k⟩|k⟩ part(f, cos(arcsin(r))) } 
+                                                                         ╰─────────────────────────╯
+    '''
+
+    def __init__(self, predicate: str, amplitude: QXAExp):
+        self._fpred = predicate
+        self._amplitude = amplitude
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitPartLambda(self)
+
+    def fpred(self):
+        '''Returns the function predicate associated with this partition call'''
+        return self._fpred if isinstance(self._fred, str) else self._fred.getText()
+
+    def amplitude(self):
+        return self._amplitude
+
+    def __repr__(self) -> str:
+        return f'QXPartLambda(predicate={self._fpred}, amplitude={self._amplitude})'
+
+
+class QXPartWithSections(QXQState):
+    '''
+    Represents a call to the "partition" function inside of a quantum specification.
+
+    see also:
+    - QXPart
+    - QXPartWithPredicates
+    - QXPartGroup
+    - QXPartLambda
+
+    example (from SimpleAmpEstimate.qfy):
+                                                                         ╭───────────────────────────────────────────────────────────────────────────────╮
+    assert { q[0, j), p[0, n), r[0] : En ↦ ∑ v ∈ [0, 2^j) . 1/sqrt(2^j) │ part(sin (2*v+1) * theta : |v⟩ f(|k⟩, 1) + cos (2*v+1) * theta : |v⟩ f(|k⟩, 0)) │ |-⟩ };
+                                                                         ╰───────────────────────────────────────────────────────────────────────────────╯
+    '''
+
+    def __init__(self, sections: [QXPartsection]):
+        self._sections = sections
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitPartWithSections(self)
+
+    def sections(self) -> [QXPartsection]:
+        return self._sections
+
+    def __repr__(self) -> str:
+        return f'QXPartWithSections(sections={self._sections})'
 
 
 class QXQSpec(QXSpec):
@@ -800,236 +1433,20 @@ class QXSeparates(QXCond):
         return f"QXSeparates(locus={self._spec})"
 
 
-class QXStmt(QXTop):
-    '''Parent class of all statements.'''
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        pass
-
-
-class QXAssert(QXStmt):
-
-    def __init__(self, spec: QXSpec):
-        self._spec = spec
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitAssert(self)
-
-    def spec(self):
-        return self._spec
-
-    def __repr__(self):
-        return f"QXAssert(spec={self._spec})"
-
-
-class QXCast(QXStmt):
-
-    def __init__(self, qty :QXQTy, locus: [QXQRange]):
-        self._qty = qty
-        self._locus = locus
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitCast(self)
-
-    def qty(self):
-        return self._qty
-
-    def locus(self):
-        return self._locus
-
-    def __repr__(self):
-        return f"QXCast(qty={self._qty}, locus={self._locus})"
-
-
-class QXInit(QXStmt):
-
-    def __init__(self, binding :QXBind):
-        self._binding = binding
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitInit(self)
-
-    def binding(self):
-        return self._binding
-
-    def __repr__(self):
-        return f"QXInit(binding={self._binding})"
-
-
-class QXCAssign(QXStmt):
-
-    def __init__(self, id: str, expr : QXAExp):
-        self._id = id
-        self._expr = expr
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitCAssign(self)
-
-    def ID(self):
-        return self._id if isinstance(self._id, str) else self._id.getText()
-
-    def aexp(self):
-        return self._expr
-
-    def __repr__(self):
-        return f"QXCAssign(id={repr(str(self._id))}, expr={self._expr})"
-
-
-class QXQAssign(QXStmt):
-
-    def __init__(self, locus: [QXQRange], expr : QXExp):
-        self._locus = locus
-        self._expr = expr
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitQAssign(self)
-
-    def locus(self):
-        return self._locus
-
-    def exp(self):
-        return self._expr
-
-    def __repr__(self):
-        return f"QXQAssign(locus={self._locus}, expr={self._expr})"
-
-
-class QXMeasure(QXStmt):
-
-    def __init__(self, ids: [str], locus : [QXQRange], res: QXAExp = None):
-        self._ids = ids
-        self._locus = locus
-        self._res = res
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitMeasure(self)
-
-    def ids(self):
-        return self._ids
-
-    def locus(self):
-        return self._locus
-
-    def res(self):
-        return self._res
-
-    def __repr__(self):
-        return f"QXMeasure(ids={self._ids}, locus={self._locus}, res={self._res})"
-
-
-class QXIf(QXStmt):
-
-    def __init__(self, bexp: QXBExp, stmts : [QXStmt]):
-        self._bexp = bexp
-        self._stmts = stmts
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitIf(self)
-
-    def bexp(self):
-        return self._bexp
-
-    def stmts(self):
-        return self._stmts
-
-    def __repr__(self):
-        return f"QXIf(bexp={self._bexp}, stmts={self._stmts})"
-
-
-class QXFor(QXStmt):
-
-    def __init__(self, id: str, crange: QXCRange, invs: [QXSpec], stmts: [QXStmt]):
-        self._id = id
-        self._crange = crange
-        self._invs = invs
-        self._stmts = stmts
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitFor(self)
-
-    def ID(self):
-        return self._id if isinstance(self._id, str) else self._id.getText()
-
-    def crange(self):
-        return self._crange
-
-    def inv(self):
-        return self._invs
-
-    def stmts(self):
-        return self._stmts
-
-    def __repr__(self):
-        return f"QXFor(id={repr(str(self._id))}, crange={self._crange}, invs={self._invs}, stmts={self._stmts})"
-
-
-class QXCall(QXStmt, QXBool, QXAExp):
-
-    def __init__(self, id: str, exps: [QXAExp]):
-        self._id = id
-        self._exps = exps
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitCall(self)
-
-    def ID(self):
-        return self._id if isinstance(self._id, str) else self._id.getText()
-
-    def exps(self) -> [QXAExp]:
-        return self._exps
-
-    def __repr__(self):
-        return f"QXCall(id={repr(str(self._id))}, exps={self._exps})"
-
-
-class QXReturn(QXStmt):
-    '''
-    Represents a return statement, with a number of ids indicating which variables to return.
-
-    example:
-    ...
-        ╭──────────────────╮
-        │ return a_l, a_u; │
-        ╰──────────────────╯
-    }
-    '''
-
-    def __init__(self, ids: [str]):
-        self._ids = ids
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitReturn(self)
-
-    def IDs(self):
-        return self._ids
-
-    def __repr__(self):
-        return f'QXReturn(ids={self._ids})'
-
-
-class QXBreak(QXStmt):
-    '''
-    Represents a break statement.
-
-    example:
-    ...
-    for i in [0, N)
-        ...
-    {
-        if (y == 1){
-            ╭────────╮
-            │ break; │
-            ╰────────╯
-        }
-    ...
-    '''
-    pass
+########################################################################
+# Top-level Qafny nodes
+#   All of these nodes can be declared directly at the beginning of the
+#   program.
+########################################################################
 
 
 class QXInclude(QXTop):
 
     def __init__(self, path: str):
         self.__path = path
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitInclude(self)
 
     def path(self) -> str:
         '''Path to the file to be included'''
@@ -1046,7 +1463,7 @@ class QXMethod(QXTop):
         self._conds = conds
         self._stmts = stmts
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitMethod(self)
 
     def ID(self):
