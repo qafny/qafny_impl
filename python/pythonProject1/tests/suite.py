@@ -207,11 +207,12 @@ class TestSuite:
                 print('')
                 break
             except Exception as e:
-                print('')
                 standard_output = ''
                 standard_errror = ''
                 if self.__capturing:
                     standard_output, standard_error = self.end_capture()
+                
+                print('')
 
                 exception_info = traceback.format_exc()
                 print(stylize(f'Error happened whilst running test case: {test_method_name}\n', fore('red'))) # {exception_info}

@@ -17,12 +17,48 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#topLevel.
+    def enterTopLevel(self, ctx:ExpParser.TopLevelContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#topLevel.
+    def exitTopLevel(self, ctx:ExpParser.TopLevelContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#method.
     def enterMethod(self, ctx:ExpParser.MethodContext):
         pass
 
     # Exit a parse tree produced by ExpParser#method.
     def exitMethod(self, ctx:ExpParser.MethodContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#function.
+    def enterFunction(self, ctx:ExpParser.FunctionContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#function.
+    def exitFunction(self, ctx:ExpParser.FunctionContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#lemma.
+    def enterLemma(self, ctx:ExpParser.LemmaContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#lemma.
+    def exitLemma(self, ctx:ExpParser.LemmaContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#predicate.
+    def enterPredicate(self, ctx:ExpParser.PredicateContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#predicate.
+    def exitPredicate(self, ctx:ExpParser.PredicateContext):
         pass
 
 
@@ -44,12 +80,21 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#invariants.
-    def enterInvariants(self, ctx:ExpParser.InvariantsContext):
+    # Enter a parse tree produced by ExpParser#reen.
+    def enterReen(self, ctx:ExpParser.ReenContext):
         pass
 
-    # Exit a parse tree produced by ExpParser#invariants.
-    def exitInvariants(self, ctx:ExpParser.InvariantsContext):
+    # Exit a parse tree produced by ExpParser#reen.
+    def exitReen(self, ctx:ExpParser.ReenContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#loopConds.
+    def enterLoopConds(self, ctx:ExpParser.LoopCondsContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#loopConds.
+    def exitLoopConds(self, ctx:ExpParser.LoopCondsContext):
         pass
 
 
@@ -80,15 +125,6 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#allspec.
-    def enterAllspec(self, ctx:ExpParser.AllspecContext):
-        pass
-
-    # Exit a parse tree produced by ExpParser#allspec.
-    def exitAllspec(self, ctx:ExpParser.AllspecContext):
-        pass
-
-
     # Enter a parse tree produced by ExpParser#bexp.
     def enterBexp(self, ctx:ExpParser.BexpContext):
         pass
@@ -113,6 +149,15 @@ class ExpListener(ParseTreeListener):
 
     # Exit a parse tree produced by ExpParser#logicImply.
     def exitLogicImply(self, ctx:ExpParser.LogicImplyContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#allspec.
+    def enterAllspec(self, ctx:ExpParser.AllspecContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#allspec.
+    def exitAllspec(self, ctx:ExpParser.AllspecContext):
         pass
 
 
@@ -143,6 +188,15 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#logicInExpr.
+    def enterLogicInExpr(self, ctx:ExpParser.LogicInExprContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#logicInExpr.
+    def exitLogicInExpr(self, ctx:ExpParser.LogicInExprContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#chainBExp.
     def enterChainBExp(self, ctx:ExpParser.ChainBExpContext):
         pass
@@ -158,6 +212,15 @@ class ExpListener(ParseTreeListener):
 
     # Exit a parse tree produced by ExpParser#comOp.
     def exitComOp(self, ctx:ExpParser.ComOpContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#qtypeCreate.
+    def enterQtypeCreate(self, ctx:ExpParser.QtypeCreateContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#qtypeCreate.
+    def exitQtypeCreate(self, ctx:ExpParser.QtypeCreateContext):
         pass
 
 
@@ -185,6 +248,33 @@ class ExpListener(ParseTreeListener):
 
     # Exit a parse tree produced by ExpParser#partspec.
     def exitPartspec(self, ctx:ExpParser.PartspecContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#partpred.
+    def enterPartpred(self, ctx:ExpParser.PartpredContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#partpred.
+    def exitPartpred(self, ctx:ExpParser.PartpredContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#partsection.
+    def enterPartsection(self, ctx:ExpParser.PartsectionContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#partsection.
+    def exitPartsection(self, ctx:ExpParser.PartsectionContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#partsections.
+    def enterPartsections(self, ctx:ExpParser.PartsectionsContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#partsections.
+    def exitPartsections(self, ctx:ExpParser.PartsectionsContext):
         pass
 
 
@@ -260,6 +350,15 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#idindices.
+    def enterIdindices(self, ctx:ExpParser.IdindicesContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#idindices.
+    def exitIdindices(self, ctx:ExpParser.IdindicesContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#qassign.
     def enterQassign(self, ctx:ExpParser.QassignContext):
         pass
@@ -269,12 +368,48 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#qcreate.
+    def enterQcreate(self, ctx:ExpParser.QcreateContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#qcreate.
+    def exitQcreate(self, ctx:ExpParser.QcreateContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#measure.
     def enterMeasure(self, ctx:ExpParser.MeasureContext):
         pass
 
     # Exit a parse tree produced by ExpParser#measure.
     def exitMeasure(self, ctx:ExpParser.MeasureContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#measureAbort.
+    def enterMeasureAbort(self, ctx:ExpParser.MeasureAbortContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#measureAbort.
+    def exitMeasureAbort(self, ctx:ExpParser.MeasureAbortContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#returnStmt.
+    def enterReturnStmt(self, ctx:ExpParser.ReturnStmtContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#returnStmt.
+    def exitReturnStmt(self, ctx:ExpParser.ReturnStmtContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#breakStmt.
+    def enterBreakStmt(self, ctx:ExpParser.BreakStmtContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#breakStmt.
+    def exitBreakStmt(self, ctx:ExpParser.BreakStmtContext):
         pass
 
 
@@ -296,12 +431,48 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#ketArithExpr.
+    def enterKetArithExpr(self, ctx:ExpParser.KetArithExprContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#ketArithExpr.
+    def exitKetArithExpr(self, ctx:ExpParser.KetArithExprContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#ketCifexp.
+    def enterKetCifexp(self, ctx:ExpParser.KetCifexpContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#ketCifexp.
+    def exitKetCifexp(self, ctx:ExpParser.KetCifexpContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#manyketpart.
+    def enterManyketpart(self, ctx:ExpParser.ManyketpartContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#manyketpart.
+    def exitManyketpart(self, ctx:ExpParser.ManyketpartContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#forexp.
     def enterForexp(self, ctx:ExpParser.ForexpContext):
         pass
 
     # Exit a parse tree produced by ExpParser#forexp.
     def exitForexp(self, ctx:ExpParser.ForexpContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#whileexp.
+    def enterWhileexp(self, ctx:ExpParser.WhileexpContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#whileexp.
+    def exitWhileexp(self, ctx:ExpParser.WhileexpContext):
         pass
 
 
@@ -314,12 +485,12 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#arithExprs.
-    def enterArithExprs(self, ctx:ExpParser.ArithExprsContext):
+    # Enter a parse tree produced by ExpParser#arithExprsOrKets.
+    def enterArithExprsOrKets(self, ctx:ExpParser.ArithExprsOrKetsContext):
         pass
 
-    # Exit a parse tree produced by ExpParser#arithExprs.
-    def exitArithExprs(self, ctx:ExpParser.ArithExprsContext):
+    # Exit a parse tree produced by ExpParser#arithExprsOrKets.
+    def exitArithExprsOrKets(self, ctx:ExpParser.ArithExprsOrKetsContext):
         pass
 
 
@@ -338,6 +509,15 @@ class ExpListener(ParseTreeListener):
 
     # Exit a parse tree produced by ExpParser#arithAtomic.
     def exitArithAtomic(self, ctx:ExpParser.ArithAtomicContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#arithExprSumSpec.
+    def enterArithExprSumSpec(self, ctx:ExpParser.ArithExprSumSpecContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#arithExprSumSpec.
+    def exitArithExprSumSpec(self, ctx:ExpParser.ArithExprSumSpecContext):
         pass
 
 
@@ -368,6 +548,15 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#notExpr.
+    def enterNotExpr(self, ctx:ExpParser.NotExprContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#notExpr.
+    def exitNotExpr(self, ctx:ExpParser.NotExprContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#absExpr.
     def enterAbsExpr(self, ctx:ExpParser.AbsExprContext):
         pass
@@ -383,6 +572,24 @@ class ExpListener(ParseTreeListener):
 
     # Exit a parse tree produced by ExpParser#omegaExpr.
     def exitOmegaExpr(self, ctx:ExpParser.OmegaExprContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#ketCallExpr.
+    def enterKetCallExpr(self, ctx:ExpParser.KetCallExprContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#ketCallExpr.
+    def exitKetCallExpr(self, ctx:ExpParser.KetCallExprContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#setInstance.
+    def enterSetInstance(self, ctx:ExpParser.SetInstanceContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#setInstance.
+    def exitSetInstance(self, ctx:ExpParser.SetInstanceContext):
         pass
 
 
@@ -404,6 +611,15 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#dis.
+    def enterDis(self, ctx:ExpParser.DisContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#dis.
+    def exitDis(self, ctx:ExpParser.DisContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#manyket.
     def enterManyket(self, ctx:ExpParser.ManyketContext):
         pass
@@ -419,6 +635,15 @@ class ExpListener(ParseTreeListener):
 
     # Exit a parse tree produced by ExpParser#ket.
     def exitKet(self, ctx:ExpParser.KetContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#ketsum.
+    def enterKetsum(self, ctx:ExpParser.KetsumContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#ketsum.
+    def exitKetsum(self, ctx:ExpParser.KetsumContext):
         pass
 
 
@@ -449,6 +674,24 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#typeOptionalBindings.
+    def enterTypeOptionalBindings(self, ctx:ExpParser.TypeOptionalBindingsContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#typeOptionalBindings.
+    def exitTypeOptionalBindings(self, ctx:ExpParser.TypeOptionalBindingsContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#typeOptionalBinding.
+    def enterTypeOptionalBinding(self, ctx:ExpParser.TypeOptionalBindingContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#typeOptionalBinding.
+    def exitTypeOptionalBinding(self, ctx:ExpParser.TypeOptionalBindingContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#locus.
     def enterLocus(self, ctx:ExpParser.LocusContext):
         pass
@@ -476,21 +719,21 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#qindex.
-    def enterQindex(self, ctx:ExpParser.QindexContext):
+    # Enter a parse tree produced by ExpParser#sliceExpr.
+    def enterSliceExpr(self, ctx:ExpParser.SliceExprContext):
         pass
 
-    # Exit a parse tree produced by ExpParser#qindex.
-    def exitQindex(self, ctx:ExpParser.QindexContext):
+    # Exit a parse tree produced by ExpParser#sliceExpr.
+    def exitSliceExpr(self, ctx:ExpParser.SliceExprContext):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#rangeT.
-    def enterRangeT(self, ctx:ExpParser.RangeTContext):
+    # Enter a parse tree produced by ExpParser#idindex.
+    def enterIdindex(self, ctx:ExpParser.IdindexContext):
         pass
 
-    # Exit a parse tree produced by ExpParser#rangeT.
-    def exitRangeT(self, ctx:ExpParser.RangeTContext):
+    # Exit a parse tree produced by ExpParser#idindex.
+    def exitIdindex(self, ctx:ExpParser.IdindexContext):
         pass
 
 
@@ -521,12 +764,93 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#baseTy.
-    def enterBaseTy(self, ctx:ExpParser.BaseTyContext):
+    # Enter a parse tree produced by ExpParser#ArrayType.
+    def enterArrayType(self, ctx:ExpParser.ArrayTypeContext):
         pass
 
-    # Exit a parse tree produced by ExpParser#baseTy.
-    def exitBaseTy(self, ctx:ExpParser.BaseTyContext):
+    # Exit a parse tree produced by ExpParser#ArrayType.
+    def exitArrayType(self, ctx:ExpParser.ArrayTypeContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#ArrayWithSizeType.
+    def enterArrayWithSizeType(self, ctx:ExpParser.ArrayWithSizeTypeContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#ArrayWithSizeType.
+    def exitArrayWithSizeType(self, ctx:ExpParser.ArrayWithSizeTypeContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#BoolType.
+    def enterBoolType(self, ctx:ExpParser.BoolTypeContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#BoolType.
+    def exitBoolType(self, ctx:ExpParser.BoolTypeContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#DynamicArrayType.
+    def enterDynamicArrayType(self, ctx:ExpParser.DynamicArrayTypeContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#DynamicArrayType.
+    def exitDynamicArrayType(self, ctx:ExpParser.DynamicArrayTypeContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#SetType.
+    def enterSetType(self, ctx:ExpParser.SetTypeContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#SetType.
+    def exitSetType(self, ctx:ExpParser.SetTypeContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#QBitStringType.
+    def enterQBitStringType(self, ctx:ExpParser.QBitStringTypeContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#QBitStringType.
+    def exitQBitStringType(self, ctx:ExpParser.QBitStringTypeContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#NaturalType.
+    def enterNaturalType(self, ctx:ExpParser.NaturalTypeContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#NaturalType.
+    def exitNaturalType(self, ctx:ExpParser.NaturalTypeContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#BitVectorType.
+    def enterBitVectorType(self, ctx:ExpParser.BitVectorTypeContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#BitVectorType.
+    def exitBitVectorType(self, ctx:ExpParser.BitVectorTypeContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#RealType.
+    def enterRealType(self, ctx:ExpParser.RealTypeContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#RealType.
+    def exitRealType(self, ctx:ExpParser.RealTypeContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#IntType.
+    def enterIntType(self, ctx:ExpParser.IntTypeContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#IntType.
+    def exitIntType(self, ctx:ExpParser.IntTypeContext):
         pass
 
 
@@ -536,6 +860,15 @@ class ExpListener(ParseTreeListener):
 
     # Exit a parse tree produced by ExpParser#qty.
     def exitQty(self, ctx:ExpParser.QtyContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#aaType.
+    def enterAaType(self, ctx:ExpParser.AaTypeContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#aaType.
+    def exitAaType(self, ctx:ExpParser.AaTypeContext):
         pass
 
 
@@ -557,12 +890,12 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#reen.
-    def enterReen(self, ctx:ExpParser.ReenContext):
+    # Enter a parse tree produced by ExpParser#boolLiteral.
+    def enterBoolLiteral(self, ctx:ExpParser.BoolLiteralContext):
         pass
 
-    # Exit a parse tree produced by ExpParser#reen.
-    def exitReen(self, ctx:ExpParser.ReenContext):
+    # Exit a parse tree produced by ExpParser#boolLiteral.
+    def exitBoolLiteral(self, ctx:ExpParser.BoolLiteralContext):
         pass
 
 

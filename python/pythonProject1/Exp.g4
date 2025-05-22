@@ -25,7 +25,7 @@ loopConds : (Invariant spec | Decreases arithExpr | Separates locus)*;
 
 stmts : stmt*;
 
-stmt: asserting | casting | varcreate | assigning | qassign | qcreate | measure | measureAbort | ifexp | forexp | whileexp | (fcall ';') | return_stmt | break_stmt;
+stmt: asserting | casting | varcreate | assigning | qassign | qcreate | measure | measureAbort | ifexp | forexp | whileexp | (fcall ';') | returnStmt | breakStmt;
 
 spec : qunspec | logicImply | chainBExp | '{' (qunspec | logicImply | chainBExp) '}';
 
@@ -35,7 +35,7 @@ qbool: qrange | '{' locus '}' comOp arithExpr | arithExpr comOp arithExpr '@' id
 
 logicImply: allspec | allspec '==>' logicImply | qunspec;
 
-allspec: logicOrExp | 'forall' ID '::' chainBExp '==>' logicImply | 'forall' ID TIn crange '==>' logicImply;
+allspec: logicOrExp | 'forall' typeOptionalBinding '::' chainBExp '==>' logicImply | 'forall' typeOptionalBinding TIn crange '==>' logicImply;
 
 logicOrExp: logicAndExp '||' logicOrExp | logicAndExp;
 
@@ -62,7 +62,7 @@ qspec : tensorall | arithExpr? manyketpart | (arithExpr '.')? sumspec;
 // 2. part(n, predicate_1, predicate_2)
 // 3. part(function_predicate, true, amplitude) + part(function_predicate, false, amplitude)
 // 4. part(function_predicate, amplitude) - typically inside a ketCifexp
-partspec: 'part' '(' (arithExpr ',' arithExpr ',' arithExpr ',' arithExpr | arithExpr ',' partpred ',' partpred | partpred ',' partpred | ID ',' boolLiteral ',' arithExpr | arithExpr ',' arithExpr | partsections) ')';
+partspec: 'part' '(' (arithExpr ',' arithExpr ',' arithExpr ',' arithExpr | (arithExpr ',')? partpred ',' partpred | ID ',' boolLiteral ',' arithExpr | arithExpr ',' arithExpr | partsections) ')';
 
 // custom predicate used in the part function
 // amplitide ':' predicate
@@ -90,7 +90,7 @@ ids : ID (',' ID)* ;
 
 idindices: (ID | idindex) (',' (ID | idindex))*;
 
-qassign : (locus | ID) '*=' (expr | dis) ';';
+qassign : (locus | ID) '*=' expr ';';
 
 qcreate : 'var' (locus | ID) '*=' arithExpr ';';
 
@@ -99,9 +99,9 @@ measure : idindices '*=' 'measure' '(' (locus | ID) ')' ';' | idindices '*=' 'me
 // see SWAPTest.qfy
 measureAbort: ids '*=' 'measA' '(' (locus | ID) ')' ';' | ids '*=' 'measA' '(' (locus | ID) ',' arithExpr ')' ';';
 
-return_stmt: Return ids ';';
+returnStmt: Return ids ';';
 
-break_stmt: 'break' ';';
+breakStmt: 'break' ';';
 
 ifexp: If ('(' bexp ')' | bexp) 'then'? '{' stmts '}' (Else '{' stmts '}')?;
 
@@ -113,7 +113,7 @@ ketArithExpr: ketCifexp | partspec | '(' ketArithExpr ')';
 // allows partspecs for sum spec expressions
 ketCifexp: If bexp 'then' ketArithExpr 'else' ketArithExpr;
 
-manyketpart: (ket | ketArithExpr | '(' arithExpr? ket (',' ket)* ')' | fcall | ID | idindex)+;
+manyketpart: (ket | ketArithExpr | '(' ket (',' ket)* ')' | fcall | ID | idindex)+;
 
 forexp : 'for' ID TIn crange (('with' | '&&') bexp)? loopConds '{' stmts '}';
 
@@ -123,7 +123,7 @@ fcall : ID '^{-1}'? '(' arithExprsOrKets ')';
 
 arithExprsOrKets : (arithExpr | ket) (',' (arithExpr | ket))*;
 
-arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | slice_expr | crange); // | sumspec | qtypeCreate;
+arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | sliceExpr | crange); // | sumspec | qtypeCreate;
 
 arithAtomic: numexp | ID | TSub arithExpr | boolLiteral
           | '(' arithExpr ')'
@@ -149,10 +149,10 @@ ketCallExpr : 'ket' '(' arithExpr ')';
 
 setInstance : '[' (arithExpr (',' arithExpr)*)? ']';
 
-expr : SHad | SQFT | RQFT | lambdaT | ID;
+expr : SHad | SQFT | RQFT | lambdaT | dis | ID;
 
 lambdaT: 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' omegaExpr manyket ')'
-       | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>'  manyket ')'
+       | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' manyket ')'
        | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' omegaExpr ')'
        | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' fcall ')'
        | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' logicOrExp ')'; // phase kick-back
@@ -183,7 +183,7 @@ crange : '[' arithExpr ',' arithExpr ')';
 
 index: '[' arithExpr ']';
 
-slice_expr: '[' left=arithExpr? '..' right=arithExpr? ']';
+sliceExpr: '[' left=arithExpr? '..' right=arithExpr? ']';
 
 idindex : ID index;
 
@@ -212,9 +212,9 @@ baseTy: TNat # NaturalType
       | baseTy '[' arithExpr ']' # ArrayWithSizeType
       | 'Q' '[' arithExpr ']' # QBitStringType;
 
-qty : Nor | Had | En | En '(' arithExpr ')' | aa_type;
+qty : Nor | Had | En | En '(' arithExpr ')' | aaType;
 
-aa_type : AA | AA '(' qrange ')';
+aaType : AA | AA '(' qrange ')';
 
 addOp: TAdd | TSub;
 

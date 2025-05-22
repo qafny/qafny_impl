@@ -42,7 +42,15 @@ class TestProgramTransformer(TestSuite):
             antlr_ast = self.parse_file(filename)
             qafny_ast = self.convert_file(antlr_ast)
 
-            self.end_case(True, filename, error_context)
+            # check the ast against .... what?
+            print(qafny_ast)
+
+            self.end_case(True, filename, f'Failed to transform: {filename}')
+
+    def test_merge_specs(self):
+        program_transformer = ProgramTransformer()
+
+        # assert == program_transformer.mergeStates(, )
 
 
 def run():
