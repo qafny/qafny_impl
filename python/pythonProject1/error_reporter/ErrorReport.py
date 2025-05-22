@@ -77,5 +77,5 @@ class ErrorReport:
 if __name__ == '__main__':
     print(ErrorReport("type mis-match", severity=ErrorReport.Severity.ERROR, description = 'Cannot convert seq<real> to nat type', context = ['See the type table in the paper', 'An extra long line of context that should wrap around the terminal. This will adapt to any terminal size, including the largest of terminals and the smallest of terminals.']))
     term_y = get_terminal_size().columns
-    print('╞' + ('═' * (term_y - 2)) + '╡')
-    print(ErrorReport('precondition could not be verified'))
+    # print('╞' + ('═' * (term_y - 2)) + '╡')
+    # print(ErrorReport('precondition could not be verified'))
