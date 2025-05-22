@@ -67,8 +67,3 @@ method SWAPTest(q: Q[n], p: Q[n], r: Q[1], n : nat) returns (y:nat, prob:real)
     y, prob *= measA(r); //we need a special measurement that will abort the other qubits and the main product is to compute the probablity of y.
     
 }
-
-
-
-
-

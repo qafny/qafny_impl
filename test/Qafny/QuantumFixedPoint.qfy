@@ -16,20 +16,20 @@ method FixedPtSearch(q : Q[1], p: Q[n], n: nat, f: nat -> bool, N: nat) returns 
   
   r[0] *= new;
   if (q[0]) { dataAt(f, n, p, r);}
-  assert {q[0], p[0,n), r[0] : aa(p[0,n)) ↦ part(f,j,k) . sin(alpha) / sqrt(2) |1⟩|j⟩|1⟩ +  ⊗ phi @ (sin(alpha) / sqrt(2) |0⟩|j⟩|0⟩ + cos(alpha) / sqrt(2) |0⟩|k⟩|0⟩ + cos(alpha) / sqrt(2) |1⟩|k⟩|0⟩)  };
+  assert { q[0], p[0, n), r[0] : aa(p[0, n)) ↦ part(f, j, k) . sin(alpha) / sqrt(2) |1⟩|j⟩|1⟩ +  ⊗ phi @ (sin(alpha) / sqrt(2) |0⟩|j⟩|0⟩ + cos(alpha) / sqrt(2) |0⟩|k⟩|0⟩ + cos(alpha) / sqrt(2) |1⟩|k⟩|0⟩)  };
   
-  y,p := measure(r[0]);
-  assert {q[0], p[0,n) : aa(p[0,n) ↦ ⊗ phi };
+  y, p := measure(r[0]);
+  assert { q[0], p[0, n) : aa(p[0, n) ↦ ⊗ phi };
   
   k := 0;
 
   while(y==0)
-    invariant {q[0], p[0,n) : aa(p[0,n)) ↦ 1/sqrt(cos^2(alpha) + 1/2 sin^2(alpha)) * cos(2 * k * alpha) ⊗ phi  }
+    invariant { q[0], p[0, n) : aa(p[0, n)) ↦ 1/sqrt(cos^2(alpha) + 1/2 sin^2(alpha)) * cos(2 * k * alpha) ⊗ phi  }
   {
     q[0], p[0,n) *= diff(2 * alpha);
     r[0] *= new;
-    if (q[0]) { dataAt(f, n, p, r);}
-    y,p1 := measure(r[0]);
+    if (q[0]) { dataAt(f, n, p, r); }
+    y, p1 := measure(r[0]);
     k := k + 1;
   }
   x, p2 := measure(p[0, n));
