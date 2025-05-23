@@ -1,7 +1,7 @@
 from os import get_terminal_size
 from textwrap import wrap
 from colored import stylize, fore
-from ErrorReport import ErrorReport
+from .ErrorReport import ErrorReport
 
 class CodeReport(ErrorReport):
     '''
