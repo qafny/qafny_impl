@@ -324,6 +324,11 @@ class ExpVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by ExpParser#rotExpr.
+    def visitRotExpr(self, ctx:ExpParser.RotExprContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by ExpParser#ketCallExpr.
     def visitKetCallExpr(self, ctx:ExpParser.KetCallExprContext):
         return self.visitChildren(ctx)

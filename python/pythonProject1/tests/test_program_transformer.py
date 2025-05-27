@@ -8,6 +8,8 @@ sys.path.append("../")
 
 # regular imports
 
+from rich.pretty import pprint
+
 import suite
 from suite import TestSuite
 
@@ -43,7 +45,9 @@ class TestProgramTransformer(TestSuite):
             qafny_ast = self.convert_file(antlr_ast)
 
             # check the ast against .... what?
-            print(qafny_ast)
+            # print(qafny_ast)
+            # pprint.pp(qafny_ast.__dict__)
+            pprint(qafny_ast)
 
             self.end_case(True, filename, f'Failed to transform: {filename}')
 

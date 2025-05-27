@@ -127,7 +127,7 @@ arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | 
 
 arithAtomic: numexp | ID | TSub arithExpr | boolLiteral
           | '(' arithExpr ')'
-          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | notExpr | setInstance | qrange | ketCallExpr
+          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | rotExpr | notExpr | setInstance | qrange | ketCallExpr
           | arithExprSumSpec;
 
 // the sum specification allowed in arith expressions (terminates in an arith expr, not a manyketpart)
@@ -145,17 +145,21 @@ absExpr : '|' arithExpr '|' ;
 
 omegaExpr : ('ω' | 'omega') '(' arithExpr (',' arithExpr)? (',' arithExpr)? ')' ;
 
+rotExpr : 'rot' '(' arithExpr ')' ;
+
 ketCallExpr : 'ket' '(' arithExpr ')';
 
 setInstance : '[' (arithExpr (',' arithExpr)*)? ']';
 
 expr : SHad | SQFT | RQFT | lambdaT | dis | ID;
 
+// we could make these take typeOptionalBindings?
 lambdaT: 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' omegaExpr manyket ')'
        | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' manyket ')'
        | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' omegaExpr ')'
-       | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' fcall ')'
-       | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' logicOrExp ')'; // phase kick-back
+       | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' rotExpr ')' ;
+       // | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' fcall ')'
+       // | 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' logicOrExp ')'; // phase kick-back
 
 dis : 'dis' '(' expr ',' arithExpr ',' arithExpr ')';
 

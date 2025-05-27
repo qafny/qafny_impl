@@ -575,6 +575,15 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#rotExpr.
+    def enterRotExpr(self, ctx:ExpParser.RotExprContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#rotExpr.
+    def exitRotExpr(self, ctx:ExpParser.RotExprContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#ketCallExpr.
     def enterKetCallExpr(self, ctx:ExpParser.KetCallExprContext):
         pass

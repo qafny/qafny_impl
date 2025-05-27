@@ -704,7 +704,14 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#omegaExpr.
     def visitOmegaExpr(self, ctx: ExpParser.OmegaExprContext):
-        return QXCall("omega", [self.visitArithExpr(ctx.arithExpr(0)), self.visitAbsExpr(ctx.arithExpr(1))])
+        params = []
+        for param in ctx.arithExpr():
+            params.append(self.visitArithExpr(param))
+        return QXCall("omega", params)
+
+    # Visit a parse tree produced by ExpParser#rotExpr.
+    def visitRotExpr(self, ctx:ExpParser.RotExprContext):
+        return QXUni("rot", self.visitArithExpr(ctx.arithExpr()))
 
     # Visit a parse tree produced by ExpParser#ketCallExpr.
     def visitKetCallExpr(self, ctx: ExpParser.KetCallExprContext):
@@ -736,21 +743,40 @@ class ProgramTransformer(ExpVisitor):
     def genKet(self, ids: [str]):
         tmp = []
         for elem in ids:
-            tmp.append(QXKet(QXBind(elem)))
+            tmp.append(QXVKet(QXBind(elem)))
         return tmp
 
     # Visit a parse tree produced by ExpParser#lambdaT.
     def visitLambdaT(self, ctx: ExpParser.LambdaTContext):
-        ids = self.visitIds(ctx.ids())
-        if ctx.omegaExpr() is None:
-            omega = QXCall('omega', [QXNum(0), QXNum(1)])
+        # convert ids or bindings
+        bindings = None
+        if ctx.ids():
+            bindings = [QXBind(id) for id in self.visitIds(ctx.ids())] # ids are just bindings without types
+        elif ctx.bindings():
+            bindings = self.visitBindings(ctx.bindings())
         else:
-            omega = self.visitOmegaExpr(ctx.omegaExpr())
+            raise ValueError("Expected Lambda expression to have either bindings to ids.\nText: " + ctx.getText())
+
+        # check for inverse indicator
+        inverse = False
+        if ctx.getChild(1) is not None and ctx.getChild(1).getText() == '^{-1}':
+            inverse = True
+
+        # convert the lambda body
+
+        amplitude_expr = QXCall('omega', [QXNum(0), QXNum(1)])
+        if ctx.omegaExpr() is not None:
+            amplitude_expr = self.visitOmegaExpr(ctx.omegaExpr())
+
+        elif ctx.rotExpr() is not None:
+            amplitude_expr = self.visitRotExpr(ctx.rotExpr())
+
         if ctx.manyket() is None:
             kets = self.genKet(ids)
         else:
             kets = self.visitManyket(ctx.manyket())
-        return QXOracle(ids, omega, kets)
+
+        return QXOracle(bindings, amplitude_expr, kets, inverse)
 
     # Visit a parse tree produced by ExpParser#dis.
     def visitDis(self, ctx: ExpParser.DisContext):
