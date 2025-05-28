@@ -30,6 +30,11 @@ class qafny:
                 '''
 
                 def do_replace(cls: Type[TypeVar("T")]) -> Type[TypeVar("T")]:
+
+                    def hasmembervariable(cls: Type[TypeVar("T")], name: str):
+                        '''Helper function to determine whether a member variable exists on a class.'''
+                        return hasattr(cls, name) and not inspect.ismethod(getattr(cls, name))
+
                     def auto_repr(self: TypeVar("T")) -> str:
                         '''Create repr string from __rich_repr__'''
                         repr_str: List[str] = []
@@ -57,24 +62,24 @@ class qafny:
                             signature = inspect.signature(self.__init__)
                             for name, param in signature.parameters.items():
                                 if param.kind == param.POSITIONAL_ONLY:
-                                    if hasattr(self, name):
+                                    if hasmembervariable(self, name):
                                         yield getattr(self, name)
-                                    elif hasattr(self, '_' + name):
+                                    elif hasmembervariable(self, '_' + name):
                                         yield getattr(self, '_' + name)
                                 elif param.kind in (
                                     param.POSITIONAL_OR_KEYWORD,
                                     param.KEYWORD_ONLY,
                                 ):
                                     if param.default is param.empty:
-                                        if hasattr(self, '_' + param.name):
-                                            yield getattr(self, '_' + param.name)
-                                        elif hasattr(self, param.name):
+                                        if hasmembervariable(self, param.name):
                                             yield getattr(self, param.name)
+                                        elif hasmembervariable(self, '_' + param.name):
+                                            yield getattr(self, '_' + param.name)
                                     else:
-                                        if hasattr(self, '_' + param.name):
-                                            yield param.name, getattr(self, '_' + param.name), param.default
-                                        elif hasattr(self, param.name):
+                                        if hasmembervariable(self, param.name):
                                             yield param.name, getattr(self, param.name), param.default
+                                        elif hasmembervariable(self, '_' + param.name):
+                                            yield param.name, getattr(self, '_' + param.name), param.default
                         except Exception as error:
                             raise ValueError(
                                 f"Failed to auto generate __rich_repr__; {error}"
