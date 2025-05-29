@@ -339,19 +339,47 @@ class ProgramTransformer(ExpVisitor):
             else:
                 old_states = states
                 states.clear()
-                for i in range(len(states)):
+                for i in range(len(old_states)):
                     for j in range(len(new_states)):
-                        states.append(self.mergeStates(states[i], new_states[j]))
+                        states.append(self.mergeStates(old_states[i], new_states[j]))
 
             i += 1
 
         return QXQSpec(locus, qty, states)
 
     def mergeStates(self, *args):
-        '''Merges any number of specifications together'''
-        # TODO
-        for arg in argv:
-            pass
+        '''
+        Merges any number of specifications together
+        This is based on the fact that
+        assert { q[0, n), p[0, n) : En ↦ ∑ c ∈ [0, 2^n) . ∑ k ∈ [0, 2^n) . 1 / sqrt(2^n) * ω (k * a, 2^n) |c, k⟩ };
+        and
+        assert { q[0, n) : En ↦ ∑ c ∈ [0, 2^n) . |c⟩ ⊗ p[0, n) : En ↦ ∑ k ∈ [0, 2^n) . 1 / sqrt(2^n) * ω (k * a, 2^n) |k⟩ };
+        are similar.
+        '''
+        # each one can be a QXSum or a QXTensor
+        spec = None
+        for next in args:
+            if spec is None:
+                spec = next
+            elif isinstance(spec, QXSum) and isinstance(next, QXSum):
+                # combine sums
+                sums = spec.sums() + next.sums()
+                # combine amplitudes (if not None)
+                amplitude = spec.amplitude()
+                if amplitude is not None:
+                    if next.amplitude() is not None:
+                        amplitude = QXBin("*", amplitude, next.amplitude())
+                    else:
+                        amplitude = next.amplitude()
+                # combine kets
+                kets = spec.kets() + next.kets() # TODO: check for overlapping ids
+                spec = QXSum(sums, amplitude, kets)
+            elif isinstance(spec, QXTensor) and isinstance(next, QXTensor):
+                # combine tensors
+                raise NotImplementedError("Combining two tensors")
+            else:
+                # one is a tensor, the other is a sum
+                raise NotImplementedError("Combing a tensor and a sum")
 
         return spec
 
