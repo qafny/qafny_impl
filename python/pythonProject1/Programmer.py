@@ -16,6 +16,9 @@ import rich.repr # for pretty printing (see qafny.rich.repr.auto)
 import inspect # for auto-generating __rich_repr__
 
 
+# Types
+id_t = Union[str, antlr4.tree.Tree.TerminalNodeImpl]
+
 # An annotation that generates the required methods for rich.repr
 class qafny:
     '''qafny namespace'''
@@ -332,7 +335,7 @@ class QXCond(QXTop):
 class QXBind(QXAExp):
 
     def __init__(self, id: str, ty: QXType = None):
-        self._id = id.getText() if isAntlrNode(id) else id
+        self._id = coerceStr(id)
         self._type = ty
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -340,7 +343,7 @@ class QXBind(QXAExp):
 
     def ID(self):
         # return self._id if self._id is str else self._id.getText()
-        return self._id if isinstance(self._id, str) else self._id.getText()
+        return self._id
 
     def type(self):
         return self._type
@@ -687,7 +690,7 @@ class QXUni(QXAExp):
 @qafny.rich.repr.auto
 class QXNum(QXAExp):
 
-    def __init__(self, num: int):
+    def __init__(self, num: float):
         self._num = num
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -730,6 +733,26 @@ class QXSet(QXAExp):
 
     def __repr__(self):
         return f'QXSet(members={self._members})'
+
+
+@qafny.rich.repr.auto
+class QXSetContains(QXAExp):
+
+    def __init__(self, set_id: id_t, value_id: id_t):
+        self._set_id = coerceStr(set_id)
+        self._value_id = coerceStr(value_id)
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitSetContains(self)
+
+    def setID():
+        return self._set_id
+
+    def valueID():
+        return self._value_id
+
+    def __repr__(self):
+        return f'QXSetContains(set_id={self._set_id}, value_id={self._value_id})'
 
 
 @qafny.rich.repr.auto
@@ -1000,7 +1023,7 @@ class QXCast(QXStmt):
 @qafny.rich.repr.auto
 class QXInit(QXStmt):
 
-    def __init__(self, binding :QXBind):
+    def __init__(self, binding: QXBind):
         self._binding = binding
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -1016,15 +1039,15 @@ class QXInit(QXStmt):
 @qafny.rich.repr.auto
 class QXCAssign(QXStmt):
 
-    def __init__(self, id: str, expr : QXAExp):
-        self._id = id.getText() if isAntlrNode(id) else id
+    def __init__(self, ids: [Union[str, QXQIndex]], expr : QXAExp):
+        self._ids = ids
         self._expr = expr
 
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitCAssign(self)
 
-    def ID(self):
-        return self._id if isinstance(self._id, str) else self._id.getText()
+    def ids(self):
+        return self._ids
 
     def aexp(self):
         return self._expr

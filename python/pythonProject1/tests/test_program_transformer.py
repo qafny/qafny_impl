@@ -19,6 +19,9 @@ from ExpParser import ExpParser
 from ProgramTransformer import ProgramTransformer
 
 
+class ParseError(Exception):
+    pass
+
 class TestProgramTransformer(TestSuite):
 
     def parse_file(self, filename: str):
@@ -28,7 +31,13 @@ class TestProgramTransformer(TestSuite):
         lexer = ExpLexer(file_stream)
         token_stream = CommonTokenStream(lexer)
         parser = ExpParser(token_stream)
-        return parser.program()
+        root = parser.program()
+
+        if parser.getNumberOfSyntaxErrors() > 0:
+            # fail
+            raise ParseError(f'Failed to parse: {filename}')
+
+        return root
 
     def convert_file(self, ast):
         '''Attempts to convert a file to the Qafny Programmer AST.'''
@@ -39,7 +48,7 @@ class TestProgramTransformer(TestSuite):
 
     def test_program_transformer(self):
         for filename in suite.TEST_FILES:
-            self.start_case()
+            self.start_case(filename, f'Failed to transform: {filename}')
 
             antlr_ast = self.parse_file(filename)
             qafny_ast = self.convert_file(antlr_ast)
@@ -49,7 +58,7 @@ class TestProgramTransformer(TestSuite):
             # pprint.pp(qafny_ast.__dict__)
             pprint(qafny_ast)
 
-            self.end_case(True, filename, f'Failed to transform: {filename}')
+            self.end_case(True)
 
     def test_merge_specs(self):
         program_transformer = ProgramTransformer()

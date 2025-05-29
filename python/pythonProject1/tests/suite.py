@@ -40,8 +40,8 @@ TEST_FILES = [
     'AmplitudeEstimation',
     'AppxCounting',
     'BHSP',
-    'BHT',
-    'BV',
+    # 'BHT', # phase kick-back is currently unimplemented
+    # 'BV',
     'FirstAmpEstimate',
     # 'FixedPtSearch', # currently unfinished
     # 'QuantumFixedPoint', # unknown if finished
@@ -164,11 +164,15 @@ class TestSuite:
 
         return (standard_output, standard_error)
 
-    def start_case(self):
+    def start_case(self, name: str, error_context: str):
+        self.__current_case_name = name
+        self.__current_case_error_context = error_context
         self.begin_capture()
 
-    def end_case(self, successful: bool, name: str, error_context: str):
+    def end_case(self, successful: bool):
         standard_output, standard_error = self.end_capture()
+        name = self.__current_case_name
+        error_context = self.__current_case_error_context
 
         self.total_cases += 1
 
@@ -215,10 +219,10 @@ class TestSuite:
                 print('')
 
                 exception_info = traceback.format_exc()
-                print(stylize(f'Error happened whilst running test case: {test_method_name}\n', fore('red'))) # {exception_info}
+                print(stylize(f'Error happened whilst running test case: {self.__current_case_name}\n', fore('red'))) # {exception_info}
                 
                 self.total_cases += 1
-                self.cases.append(self.CaseInfo(f'Exception occured whilst testing: {test_method_name}', standard_output, standard_error + exception_info))
+                self.cases.append(self.CaseInfo(f'Exception occured whilst testing: {self.__current_case_name}', standard_output, standard_error + exception_info))
             print('')
 
         end = time.time()
