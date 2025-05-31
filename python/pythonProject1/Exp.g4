@@ -45,7 +45,7 @@ logicNotExp: 'not' logicNotExp | fcall | chainBExp | logicInExpr;
 
 logicInExpr: ID TIn ID;
 
-chainBExp: arithExpr (comOp arithExpr)+;
+chainBExp: arithExprWithSum (comOp arithExprWithSum)+;
 
 // comparison operators
 comOp :  GE | LE | EQ | NE | LT | GT;
@@ -123,15 +123,15 @@ fcall : ID '^{-1}'? '(' arithExprsOrKets ')';
 
 arithExprsOrKets : (arithExpr | ket) (',' (arithExpr | ket))*;
 
+arithExprWithSum: arithExpr | maySum arithExprWithSum | arithExpr op arithExprWithSum | '(' arithExprWithSum ')';
+
 arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | sliceExpr | crange); // | sumspec | qtypeCreate;
+
+// arithExprNoSum: cifexpNoSum | arithAtomic op arithExprNoSum | arithAtomic | arithExprNoSum (index | sliceExpr | crange) | '(' arithExprNoSum ')';
 
 arithAtomic: numexp | ID | TSub arithExpr | boolLiteral
           | '(' arithExpr ')'
-          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | rotExpr | notExpr | setInstance | qrange | ketCallExpr
-          | arithExprSumSpec;
-
-// the sum specification allowed in arith expressions (terminates in an arith expr, not a manyketpart)
-arithExprSumSpec: maySum arithExpr;
+          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | rotExpr | notExpr | setInstance | qrange | ketCallExpr;
 
 sinExpr : 'sin' ('^' Number)? '(' arithExpr ')' | 'sin' arithAtomic;
 

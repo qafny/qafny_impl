@@ -494,6 +494,15 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#arithExprWithSum.
+    def enterArithExprWithSum(self, ctx:ExpParser.ArithExprWithSumContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#arithExprWithSum.
+    def exitArithExprWithSum(self, ctx:ExpParser.ArithExprWithSumContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#arithExpr.
     def enterArithExpr(self, ctx:ExpParser.ArithExprContext):
         pass
@@ -509,15 +518,6 @@ class ExpListener(ParseTreeListener):
 
     # Exit a parse tree produced by ExpParser#arithAtomic.
     def exitArithAtomic(self, ctx:ExpParser.ArithAtomicContext):
-        pass
-
-
-    # Enter a parse tree produced by ExpParser#arithExprSumSpec.
-    def enterArithExprSumSpec(self, ctx:ExpParser.ArithExprSumSpecContext):
-        pass
-
-    # Exit a parse tree produced by ExpParser#arithExprSumSpec.
-    def exitArithExprSumSpec(self, ctx:ExpParser.ArithExprSumSpecContext):
         pass
 
 

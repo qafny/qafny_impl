@@ -273,8 +273,8 @@ class ProgramTransformer(ExpVisitor):
         i = 0
         va = []
         op = []
-        while ctx.arithExpr(i):
-            va.append(self.visitArithExpr(ctx.arithExpr(i)))
+        while ctx.arithExprWithSum(i):
+            va.append(self.visitArithExprWithSum(ctx.arithExprWithSum(i)))
             i += 1
         i = 0
         while ctx.comOp(i):
@@ -471,7 +471,7 @@ class ProgramTransformer(ExpVisitor):
             return QXSum([sum], amp, kets)
         elif ctx.maySum() is not None:
             # recursive sum spec, add to this sum
-            this_sum = self.visitSumspec(ctx.maySpec())
+            this_sum = self.visitMaySum(ctx.maySum())
 
             amp = None
             if ctx.arithExpr() is not None:
@@ -484,7 +484,7 @@ class ProgramTransformer(ExpVisitor):
             if amp is not None:
                 amp = QXBin('*', amp, next_sum.amp())
             else:
-                amp = next_sums.amp()
+                amp = next_sum.amp()
 
             return QXSum(sums, amp, next_sum.kets())
         elif ctx.sumspec() is not None:
@@ -696,6 +696,24 @@ class ProgramTransformer(ExpVisitor):
             i = i + 1
         return tmp
 
+    # Visit a parse tree produced by ExpParser#arithExprWithSum.
+    def visitArithExprWithSum(self, ctx: ExpParser.ArithExprWithSumContext) -> QXAExp:
+        if ctx.op() is not None:
+            op = self.visitOp(ctx.op())
+            left = self.visitArithExpr(ctx.arithExpr())
+            right = self.visitArithExprWithSum(ctx.arithExprWithSum())
+            return QXBin(op, left, right)
+        elif ctx.maySum() is not None:
+            summation = self.visitMaySum(ctx.maySum())
+            aexp = self.visitArithExprWithSum(ctx.arithExprWithSum())
+            return QXSumAExp(summation, aexp)
+        elif ctx.arithExprWithSum() is not None:
+            # unwrap parentheses
+            return self.visitArithExprWithSum(ctx.arithExprWithSum())
+        elif ctx.arithExpr() is not None:
+            # containing arith expression
+            return self.visitArithExpr(ctx.arithExpr())
+
     # Visit a parse tree produced by ExpParser#arithExpr.
     def visitArithExpr(self, ctx: ExpParser.ArithExprContext):
         if ctx.cifexp() is not None:
@@ -749,18 +767,18 @@ class ProgramTransformer(ExpVisitor):
             return self.visitQrange(ctx.qrange())
         elif ctx.ketCallExpr() is not None:
             return self.visitKetCallExpr(ctx.ketCallExpr())
-        elif ctx.arithExprSumSpec() is not None:
-            return self.visitArithExprSumSpec(ctx.arithExprSumSpec())
+        # elif ctx.arithExprSumSpec() is not None:
+        #     return self.visitArithExprSumSpec(ctx.arithExprSumSpec())
         # if ctx.qindex() is not None:
         #     return self.visitQindex(ctx.qindex())
         # if ctx.rangeT() is not None:
         #   return self.visitRangeT(ctx.rangeT())
 
     # Visit a parse tree produced by ExpParser#arithExprSumSpec.
-    def visitArithExprSumSpec(self, ctx: ExpParser.ArithExprSumSpecContext):
-        summation = self.visitMaySum(ctx.maySum())
-        aexp = self.visitArithExpr(ctx.arithExpr())
-        return QXSumAExp(summation, aexp)
+    # def visitArithExprSumSpec(self, ctx: ExpParser.ArithExprSumSpecContext):
+    #     summation = self.visitMaySum(ctx.maySum())
+    #     aexp = self.visitArithExpr(ctx.arithExpr())
+    #     return QXSumAExp(summation, aexp)
 
     def visitUniCall(self, ctx: Union[ExpParser.SinExprContext, ExpParser.CosExprContext, ExpParser.SqrtExprContext]):
         '''Since the syntax of sin, cos and sqrt expressions is similar, they can all be handled by this function'''
@@ -909,14 +927,18 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#ketsum.
     def visitKetsum(self, ctx: ExpParser.KetsumContext):
-        return self.visitChildren(ctx)
+        return QXSumAExp(self.visitMaySum(ctx.maySum()), self.visitArithExpr(ctx.arithExpr()))
 
     # Visit a parse tree produced by ExpParser#qstate.
     def visitQstate(self, ctx: ExpParser.QstateContext):
         if ctx.arithExpr() is not None:
             return self.visitArithExpr(ctx.arithExpr())
-        else:
+        elif ctx.addOp() is not None:
             return QXHad(self.visitAddOp(ctx.addOp()))
+        elif ctx.ketsum() is not None:
+            return self.visitKetsum(ctx.ketsum())
+        else:
+            raise ValueError("QState: impossible branch detected.")
 
     # Visit a parse tree produced by ExpParser#bindings.
     def visitBindings(self, ctx: ExpParser.BindingsContext):
@@ -977,7 +999,7 @@ class ProgramTransformer(ExpVisitor):
     def visitQrange(self, ctx: ExpParser.QrangeContext):
         i = 0
         cranges = []
-        while child := ctx.getChild(i) is not None:
+        while (child := ctx.getChild(i)) is not None:
             if isinstance(child, ExpParser.IndexContext):
                 index = self.visitIndex(child)
                 cranges.append(QXCRange(index, QXBin("+", index, QXNum(1))))
@@ -996,13 +1018,18 @@ class ProgramTransformer(ExpVisitor):
     def visitTypeT(self, ctx: ExpParser.TypeTContext):
         if not ctx:
             return None
+
         if ctx.typeT() is not None:
-            return TyFun(self.visitBaseTy(ctx.baseTy()), self.visitTypeT(ctx.typeT()))
-        return self.visitBaseTy(ctx.baseTy())
+            # function type
+            types = [self.visitBaseTy(type) for type in ctx.baseTy()]
+            return TyFun(types, self.visitTypeT(ctx.typeT()))
+
+        # any singular base type
+        return self.visitBaseTy(ctx.baseTy(0))
 
     # Visit a parse tree produced by ExpParser#baseTy.
     def visitBaseTy(self, ctx: ExpParser.BaseTyContext):
-        if isinstance(ctx, ExpParser.NaturalTypeContext): 
+        if isinstance(ctx, ExpParser.NaturalTypeContext):
             return TySingle("nat")
         if isinstance(ctx, ExpParser.RealTypeContext):
             return TySingle("real")

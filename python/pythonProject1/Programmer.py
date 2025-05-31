@@ -1,6 +1,7 @@
 import AbstractProgramVisitor
 
 import utils # for make_repr(...)
+from utils import hasmembervariable
 
 from typing import (
     Callable,
@@ -18,90 +19,123 @@ import inspect # for auto-generating __rich_repr__
 
 # Types
 id_t = Union[str, antlr4.tree.Tree.TerminalNodeImpl]
+T = TypeVar("T")
+V = TypeVar("V")
 
-# An annotation that generates the required methods for rich.repr
+
 class qafny:
     '''qafny namespace'''
-    class rich:
-        '''rich namespace'''
-        class repr:
-            '''repr namespace'''
-            def auto(cls: Optional[Type[TypeVar("T")]]) -> Union[Type[TypeVar("T")], Callable[[Type[TypeVar("T")]], Type[TypeVar("T")]]]:
-                '''
-                Class decorator to create __repr__ from __rich_repr__.
-                Copied from https://github.com/Textualize/rich/blob/master/rich/repr.py
-                '''
+    class auto:
+        '''auto namespace'''
 
-                def do_replace(cls: Type[TypeVar("T")]) -> Type[TypeVar("T")]:
-
-                    def hasmembervariable(cls: Type[TypeVar("T")], name: str):
-                        '''Helper function to determine whether a member variable exists on a class.'''
-                        return hasattr(cls, name) and not inspect.ismethod(getattr(cls, name))
-
-                    def auto_repr(self: TypeVar("T")) -> str:
-                        '''Create repr string from __rich_repr__'''
-                        repr_str: List[str] = []
-                        append = repr_str.append
-
-                        for arg in self.__rich_repr__():  # type: ignore[attr-defined]
-                            if isinstance(arg, tuple):
-                                if len(arg) == 1:
-                                    append(repr(arg[0]))
-                                else:
-                                    key, value, *default = arg
-                                    if key is None:
-                                        append(repr(value))
-                                    else:
-                                        if default and default[0] == value:
-                                            continue
-                                        append(f"{key}={value!r}")
+        # An annotation that generates the required methods for rich.repr
+        def rich_repr(cls: Optional[Type[TypeVar("T")]]) -> Union[Type[TypeVar("T")], Callable[[Type[TypeVar("T")]], Type[TypeVar("T")]]]:
+            '''
+            Class decorator to create __repr__ from __rich_repr__.
+            Copied from https://github.com/Textualize/rich/blob/master/rich/repr.py
+            '''
+            def do_replace(cls: Type[TypeVar("T")]) -> Type[TypeVar("T")]:
+                '''Actual function that replaces the member functions of a class, could be returned as a partial from rich_repr'''
+                def auto_repr(self: TypeVar("T")) -> str:
+                    '''Create repr string from __rich_repr__'''
+                    repr_str: List[str] = []
+                    append = repr_str.append
+                    for arg in self.__rich_repr__():  # type: ignore[attr-defined]
+                        if isinstance(arg, tuple):
+                            if len(arg) == 1:
+                                append(repr(arg[0]))
                             else:
-                                append(repr(arg))
-                        return f"{self.__class__.__name__}({', '.join(repr_str)})"
+                                key, value, *default = arg
+                                if key is None:
+                                    append(repr(value))
+                                else:
+                                    if default and default[0] == value:
+                                        continue
+                                    append(f"{key}={value!r}")
+                        else:
+                            append(repr(arg))
+                    return f"{self.__class__.__name__}({', '.join(repr_str)})"
 
-                    def auto_rich_repr(self: Type[TypeVar("T")]) -> rich.repr.Result:
-                        '''Auto generate __rich_rep__ from signature of __init__'''
-                        try:
-                            signature = inspect.signature(self.__init__)
-                            for name, param in signature.parameters.items():
-                                if param.kind == param.POSITIONAL_ONLY:
-                                    if hasmembervariable(self, name):
-                                        yield getattr(self, name)
-                                    elif hasmembervariable(self, '_' + name):
-                                        yield getattr(self, '_' + name)
-                                elif param.kind in (
-                                    param.POSITIONAL_OR_KEYWORD,
-                                    param.KEYWORD_ONLY,
-                                ):
-                                    if param.default is param.empty:
-                                        if hasmembervariable(self, param.name):
-                                            yield getattr(self, param.name)
-                                        elif hasmembervariable(self, '_' + param.name):
-                                            yield getattr(self, '_' + param.name)
-                                    else:
-                                        if hasmembervariable(self, param.name):
-                                            yield param.name, getattr(self, param.name), param.default
-                                        elif hasmembervariable(self, '_' + param.name):
-                                            yield param.name, getattr(self, '_' + param.name), param.default
-                        except Exception as error:
-                            raise ValueError(
-                                f"Failed to auto generate __rich_repr__; {error}"
-                            ) from None
+                def auto_rich_repr(self: Type[TypeVar("T")]) -> rich.repr.Result:
+                    '''Auto generate __rich_rep__ from signature of __init__'''
+                    try:
+                        signature = inspect.signature(self.__init__)
+                        for name, param in signature.parameters.items():
+                            if param.kind == param.POSITIONAL_ONLY:
+                                if hasmembervariable(self, name):
+                                    yield getattr(self, name)
+                                elif hasmembervariable(self, '_' + name):
+                                    yield getattr(self, '_' + name)
+                            elif param.kind in (
+                                param.POSITIONAL_OR_KEYWORD,
+                                param.KEYWORD_ONLY,
+                            ):
+                                if param.default is param.empty:
+                                    if hasmembervariable(self, param.name):
+                                        yield getattr(self, param.name)
+                                    elif hasmembervariable(self, '_' + param.name):
+                                        yield getattr(self, '_' + param.name)
+                                else:
+                                    if hasmembervariable(self, param.name):
+                                        yield param.name, getattr(self, param.name), param.default
+                                    elif hasmembervariable(self, '_' + param.name):
+                                        yield param.name, getattr(self, '_' + param.name), param.default
+                    except Exception as error:
+                        raise ValueError(
+                            f"Failed to auto generate __rich_repr__; {error}"
+                        ) from None
+                if not hasattr(cls, "__rich_repr__"):
+                    auto_rich_repr.__doc__ = "Build a rich repr"
+                    cls.__rich_repr__ = auto_rich_repr  # type: ignore[assignment]
+                if not hasattr(cls, "__repr__"):
+                    auto_repr.__doc__ = "Return repr(self)"
+                    cls.__repr__ = auto_repr  # type: ignore[assignment]
+                return cls
+            if cls is None:
+                return partial(do_replace)
+            else:
+                return do_replace(cls)
 
-                    if not hasattr(cls, "__rich_repr__"):
-                        auto_rich_repr.__doc__ = "Build a rich repr"
-                        cls.__rich_repr__ = auto_rich_repr  # type: ignore[attr-defined]
+        # An annotation that generates __eq__ and __ne__
+        def equality(cls: Optional[Type[T]]) -> Union[Type[T], Callable[[Type[T]], Type[T]]]:
+            '''Generates an equality (__eq__) member function for custom AST types'''
+            def do_replace(cls: Type[T]) -> Type[T]:
+                '''The actual function that interacts with the type to update its methods'''
+                
+                def eq(self: T, other: V) -> bool:
+                    if not isinstance(other, self.__class__):
+                        # classes differ
+                        return False
 
-                    if not hasattr(cls, "__repr__"):
-                        auto_repr.__doc__ = "Return repr(self)"
-                        cls.__repr__ = auto_repr  # type: ignore[assignment]
+                    # go through every property (unless marked with skip (i.e. source location information))
+                    try:
+                        members = [attr for attr in dir(self) if not callable(getattr(self, attr))]
+                        for member in members:
+                            if not (getattr(self, member) == getattr(other, member)):
+                                print(f'{member} differs between objects!')
+                                return False
 
-                    return cls
+                    except Exception as error:
+                        raise ValueError(f'Failed to auto generate __eq__; {error}') from None
 
-                if cls is None:
-                    return partial(do_replace)
-                else:
-                    return do_replace(cls)
+                    return True
+
+                def ne(self: T, other: V) -> bool:
+                    return not (self == other)
+
+                eq.__doc__ = 'Check equality between two objects.'
+                cls.__eq__ = eq # type: ignore[attr-defined]
+
+                ne.__doc__ = 'Check inequality between two objects'
+                cls.__ne__ = ne # type: ignore[attr-defined]
+
+                return cls
+
+            if cls is None:
+                return partial(do_replace)
+            else:
+                return do_replace(cls)
+
 
 def isAntlrNode(obj):
     return isinstance(obj, antlr4.tree.Tree.TerminalNodeImpl)
@@ -136,7 +170,8 @@ class QXQExp(QXTop):
         pass
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXHad(QXQExp):
     '''A hadmard state (+ or -)'''
 
@@ -159,7 +194,8 @@ class QXAExp(QXQExp, QXTop):
         pass
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class TyArray(QXType):
 
     def __init__(self, type: QXType, flag: QXAExp):
@@ -183,7 +219,8 @@ class TyArray(QXType):
         yield self._flag
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class TySet(QXType):
     '''
     Represents a set in dafny: set<xxx>
@@ -202,7 +239,8 @@ class TySet(QXType):
         return f'TySet(ty={self._type})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class TySingle(QXType):
 
     def __init__(self, name: str):
@@ -218,7 +256,8 @@ class TySingle(QXType):
         return f"TySingle(name={repr(str(self._name))})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class TyQ(QXType):
 
     def __init__(self, flag: QXAExp):
@@ -234,24 +273,25 @@ class TyQ(QXType):
         return f"TyQ(flag={self._flag})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class TyFun(QXType):
 
     def __init__(self, parameters: [QXType], return_type: QXType):
-        self._left = parameters
-        self._right = return_type
+        self._parameters = parameters
+        self._return_type = return_type
 
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitFun(self)
 
-    def left(self):
-        return self._left
+    def params(self):
+        return self._parameters
 
-    def right(self):
-        return self._right
+    def return_type(self):
+        return self._return_type
 
     def __repr__(self):
-        return f"TyFun(left={self._left}, right={self._right})"
+        return f"TyFun(parameters={self._parameters}, return_type={self._return_type})"
 
 
 class QXQTy(QXTop):
@@ -261,7 +301,8 @@ class QXQTy(QXTop):
         pass
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class TyHad(QXQTy):
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -271,7 +312,8 @@ class TyHad(QXQTy):
         return f"TyHad()"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class TyEn(QXQTy):
 
     def __init__(self, flag: QXAExp):
@@ -288,7 +330,8 @@ class TyEn(QXQTy):
 
 
 # Specialized version of the EN type where the grouping of basis vectors are important
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class TyAA(QXQTy):
 
     def __init__(self, qrange = None):
@@ -304,7 +347,8 @@ class TyAA(QXQTy):
         return f"TyAA(qrange={self._qrange})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class TyNor(QXQTy):
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -331,12 +375,13 @@ class QXCond(QXTop):
         pass
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXBind(QXAExp):
 
-    def __init__(self, id: str, ty: QXType = None):
+    def __init__(self, id: str, type: QXType = None):
         self._id = coerceStr(id)
-        self._type = ty
+        self._type = type
 
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitBind(self)
@@ -358,7 +403,8 @@ class QXBool(QXBExp, QXSpec):
         pass
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXLogic(QXBool):
 
     def __init__(self, op: str, left: QXBool, right: QXBool):
@@ -382,7 +428,8 @@ class QXLogic(QXBool):
         return f"QXLogic(op={repr(str(self._op))}, left={self._left}, right={self._right})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXCNot(QXBool):
 
     def __init__(self, next: QXBool):
@@ -398,7 +445,8 @@ class QXCNot(QXBool):
         return f"QXCNot(next={self._next})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXComp(QXBool):
 
     def __init__(self, op: str, left: QXAExp, right: QXAExp):
@@ -422,7 +470,8 @@ class QXComp(QXBool):
         return f"QXComp(op={repr(str(self._op))}, left={self._left}, right={self._right})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXAll(QXSpec):
 
     def __init__(self, bind: QXBind, bounds: QXComp, next: QXSpec):
@@ -452,7 +501,8 @@ class QXQBool(QXBExp):
         pass
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXQIndex(QXQBool, QXAExp):
 
     def __init__(self, id: str, index: QXAExp):
@@ -472,7 +522,8 @@ class QXQIndex(QXQBool, QXAExp):
         return f"QXQindex(id={repr(str(self._id))}, index={self._index})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXIfExp(QXAExp):
 
     def __init__(self, bexp: QXBExp, left: QXAExp, right: QXAExp):
@@ -493,7 +544,8 @@ class QXIfExp(QXAExp):
         return self._right
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXBin(QXAExp):
 
     def __init__(self, op: str, left: QXAExp, right: QXAExp):
@@ -516,7 +568,8 @@ class QXBin(QXAExp):
     def __repr__(self):
         return f"QXBin(op={repr(str(self._op))}, left={self._left}, right={self._right})"
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXCRange(QXTop):
 
     def __init__(self, left: QXAExp, right: QXAExp):
@@ -536,7 +589,8 @@ class QXCRange(QXTop):
         return f"QXCRange(left={self._left}, right={self._right})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXQRange(QXTop):
 
     def __init__(self, id: str, cranges: [QXCRange]):
@@ -556,7 +610,8 @@ class QXQRange(QXTop):
         return f"QXQRange(id={repr(str(self._id))}, cranges={self._cranges})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXSlice(QXTop):
     """
     Represents a slice of a certain array or set.
@@ -587,7 +642,8 @@ class QXSlice(QXTop):
         return f"QXSlice(left={self._left}, right={self._right})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXCon(QXTop):
 
     def __init__(self, id: str, crange: QXCRange):
@@ -607,7 +663,8 @@ class QXCon(QXTop):
         return f"QXCon(id={repr(str(self._id))}, crange={self._crange})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXIndexAExp(QXAExp):
 
     def __init__(self, aexp: QXAExp, index: QXAExp):
@@ -627,7 +684,8 @@ class QXIndexAExp(QXAExp):
         return f"QXIndexAExp(aexp={self._aexp}, index={self._index})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXSliceAExp(QXAExp):
 
     def __init__(self, aexp: QXAExp, slice: QXSlice):
@@ -647,7 +705,8 @@ class QXSliceAExp(QXAExp):
         return f"QXSliceAExp(aexp={self._aexp}, slice={self._slice})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXCRangeAExp(QXAExp):
 
     def __init__(self, aexp: QXAExp, crange: QXCRange):
@@ -667,7 +726,8 @@ class QXCRangeAExp(QXAExp):
         return f"QXCRangeAExp(aexp={self._aexp}, crange={self._crange})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXUni(QXAExp):
 
     def __init__(self, op: str, next:QXAExp):
@@ -687,7 +747,8 @@ class QXUni(QXAExp):
         return f"QXUni(op={repr(str(self._op))}, next={self._next})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXNum(QXAExp):
 
     def __init__(self, num: float):
@@ -703,7 +764,8 @@ class QXNum(QXAExp):
         return f"QXNum(num={self._num})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXBoolLiteral(QXAExp):
 
     def __init__(self, value: bool):
@@ -719,7 +781,8 @@ class QXBoolLiteral(QXAExp):
         return f'QXBoolLiteral(value={self._value})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXSet(QXAExp):
 
     def __init__(self, members: [QXAExp]):
@@ -735,7 +798,8 @@ class QXSet(QXAExp):
         return f'QXSet(members={self._members})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXSetContains(QXAExp):
 
     def __init__(self, set_id: id_t, value_id: id_t):
@@ -755,7 +819,8 @@ class QXSetContains(QXAExp):
         return f'QXSetContains(set_id={self._set_id}, value_id={self._value_id})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXNegation(QXAExp):
 
     def __init__(self, aexp: QXAExp):
@@ -771,7 +836,8 @@ class QXNegation(QXAExp):
         return f'QXNegation(aexp={self._aexp})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXSumAExp(QXAExp):
 
     def __init__(self, sum: QXCon, aexp: QXAExp):
@@ -791,7 +857,8 @@ class QXSumAExp(QXAExp):
         return f'QXSumAExp(sum={self._sum}, aexp={self._aexp})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXQComp(QXQBool):
 
     def __init__(self, op: str, left:QXAExp, right: QXAExp, index: QXQIndex):
@@ -819,7 +886,8 @@ class QXQComp(QXQBool):
         return f"QXQComp(op={repr(str(self._op))}, left={self._left}, right={self._right}, index={self._index})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXQNot(QXQBool):
 
     def __init__(self, next: QXQBool):
@@ -838,7 +906,8 @@ class QXExp(QXTop):
         pass
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXSingle(QXExp):
 
     def __init__(self, op: str):
@@ -860,7 +929,8 @@ class QXKet(QXTop):
         pass
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXSKet(QXKet):
 
     def __init__(self, vector: QXQExp):
@@ -876,7 +946,8 @@ class QXSKet(QXKet):
         return f"QXSKet(vector={self._vector})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXVKet(QXKet):
 
     def __init__(self, vector: QXAExp):
@@ -892,7 +963,8 @@ class QXVKet(QXKet):
         return f"QXVKet(vector={self._vector})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXOracle(QXExp):
 
     def __init__(self, bindings: [QXBind], amplitude_expr: QXAExp, kets: [QXKet], inverse: bool = False):
@@ -926,7 +998,8 @@ class QXQState(QXTop):
         pass
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXTensor(QXQState):
 
     def __init__(self, kets: [QXKet], id: str = None, crange: QXCRange = None, amp: QXAExp = None):
@@ -954,7 +1027,8 @@ class QXTensor(QXQState):
         return f"QXTensor(kets={self._kets}, id={repr(str(self._id))}, crange={self._crange}, amp={self._amp})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXSum(QXQState):
 
     def __init__(self, sums: [QXCon], amp: QXAExp, kets: [QXKet]):
@@ -984,7 +1058,8 @@ class QXStmt(QXTop):
         pass
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXAssert(QXStmt):
 
     def __init__(self, spec: QXSpec):
@@ -1000,7 +1075,8 @@ class QXAssert(QXStmt):
         return f"QXAssert(spec={self._spec})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXCast(QXStmt):
 
     def __init__(self, qty :QXQTy, locus: [QXQRange]):
@@ -1020,7 +1096,8 @@ class QXCast(QXStmt):
         return f"QXCast(qty={self._qty}, locus={self._locus})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXInit(QXStmt):
 
     def __init__(self, binding: QXBind):
@@ -1036,7 +1113,8 @@ class QXInit(QXStmt):
         return f"QXInit(binding={self._binding})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXCAssign(QXStmt):
 
     def __init__(self, ids: [Union[str, QXQIndex]], expr : QXAExp):
@@ -1056,7 +1134,8 @@ class QXCAssign(QXStmt):
         return f"QXCAssign(id={repr(str(self._id))}, expr={self._expr})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXQAssign(QXStmt):
     '''
     Represents a quantum assignment operation.
@@ -1087,12 +1166,13 @@ class QXQAssign(QXStmt):
         return f"QXQAssign(location={self._location}, expr={self._expr})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXMeasure(QXStmt):
 
-    def __init__(self, ids: [str | QXQIndex], locus : Union[str, list[QXQRange]], res: QXAExp = None):
+    def __init__(self, ids: [str | QXQIndex], locus: Union[str, list[QXQRange]], res: QXAExp = None):
         self._ids = ids
-        self._locus = locus
+        self._locus = locus if isinstance(locus, list) else coerceStr(locus)
         self._res = res
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -1111,7 +1191,8 @@ class QXMeasure(QXStmt):
         return f"QXMeasure(ids={self._ids}, locus={self._locus}, res={self._res})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXIf(QXStmt):
 
     def __init__(self, bexp: QXBExp, stmts: [QXStmt], else_branch: [QXStmt]):
@@ -1135,7 +1216,8 @@ class QXIf(QXStmt):
         return f"QXIf(bexp={self._bexp}, stmts={self._stmts})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXFor(QXStmt):
 
     def __init__(self, id: str, crange: QXCRange, conds: [QXCond], stmts: [QXStmt]):
@@ -1175,7 +1257,8 @@ class QXFor(QXStmt):
         return f"QXFor(id={repr(str(self._id))}, conds={self._conds}, conds={self._conds}, stmts={self._stmts})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXCall(QXStmt, QXBool, QXAExp):
 
     def __init__(self, id: str, exps: [QXAExp], inverse: bool = False):
@@ -1199,7 +1282,8 @@ class QXCall(QXStmt, QXBool, QXAExp):
         return f"QXCall(id={repr(str(self._id))}, exps={self._exps}, inverse={self._inverse})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXReturn(QXStmt):
     '''
     Represents a return statement, with a number of ids indicating which variables to return.
@@ -1225,7 +1309,8 @@ class QXReturn(QXStmt):
         return f'QXReturn(ids={self._ids})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXBreak(QXStmt):
     '''
     Represents a break statement.
@@ -1258,7 +1343,8 @@ class QXBreak(QXStmt):
 ########################################################################
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXPartPredicate(QXTop):
     '''
     Represents a predicate used inside a partition function.
@@ -1286,7 +1372,8 @@ class QXPartPredicate(QXTop):
         return f'QXPartPredicate(amplitude={self._amplitude}, predicate={self._predicate})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXPartsection(QXTop):
     '''
     Represents a part of a predicate used inside a partition function
@@ -1319,7 +1406,8 @@ class QXPartsection(QXTop):
         return f'QXPartsection(amplitude={self._amplitude}, ket={self._ket}, predicate={self._predicate})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXPart(QXQState):
     '''
     Represents a call to the "partition" function inside of a quantum specification.
@@ -1362,7 +1450,8 @@ class QXPart(QXQState):
         return f"QXPart(num={self._num}, fname={self._fname}, tamp={self._tamp}, famp={self._famp})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXPartWithPredicates(QXQState):
     '''
     Represents a call to the "partition" function inside of a quantum specification.
@@ -1402,7 +1491,8 @@ class QXPartWithPredicates(QXQState):
         return f"QXPartWithPredicates(num={self._num}, true_predicate={self._true_predicate}, false_predicate={self._false_predicate})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXPartGroup(QXQState):
     '''
     Represents a call to the "partition" function inside of a quantum specification.
@@ -1442,7 +1532,8 @@ class QXPartGroup(QXQState):
         return f'QXPartGroup(id={self._fpred}, bool_lit={self._bool_lit}, amplitude={self._amplitude})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXPartLambda(QXQState):
     '''
     Represents a call to the "partition" function inside of a quantum specification.
@@ -1477,7 +1568,8 @@ class QXPartLambda(QXQState):
         return f'QXPartLambda(predicate={self._fpred}, amplitude={self._amplitude})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXPartWithSections(QXQState):
     '''
     Represents a call to the "partition" function inside of a quantum specification.
@@ -1507,7 +1599,8 @@ class QXPartWithSections(QXQState):
         return f'QXPartWithSections(sections={self._sections})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXQSpec(QXSpec):
 
     def __init__(self, locus: [QXQRange], qty: QXType, states: [QXQState]):
@@ -1531,7 +1624,8 @@ class QXQSpec(QXSpec):
         return f"QXQSpec(locus={self._locus}, qty={self._qty}, states={self._states})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXRequires(QXCond):
 
     def __init__(self, spec: QXSpec):
@@ -1547,7 +1641,8 @@ class QXRequires(QXCond):
         return f"QXRequires(spec={self._spec})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXEnsures(QXCond):
 
     def __init__(self, spec: QXSpec):
@@ -1563,7 +1658,8 @@ class QXEnsures(QXCond):
         return f"QXEnsures(spec={self._spec})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXInvariant(QXCond):
 
     def __init__(self, spec: QXSpec):
@@ -1579,7 +1675,8 @@ class QXInvariant(QXCond):
         return f"QXInvariant(spec={self._spec})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXDecreases(QXCond):
     '''
     Represents a decreases loop invariant.
@@ -1606,7 +1703,8 @@ class QXDecreases(QXCond):
         return f"QXDecreases(arith_expr={self._arith_expr})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXSeparates(QXCond):
     '''
     Represents a separates loop invariant.
@@ -1640,7 +1738,8 @@ class QXSeparates(QXCond):
 ########################################################################
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXInclude(QXTop):
 
     def __init__(self, path: str):
@@ -1654,7 +1753,8 @@ class QXInclude(QXTop):
         return self.__path
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXMethod(QXTop):
 
     def __init__(self, id: str, axiom: bool, bindings: [QXBind], returns: [QXBind], conds: [QXCond], stmts: [QXStmt]):
@@ -1690,7 +1790,8 @@ class QXMethod(QXTop):
         return f"QXMethod(id={repr(str(self._id))}, axiom={self._axiom}, bindings={self._bindings}, returns={self._returns}, conds={self._conds}, stmts={self._stmts})"
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXFunction(QXTop):
 
     def __init__(self, id: str, axiom: bool, bindings: [QXBind], return_type: QXQTy, arith_expr: QXAExp):
@@ -1722,7 +1823,8 @@ class QXFunction(QXTop):
         return f'QXFunction(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, return_type={self._type}, arith_expr={self._arith_expr})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXLemma(QXTop):
 
     def __init__(self, id: str, axiom: bool, bindings: [QXBind], conds: [QXCond]):
@@ -1750,7 +1852,8 @@ class QXLemma(QXTop):
         return f'QXLemma(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, conds={self._conds})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXPredicate(QXTop):
 
     def __init__(self, id: str, bindings: [QXBind], arith_expr: QXAExp):
@@ -1774,7 +1877,8 @@ class QXPredicate(QXTop):
         return f'QXPredicate(id={self._id}, bindings={self._bindings}, arith_expr={self._arith_expr})'
 
 
-@qafny.rich.repr.auto
+@qafny.auto.rich_repr
+@qafny.auto.equality
 class QXProgram(QXTop):
 
     def __init__(self, exps: [QXMethod]):

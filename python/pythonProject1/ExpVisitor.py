@@ -279,6 +279,11 @@ class ExpVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by ExpParser#arithExprWithSum.
+    def visitArithExprWithSum(self, ctx:ExpParser.ArithExprWithSumContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by ExpParser#arithExpr.
     def visitArithExpr(self, ctx:ExpParser.ArithExprContext):
         return self.visitChildren(ctx)
@@ -286,11 +291,6 @@ class ExpVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by ExpParser#arithAtomic.
     def visitArithAtomic(self, ctx:ExpParser.ArithAtomicContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by ExpParser#arithExprSumSpec.
-    def visitArithExprSumSpec(self, ctx:ExpParser.ArithExprSumSpecContext):
         return self.visitChildren(ctx)
 
 

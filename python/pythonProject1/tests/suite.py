@@ -7,6 +7,8 @@ from enum import Enum
 
 from colored import stylize, fore
 
+from rich.console import Console
+
 # a variable storing all of the file names currently in test/Qafny/ and their testing order
 TEST_FILES = [
     'test1',
@@ -71,10 +73,9 @@ class TestSuite:
             PASS = 1
             FAIL = 2
 
-        def __init__(self, context: str, std_output: str, std_error: str, type: Type = Type.FAIL):
+        def __init__(self, context: str, output: str, type: Type = Type.FAIL):
             self.context = context
-            self.std_output = std_output
-            self.std_error = std_error
+            self.output = output
             self.type = type
 
         def __str__(self):
@@ -84,8 +85,7 @@ class TestSuite:
             result = stylize('====================================================================\n', fore(color))
             result += stylize(f'[{message}]', fore(color)) + ' ' + self.context + '\n'
             result += stylize('--------------------------------------------------------------------\n', fore(color))
-            result += self.std_output + '\n'
-            result += self.std_error + '\n'
+            result += self.output + '\n'
 
             return result
 
@@ -98,10 +98,12 @@ class TestSuite:
         cl_parser.add_argument('-v', '--verbose', action='store_true', help='print out more information about test passing/failing')
         # flag to indicate whether to also print standard output and standard error from passing cases
         cl_parser.add_argument('-s', '--force-output', action='store_true', help='print stdout and stderr even from passing cases')
+        # an argument to indicate the cases to test (useful for skipping certain cases)
+        cl_parser.add_argument('--cases', nargs='*', type=int, help='specify the exact test cases to run')
 
         return cl_parser.parse_args()
 
-    def constructor_fallbacks(self, fail_fast: bool, verbose: bool, force_output: bool):
+    def constructor_fallbacks(self, fail_fast: bool, verbose: bool, force_output: bool, cases_to_run: [int]):
         args = self.parse_cli()
 
         if args.fail_fast is None:
@@ -110,13 +112,15 @@ class TestSuite:
             args.verbose = verbose
         if args.force_output is None:
             args.force_output = force_output
+        if args.cases is None:
+            args.cases = cases_to_run
 
         return args
 
-    def __init__(self, *, fail_fast: bool = False, verbose: bool = False, force_output: bool = False):
+    def __init__(self, *, fail_fast: bool = False, verbose: bool = False, force_output: bool = False, cases_to_run: [int] = None):
         '''Creates a new test suite. This constructor should be called by sub-classes.'''
         # parse arguments (if there are any)
-        ctor_args = self.constructor_fallbacks(fail_fast, verbose, force_output)
+        ctor_args = self.constructor_fallbacks(fail_fast, verbose, force_output, cases_to_run)
 
         # A number indicating the total number of test cases run
         self.total_cases = 0
@@ -128,10 +132,16 @@ class TestSuite:
         self.verbose = ctor_args.verbose
         # A flag indicating whether stdout/stderr should always be printed (regardless of whether the case succeeds/fails)
         self.force_output = ctor_args.force_output
+        # A list of the cases that we should run, or None to run all of the cases
+        self.cases_to_run = ctor_args.cases
+        self.__current_case_no = 0
+
         # An array tracking the test cases, their outputs, and context messages
         # If force_output is set to true, it will contain CaseInfo structs for all of the test cases
         # If force_output is set to false, it will contain CaseInfo structs of the failed cases
         self.cases = []
+
+        self.console = Console()
 
         # private instances
         # An array of strings of all the test cases on this class
@@ -150,9 +160,10 @@ class TestSuite:
         self.__stderr_pipe = StringIO()
         sys.stdout = self.__stdout_pipe
         sys.stderr = self.__stderr_pipe
+        self.console.begin_capture()
         self.__capturing = True
 
-    def end_capture(self) -> (str, str):
+    def end_capture(self) -> str: #  (str, str):
         '''Ends capturing standard output and standard error, returning them as two strings.'''
         assert self.__capturing, 'A capture cannot be stopped if none have started.'
 
@@ -160,17 +171,24 @@ class TestSuite:
         sys.stderr = self.__old_stderr
         standard_output = self.__stdout_pipe.getvalue()
         standard_error = self.__stderr_pipe.getvalue()
+
         self.__capturing = False
 
-        return (standard_output, standard_error)
+        return standard_output + self.console.end_capture() + standard_error
 
     def start_case(self, name: str, error_context: str):
+        self.__current_case_no += 1
+        if self.cases_to_run is not None and self.__current_case_no not in self.cases_to_run:
+            return False
+
         self.__current_case_name = name
         self.__current_case_error_context = error_context
         self.begin_capture()
+        return True
 
     def end_case(self, successful: bool):
-        standard_output, standard_error = self.end_capture()
+        # standard_output, standard_error = self.end_capture()
+        output = self.end_capture()
         name = self.__current_case_name
         error_context = self.__current_case_error_context
 
@@ -184,7 +202,7 @@ class TestSuite:
 
             if self.force_output:
                 # log success (context only used on fail)
-                self.cases.append(self.CaseInfo(name, standard_output, standard_error, TestSuite.CaseInfo.Type.PASS))
+                self.cases.append(self.CaseInfo(name, output, TestSuite.CaseInfo.Type.PASS))
 
             self.successful_cases += 1
         else:
@@ -194,7 +212,7 @@ class TestSuite:
                 print(stylize('F', fore('red')), end='')
 
             # log failure
-            self.cases.append(self.CaseInfo(error_context, standard_output, standard_error))
+            self.cases.append(self.CaseInfo(error_context, output))
 
             if self.fail_fast:
                 raise self.EarlyOut()
@@ -211,10 +229,10 @@ class TestSuite:
                 print('')
                 break
             except Exception as e:
-                standard_output = ''
-                standard_errror = ''
+                output = ''
+                # standard_errror = ''
                 if self.__capturing:
-                    standard_output, standard_error = self.end_capture()
+                    output = self.end_capture()
                 
                 print('')
 
@@ -222,7 +240,7 @@ class TestSuite:
                 print(stylize(f'Error happened whilst running test case: {self.__current_case_name}\n', fore('red'))) # {exception_info}
                 
                 self.total_cases += 1
-                self.cases.append(self.CaseInfo(f'Exception occured whilst testing: {self.__current_case_name}', standard_output, standard_error + exception_info))
+                self.cases.append(self.CaseInfo(f'Exception occured whilst testing: {self.__current_case_name}', output + exception_info))
             print('')
 
         end = time.time()
