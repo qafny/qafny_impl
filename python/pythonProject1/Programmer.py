@@ -1036,7 +1036,7 @@ class QXSum(QXQState):
         self._amp = amp
         self._kets = kets
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitSum(self)
 
     def sums(self):

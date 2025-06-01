@@ -654,7 +654,11 @@ class ProgramTransformer(ExpVisitor):
             child = ctx.getChild(i)
 
             if child.getText() not in ['(', ',', ')']:
-                kets.append(child.accept(self))
+                converted_child = child.accept(self)
+                if isinstance(converted_child, list):
+                    kets += converted_child
+                else:
+                    kets.append(child.accept(self))
 
             i += 1
 
