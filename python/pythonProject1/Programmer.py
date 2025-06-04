@@ -109,10 +109,9 @@ class qafny:
 
                     # go through every property (unless marked with skip (i.e. source location information))
                     try:
-                        members = [attr for attr in dir(self) if not callable(getattr(self, attr))]
+                        members = [attr for attr in dir(self) if not callable(getattr(self, attr)) and not (attr.startswith('__') and attr.endswith('__'))]
                         for member in members:
                             if not (getattr(self, member) == getattr(other, member)):
-                                print(f'{member} differs between objects!')
                                 return False
 
                     except Exception as error:
@@ -646,9 +645,10 @@ class QXSlice(QXTop):
 @qafny.auto.equality
 class QXCon(QXTop):
 
-    def __init__(self, id: str, crange: QXCRange):
+    def __init__(self, id: str, crange: QXCRange, condition: QXBExp = None):
         self._id = id.getText() if isAntlrNode(id) else id
         self._crange = crange
+        self._condition = condition
 
     def ID(self):
         return self._id if isinstance(self._id, str) else self._id.getText()
@@ -656,11 +656,14 @@ class QXCon(QXTop):
     def range(self):
         return self._crange
 
+    def condition(self):
+        return self._condition
+
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitCon(self)
 
     def __repr__(self):
-        return f"QXCon(id={repr(str(self._id))}, crange={self._crange})"
+        return f"QXCon(id={repr(str(self._id))}, crange={self._crange}, condition={self._condition})"
 
 
 @qafny.auto.rich_repr
@@ -1509,8 +1512,8 @@ class QXPartGroup(QXQState):
                                ╰─────────────────────────────────────────────────────────╯
     '''
     
-    def __init__(self, id: str, bool_lit: QXBoolLiteral, amplitude: QXAExp):
-        self._fpred = id.getText() if isAntlrNode(id) else id
+    def __init__(self, fpred: str, bool_lit: QXBoolLiteral, amplitude: QXAExp):
+        self._fpred = fpred.getText() if isAntlrNode(fpred) else fpred
         self._bool_lit = bool_lit
         self._amplitude = amplitude
 
@@ -1550,8 +1553,8 @@ class QXPartLambda(QXQState):
                                                                          ╰─────────────────────────╯
     '''
 
-    def __init__(self, predicate: str, amplitude: QXAExp):
-        self._fpred = predicate.getText() if isAntlrNode(predicate) else predicate
+    def __init__(self, fpred: str, amplitude: QXAExp):
+        self._fpred = fpred.getText() if isAntlrNode(fpred) else fpred
         self._amplitude = amplitude
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -1743,14 +1746,17 @@ class QXSeparates(QXCond):
 class QXInclude(QXTop):
 
     def __init__(self, path: str):
-        self.__path = path.getText() if isAntlrNode(path) else path
+        self._path = path.getText() if isAntlrNode(path) else path
 
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitInclude(self)
 
     def path(self) -> str:
         '''Path to the file to be included'''
-        return self.__path
+        return self._path
+
+    def __repr__(self):
+        return f'QXInclude(path={self._path})'
 
 
 @qafny.auto.rich_repr

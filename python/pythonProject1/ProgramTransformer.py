@@ -13,8 +13,7 @@ from ExpVisitor import *
 from Programmer import *
 from ExpParser import *
 
-""" Transforms an ANTLR AST into a Qafny one.
-"""
+"""Transforms an ANTLR AST into a Qafny one."""
 class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#program.
@@ -188,10 +187,17 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#bexp.
     def visitBexp(self, ctx: ExpParser.BexpContext):
+        if ctx is None:
+            return None
+        
         if ctx.qbool() is not None:
             return self.visitQbool(ctx.qbool())
-        if ctx.logicOrExp() is not None:
+        elif ctx.logicOrExp() is not None:
             return self.visitLogicOrExp(ctx.logicOrExp())
+        elif ctx.ID() is not None:
+            return QXBind(ctx.ID())
+        elif ctx.boolLiteral() is not None:
+            self.visitBoolLiteral(ctx.boolLiteral())
 
     # Visit a parse tree produced by ExpParser#qbool.
     def visitQbool(self, ctx: ExpParser.QboolContext):
@@ -493,7 +499,7 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#maySum.
     def visitMaySum(self, ctx: ExpParser.MaySumContext):
-        return QXCon(ctx.ID(), self.visitCrange(ctx.crange()))
+        return QXCon(ctx.ID(), self.visitCrange(ctx.crange()), self.visitBexp(ctx.bexp()))
         # tmp = []
         # i = 0
         # while ctx.ID(i) is not None:
@@ -559,8 +565,11 @@ class ProgramTransformer(ExpVisitor):
         while ctx.getChild(i) is not None:
             child = ctx.getChild(i)
 
-            if child.getText() != ',': # ignore commas
-                transformed.append(child.accept(self))
+            if isinstance(child, antlr4.tree.Tree.TerminalNodeImpl) and child.getText() != ',': # ignore commas
+                # Identifier
+                transformed.append(QXBind(child))
+            elif isinstance(child, ExpParser.IdindexContext):
+                transformed.append(self.visitIdindex(child))
 
             i += 1
 
@@ -589,7 +598,7 @@ class ProgramTransformer(ExpVisitor):
         if ctx.locus() is not None:
             measure_from = self.visitLocus(ctx.locus())
         elif ctx.ID() is not None:
-            measure_from = ctx.ID()
+            measure_from = QXBind(ctx.ID())
         else:
             raise ValueError('Unreachable code block in visitMeasure(...).')
 
