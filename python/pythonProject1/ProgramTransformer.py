@@ -1015,7 +1015,10 @@ class ProgramTransformer(ExpVisitor):
         while (child := ctx.getChild(i)) is not None:
             if isinstance(child, ExpParser.IndexContext):
                 index = self.visitIndex(child)
-                cranges.append(QXCRange(index, QXBin("+", index, QXNum(1))))
+                if isinstance(index, QXNum):
+                    cranges.append(QXCRange(index, QXNum(index.num() + 1)))
+                else:
+                    cranges.append(QXCRange(index, QXBin("+", index, QXNum(1))))
             elif isinstance(child, ExpParser.CrangeContext):
                 cranges.append(self.visitCrange(child))
 
@@ -1025,7 +1028,7 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#numexp.
     def visitNumexp(self, ctx: ExpParser.NumexpContext):
-        return QXNum(float(ctx.getText()))
+        return QXNum(int(ctx.getText()))
 
     # Visit a parse tree produced by ExpParser#typeT.
     def visitTypeT(self, ctx: ExpParser.TypeTContext):
@@ -1042,6 +1045,8 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#baseTy.
     def visitBaseTy(self, ctx: ExpParser.BaseTyContext):
+        if isinstance(ctx, list):
+            return self.visitBaseTy(ctx[0])
         if isinstance(ctx, ExpParser.NaturalTypeContext):
             return TySingle("nat")
         if isinstance(ctx, ExpParser.RealTypeContext):

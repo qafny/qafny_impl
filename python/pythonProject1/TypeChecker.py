@@ -8,8 +8,8 @@ from SubstAExp import SubstAExp
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
     return (q1.ID() == q2.ID()
-            and compareAExp(q1.crange().left(),q2.crange().left())
-            and compareAExp(q1.crange().right(),q2.crange().right()))
+            and compareAExp(q1.cranges()[0].left(),q2.cranges()[0].left())
+            and compareAExp(q1.cranges()[0].right(),q2.cranges()[0].right()))
 
 def compareRangeLocus(q1: QXQRange, qs: [QXQRange]):
     vs = []
@@ -100,15 +100,15 @@ def compareSingle(qs: [QXQRange], qv: [QXQRange]):
     for i in range(len(qs)):
         v = qs[i]
         if elem.ID() == v.ID():
-            if compareAExp(elem.crange().left(), v.crange().left()):
-                if compareAExp(elem.crange().right(), v.crange().right()):
+            if compareAExp(elem.cranges()[0].left(), v.cranges()[0].left()):
+                if compareAExp(elem.cranges()[0].right(), v.cranges()[0].right()):
                     qv = []
                     vs += (qs[i+1:len(qs)])
-                    return (QXQRange(elem.ID(), QXCRange(v.crange().left(), v.crange().right())), vs, qv)
+                    return (QXQRange(elem.ID(), [QXCRange(v.cranges()[0].left(), v.cranges()[0].right())]), vs, qv)
                 else:
-                    qv = [QXQRange(elem.ID(), QXCRange(v.crange().right(), elem.crange().right()))]
+                    qv = [QXQRange(elem.ID(), [QXCRange(v.cranges()[0].right(), elem.cranges()[0].right())])]
                     vs += (qs[i+1:len(qs)])
-                    return (QXQRange(elem.ID(), QXCRange(v.crange().left(), v.crange().right())), vs, qv)
+                    return (QXQRange(elem.ID(), [QXCRange(v.cranges()[0].left(), v.cranges()[0].right())]), vs, qv)
         vs += [v]
 
     return None
@@ -190,12 +190,12 @@ def subRangeLocus(elem: QXQRange, qs: [QXQRange]):
     for i in range(len(qs)):
         v = qs[i]
         if elem.ID() == v.ID():
-            if compareAExp(elem.crange().left(), v.crange().left()):
-                if compareAExp(elem.crange().right(), v.crange().right()):
+            if compareAExp(elem.cranges()[0].left(), v.cranges()[0].left()):
+                if compareAExp(elem.cranges()[0].right(), v.cranges()[0].right()):
                     vs += (qs[i + 1:len(qs)])
                     return vs
                 else:
-                    vs += [QXQRange(elem.ID(), QXCRange(v.crange().right(), elem.crange().right()))] + (qs[i + 1:len(qs)])
+                    vs += [QXQRange(elem.ID(), [QXCRange(v.cranges()[0].right(), elem.cranges()[0].right())])] + (qs[i + 1:len(qs)])
                     return vs
         vs = vs + [qs[i]]
     return None
@@ -414,8 +414,8 @@ class TypeChecker(ProgramVisitor):
             return True
 
     def visitFor(self, ctx: Programmer.QXFor):
-        lbound = ctx.crange().left()
-        rbound = ctx.crange().right()
+        lbound = ctx.cranges()[0].left()
+        rbound = ctx.cranges()[0].right()
 
         tmpv = self.renv
         self.kinds.update({ctx.ID():TySingle("nat")})
@@ -470,9 +470,9 @@ class TypeChecker(ProgramVisitor):
         for loc, ty in endEnv:
             for ran in loc:
                 id = substQVar(tmpQVars, ran.ID())
-                left = substAllVars(substs, ran.crange().left())
-                right = substAllVars(substs, ran.crange().right())
-                v = QXQRange(id, QXCRange(left, right))
+                left = substAllVars(substs, ran.cranges()[0].left())
+                right = substAllVars(substs, ran.cranges()[0].right())
+                v = QXQRange(id, [QXCRange(left, right)])
                 tmpNewEnv += [(v,ty)]
 
         modEnv = self.renv
@@ -499,11 +499,17 @@ class TypeChecker(ProgramVisitor):
         ctx.qty().accept(self)
         for elem in ctx.locus():
             elem.accept(self)
-        return ctx.state().accept(self)
+
+        if isinstance(ctx.states(), list):
+            return ctx.states()[0].accept(self)
+        return ctx.states().accept(self)
 
     def visitTensor(self, ctx: Programmer.QXTensor):
         for elem in ctx.kets():
-            elem.accept(self)
+            if isinstance(elem, list):
+                elem[0].accept(self)
+            else:
+                elem.accept(self)
 
     def visitSKet(self, ctx: Programmer.QXSKet):
         return ctx.vector().accept(self)

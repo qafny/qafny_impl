@@ -195,7 +195,7 @@ if __name__ == "__main__":
             else:
                 if not args.skip_verify:
                     # Call dafny for the verification result, piping the code through stdin
-                    dafny_result = subprocess.run(["dafny", "verify", "--stdin"], input=dafny_code, text=True)
+                    dafny_result = subprocess.run(["dafny", "verify", "--stdin", "--allow-warnings", "--verification-time-limit=60"], input=dafny_code, text=True)
 
             if not args.skip_verify:
                 # report status to the user

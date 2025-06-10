@@ -205,17 +205,23 @@ class ProgramVisitor(AbstractProgramVisitor):
         return ctx.flag().accept(self)
 
     def visitQSpec(self, ctx: Programmer.QXQSpec):
-        ctx.qty().accept(self)
+        
         for elem in ctx.locus():
             elem.accept(self)
-        return ctx.state().accept(self)
+        for state in ctx.states():
+            state.accept(self)
+        return ctx.qty().accept(self)
 
     def visitAA(self, ctx: Programmer.TyAA):
         return "aa"
 
     def visitTensor(self, ctx: Programmer.QXTensor):
         for elem in ctx.kets():
-            elem.accept(self)
+            if isinstance(elem, list):
+                for e in elem:
+                    e.accept(self)
+            else:
+                elem.accept(self)
 
     def visitSKet(self, ctx: Programmer.QXSKet):
         return ctx.vector().accept(self)
@@ -226,7 +232,11 @@ class ProgramVisitor(AbstractProgramVisitor):
 
     def visitSum(self, ctx: Programmer.QXSum):
         for elem in ctx.kets():
-            elem.accept(self)
+            if isinstance(elem, list):
+                for e in elem:
+                    e.accept(self)
+            else:
+                elem.accept(self)
         ctx.amp().accept(self)
         for elem in ctx.sums():
             elem.accept(self)
@@ -300,5 +310,5 @@ class ProgramVisitor(AbstractProgramVisitor):
 
 
     def visitQRange(self, ctx: Programmer.QXQRange):
-        ctx.crange().accept(self)
+        ctx.cranges()[0].accept(self)
         return ctx.ID()
