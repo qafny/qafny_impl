@@ -15,8 +15,8 @@ from EqualityVisitor import EqualityVisitor
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
     return (str(q1.ID()) == str(q2.ID())
-            and compareAExp(q1.crange().left(),q2.crange().left())
-            and compareAExp(q1.crange().right(),q2.crange().right()))
+            and compareAExp(q1.cranges()[0].left(),q2.cranges()[0].left())
+            and compareAExp(q1.cranges()[0].right(),q2.cranges()[0].right()))
 
 def compareRangeLocus(q1: QXQRange, qs: [QXQRange]):
     vs = []
@@ -198,7 +198,7 @@ class ProgramTransfer(ProgramVisitor):
         self.sizemap = dict()
         for locus, qty, num in self.varnums:
             for elem in locus:
-                v = self.calRange(elem.crange())
+                v = self.calRange(elem.cranges()[0])
                 self.sizemap.update({(elem.ID(), num):v})
 
 
@@ -227,19 +227,19 @@ class ProgramTransfer(ProgramVisitor):
             res = []
             for i in range(qty.flag().num()+1):
                 if i == 0:
-                    tr = DXCall('pow2', [DXVar(locus[i].crange().right().ID() if isinstance(locus[i].crange().right(), QXBind) else str(locus[i].crange().right().num()))])
+                    tr = DXCall('pow2', [DXVar(locus[i].cranges()[0].right().ID() if isinstance(locus[i].cranges()[0].right(), QXBind) else str(locus[i].cranges()[0].right().num()))])
                     tmp = DXComp('==', DXLength(curr_bind), tr)
                     res.append(DXRequires(tmp))
                 else:
                     allvar = DXBind('tmp', SType('nat'), lcounter)
                     lcounter += 1
-                    pow2_in_var = DXCall('pow2',[DXVar(locus[i-1].crange().right().ID())]) if isinstance(locus[i-1].crange().right(), QXBind) else DXCall('pow2',[DXVar(str(locus[i-1].crange().right().num()))])
-                    pow2_var = DXCall('pow2',[DXVar(locus[i].crange().right().ID() if isinstance(locus[i].crange().right(), QXBind) else str(locus[i].crange().right().num()))]) if i < len(locus) else DXVar(locus[i-1].crange().right().ID() if isinstance(locus[i-1].crange().right(), QXBind) else str(locus[i-1].crange().right().num()))
+                    pow2_in_var = DXCall('pow2',[DXVar(locus[i-1].cranges()[0].right().ID())]) if isinstance(locus[i-1].cranges()[0].right(), QXBind) else DXCall('pow2',[DXVar(str(locus[i-1].cranges()[0].right().num()))])
+                    pow2_var = DXCall('pow2',[DXVar(locus[i].cranges()[0].right().ID() if isinstance(locus[i].cranges()[0].right(), QXBind) else str(locus[i].cranges()[0].right().num()))]) if i < len(locus) else DXVar(locus[i-1].cranges()[0].right().ID() if isinstance(locus[i-1].cranges()[0].right(), QXBind) else str(locus[i-1].cranges()[0].right().num()))
                     #if isinstance(pow2_var.exps()[0], DXNum) or isinstance(pow2_var.exps()[0], DXVar):
                         #pow2_var = DXNum(2**int(pow2_var.exps()[0].ID()))
                     if i == qty.flag().num() and curr_bind.ID() != 'amp':
                         currloc = [x for x in locus if x.ID() == curr_bind.ID()]
-                        pow2_var = DXVar(currloc[0].crange().right().ID() if isinstance(currloc[0].crange().right(), QXBind) else str(currloc[0].crange().right().num()))
+                        pow2_var = DXVar(currloc[0].cranges()[0].right().ID() if isinstance(currloc[0].cranges()[0].right(), QXBind) else str(currloc[0].cranges()[0].right().num()))
                         if i == 1:
                             left = DXLength(DXIndex(curr_bind, allvar))
                             comp = DXComp('==', left , pow2_var)
@@ -288,18 +288,18 @@ class ProgramTransfer(ProgramVisitor):
             if isinstance(qty, TyEn):
                 for elem in locus:
                     curr_bind = DXBind(elem.ID(), num=num)
-                    if isinstance(elem.crange().right(), QXBind):
-                        conditions.append(DXRequires(DXComp('>', elem.crange().right().accept(self), DXNum(0))))
+                    if isinstance(elem.cranges()[0].right(), QXBind):
+                        conditions.append(DXRequires(DXComp('>', elem.cranges()[0].right().accept(self), DXNum(0))))
                     conditions.extend(generateENRequiresForLocus(locus, qty, curr_bind, lcounter))
 
                 amp_bind = DXBind('amp', num=num)
                 conditions.extend(generateENRequiresForLocus(locus, qty, amp_bind, lcounter))
             else:
                 for elem in locus:
-                    right = DXVar(elem.crange().right().ID() if isinstance(elem.crange().right(), QXBind) else str(elem.crange().right().num()))
-                    left = elem.crange().left()
-                    if isinstance(elem.crange().right(), QXBind):
-                        conditions.append(DXRequires(DXComp('>', elem.crange().right().accept(self), DXNum(0))))
+                    right = DXVar(elem.cranges()[0].right().ID() if isinstance(elem.cranges()[0].right(), QXBind) else str(elem.cranges()[0].right().num()))
+                    left = elem.cranges()[0].left()
+                    if isinstance(elem.cranges()[0].right(), QXBind):
+                        conditions.append(DXRequires(DXComp('>', elem.cranges()[0].right().accept(self), DXNum(0))))
                     if isinstance(left, QXNum) and left.num() == 0:
                         conditions.append(DXRequires(DXComp('==', DXLength(DXBind(elem.ID(), num=num)), right)))
                     else:
@@ -341,10 +341,10 @@ class ProgramTransfer(ProgramVisitor):
                 if i == qty.flag().num():
                     for lo in locus:
                         if lo.ID() == cb_id:
-                            rval = lo.crange().right().accept(self) if isinstance(lo.crange().left(), QXNum) and lo.crange().left().num() == 0 else DXBin('-', lo.crange().right().accept(self), lo.crange().left().accept(self))
+                            rval = lo.cranges()[0].right().accept(self) if isinstance(lo.cranges()[0].left(), QXNum) and lo.cranges()[0].left().num() == 0 else DXBin('-', lo.cranges()[0].right().accept(self), lo.cranges()[0].left().accept(self))
                             break
                 else:
-                    rval = locus[i].crange().right().accept(self) if isinstance(locus[i].crange().left(), QXNum) and locus[i].crange().left().num() == 0 else DXBin('-', locus[i].crange().right().accept(self), locus[i].crange().left().accept(self))
+                    rval = locus[i].cranges()[0].right().accept(self) if isinstance(locus[i].cranges()[0].left(), QXNum) and locus[i].cranges()[0].left().num() == 0 else DXBin('-', locus[i].cranges()[0].right().accept(self), locus[i].cranges()[0].left().accept(self))
                     rval = DXCall('pow2', [rval])
 
                 cb = curr_bind
@@ -367,14 +367,14 @@ class ProgramTransfer(ProgramVisitor):
             for i in range(qty.flag().num() + 1):
                 if i == 0:
                     toString = TargetToString()
-                    tr = DXCall('pow2', [DXVar(locus[i].crange().right().accept(toString))])
+                    tr = DXCall('pow2', [DXVar(locus[i].cranges()[0].right().accept(toString))])
                     tmp = DXComp('==', DXLength(curr_bind), tr)
                     res.append(DXEnsures(tmp))
                 else:
                     allvar = DXBind('tmp', SType('nat'), lcounter)
                     lcounter += 1
-                    pow2_in_var = DXCall('pow2',[locus[i-1].crange().right().accept(self)])
-                    pow2_var = DXCall('pow2',[DXVar(locus[i].crange().right().ID() if isinstance(locus[i].crange().right(), QXBind) else str(locus[i].crange().right().num()))]) if i < len(locus) else DXVar(locus[i-1].crange().right().ID() if isinstance(locus[i-1].crange().right(), QXBind) else str(locus[i-1].crange().right().num()))
+                    pow2_in_var = DXCall('pow2',[locus[i-1].cranges()[0].right().accept(self)])
+                    pow2_var = DXCall('pow2',[DXVar(locus[i].cranges()[0].right().ID() if isinstance(locus[i].cranges()[0].right(), QXBind) else str(locus[i].cranges()[0].right().num()))]) if i < len(locus) else DXVar(locus[i-1].cranges()[0].right().ID() if isinstance(locus[i-1].cranges()[0].right(), QXBind) else str(locus[i-1].cranges()[0].right().num()))
                     #if isinstance(pow2_var.exps()[0], DXVar) or isinstance(pow2_var.exps()[0], DXNum):
                         #pow2_var = DXNum(2**int(pow2_var.exps()[0].ID()))
                     
@@ -387,7 +387,7 @@ class ProgramTransfer(ProgramVisitor):
                             comp = tmp
                         else:
                             currloc = [x for x in locus if x.ID() == curr_bind.ID()]
-                            pow2_var = DXVar(currloc[0].crange().right().ID() if isinstance(currloc[0].crange().right(), QXBind) else str(currloc[0].crange().right().num()))
+                            pow2_var = DXVar(currloc[0].cranges()[0].right().ID() if isinstance(currloc[0].cranges()[0].right(), QXBind) else str(currloc[0].cranges()[0].right().num()))
                             left = DXLength(DXIndex(left.var(), allvar))
                             if isinstance(comp, DXAll):
                                 prevall = comp.next().left()
@@ -436,8 +436,8 @@ class ProgramTransfer(ProgramVisitor):
                 conditions.extend(generateENEnsuresForLocusV2(locus, qty, amp_bind, lcounter))
             else:
                 for elem in locus:
-                    right = DXVar(elem.crange().right().ID() if isinstance(elem.crange().right(), QXBind) else str(elem.crange().right().num()))
-                    left = elem.crange().left()
+                    right = DXVar(elem.cranges()[0].right().ID() if isinstance(elem.cranges()[0].right(), QXBind) else str(elem.cranges()[0].right().num()))
+                    left = elem.cranges()[0].left()
                     if isinstance(left, QXNum) and left.num() == 0:
                         conditions.append(DXEnsures(DXComp('==', DXLength(DXBind(elem.ID(), num=num)), right)))
                     else:
@@ -1055,7 +1055,7 @@ class ProgramTransfer(ProgramVisitor):
                 preds = []
                 for vec in ctx.exp().vectors():
                     vec_d = vec.vector().accept(self)
-                    ids = ctx.exp().ids()
+                    ids = [x.ID() if isinstance(x, QXBind) else x for x in ctx.exp().bindings()]
 
                     def lambda_check(lself, x):
                         if isinstance(x, DXBin) and (x.op() == '/' or x.op() == '%') and isinstance(x.right(), DXBind) and x.right().ID() not in ids:
@@ -1063,11 +1063,11 @@ class ProgramTransfer(ProgramVisitor):
                         
                     lamb_subst = SubstLambda(lambda_check)
                     lamb_subst.visit(vec_d)
-                    for b in lamb_subst.outputs:
+                    for b in lamb_subst.outputs: 
                         rpreds += [DXRequires(DXComp('>', b, DXNum(0)))]
 
 
-                preds += self.genPreds(loc, qty, num, newNum, ctx.exp().ids(), ctx.exp().vectors(), ctx.exp().phase(), unchanged_range)
+                preds += self.genPreds(loc, qty, num, newNum, ids, ctx.exp().vectors(), ctx.exp().amplitude_expr(), unchanged_range)
                 newConds = rpreds
                 for pred in preds:
                     newConds += [DXEnsures(pred)]
@@ -1081,11 +1081,11 @@ class ProgramTransfer(ProgramVisitor):
                     tmp = i.vector().accept(self)
                     lamb_subst = SubstLambda(lambda_check)
                     lamb_subst.visit(tmp)
-                    varids += [DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self)) for t in lamb_subst.outputs if t.ID() not in ctx.exp().ids()]
+                    varids += [DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self)) for t in lamb_subst.outputs if t.ID() not in ids]
                             
                 lamb_subst = SubstLambda(lambda_check)
-                lamb_subst.visit(ctx.exp().phase().accept(self))  
-                varids += [DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self)) for t in lamb_subst.outputs if t.ID() not in ctx.exp().ids()]
+                lamb_subst.visit(ctx.exp().amplitude_expr().accept(self))  
+                varids += [DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self)) for t in lamb_subst.outputs if t.ID() not in ids]
 
                 cvars = vars + varids
 
@@ -1120,7 +1120,7 @@ class ProgramTransfer(ProgramVisitor):
                 for i in loc:
                     if i.ID() == bind.ID():
                         toString = TargetToString()
-                        return i.ID() + i.crange().left().accept(toString) + ',' + i.crange().right().accept(toString)
+                        return i.ID() + i.cranges()[0].left().accept(toString) + ',' + i.cranges()[0].right().accept(toString)
                     
     
     def findRangeLocus(self, arg1: QXQRange):
@@ -1128,13 +1128,13 @@ class ProgramTransfer(ProgramVisitor):
         complete_range = False
         for loc, qty, num in self.varnums:
             for i in loc:
-                if i.ID() == arg1.ID() and ((compareAExp(i.crange().left(), arg1.crange().left()) and compareAExp(i.crange().right(), arg1.crange().right()))):
+                if i.ID() == arg1.ID() and ((compareAExp(i.cranges()[0].left(), arg1.cranges()[0].left()) and compareAExp(i.cranges()[0].right(), arg1.cranges()[0].right()))):
                     loc1 += loc
                     loc1qty = qty
                     loc1num = num
                     complete_range = True
                     break
-                elif i.ID() == arg1.ID() and compareAExp(i.crange().left(), arg1.crange().left()):
+                elif i.ID() == arg1.ID() and compareAExp(i.cranges()[0].left(), arg1.cranges()[0].left()):
                     loc1 += loc
                     loc1qty = qty
                     loc1num = num
@@ -1228,7 +1228,7 @@ class ProgramTransfer(ProgramVisitor):
                     self.libFuns.add('cutHad')
                     res += [DXAssign([DXBind(loc[0].ID(), None, newNum)], DXCall('cutHad', [DXBind(loc[0].ID(), None, num)]), True)]
                     self.removeLocus(num)
-                    self.varnums += [([QXQRange(loc[0].ID(), QXCRange(QXBin('+',loc[0].crange().left(), QXNum(1)), loc[0].crange().right()))], qty, newNum)]
+                    self.varnums += [([QXQRange(loc[0].ID(), [QXCRange(QXBin('+',loc[0].cranges()[0].left(), QXNum(1)), loc[0].cranges()[0].right())])], qty, newNum)]
                     self.counter += 1
                     res += [DXAssign([DXBind(loc[0].ID(), None, self.counter)], DXIndex(DXBind(loc[0].ID(), None, num), DXNum(0)), True)]
                     cutnum = self.counter
@@ -1240,7 +1240,7 @@ class ProgramTransfer(ProgramVisitor):
                         if isinstance(match_qty, TyEn) and match_qty.flag().num() == 1:
                             self.libFuns.add('mergeBitEn')
                             self.libFuns.add('duplicateMergeBitEn')
-                            res += [DXAssign([DXBind(loc[0].ID(), None, self.counter)], DXCall('mergeBitEn', [DXBind(loc[0].ID(), None, match_num), DXBind(loc[0].crange().left().ID())]), True)]
+                            res += [DXAssign([DXBind(loc[0].ID(), None, self.counter)], DXCall('mergeBitEn', [DXBind(loc[0].ID(), None, match_num), DXBind(loc[0].cranges()[0].left().ID())]), True)]
                             for l in match_loc:
                                 if l.ID() != loc[0].ID():
                                     res += [DXAssign([DXBind(l.ID(), None, self.counter)], DXCall('duplicateMergeBitEn', [DXBind(l.ID(), None, match_num)]), True)]
@@ -1254,7 +1254,7 @@ class ProgramTransfer(ProgramVisitor):
                             res += [DXCall('triggerSqrtMul', [], True)]
 
                             self.removeLocus(match_num)
-                            tmp = [([x for x in match_loc if x.ID() != loc[0].ID()] + [QXQRange(loc[0].ID(), QXCRange(matchRange.crange().left(), QXBin('+',matchRange.crange().right(), QXNum(1))))], match_qty, self.counter)]
+                            tmp = [([x for x in match_loc if x.ID() != loc[0].ID()] + [QXQRange(loc[0].ID(), [QXCRange(matchRange.cranges()[0].left(), QXBin('+',matchRange.cranges()[0].right(), QXNum(1)))])], match_qty, self.counter)]
                             self.varnums += tmp
                             self.counter += 1
                             return res, tmp[0][0], tmp[0][1], tmp[0][2]
@@ -1314,6 +1314,7 @@ class ProgramTransfer(ProgramVisitor):
         nLoc, nqty, nnum = None, None, None
         bool_exp_id = None
         bool_exp_index = None
+        is_qrange = False
         is_qcomp = False
         bool_store_id = ''
 
@@ -1329,6 +1330,20 @@ class ProgramTransfer(ProgramVisitor):
 
             tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
 
+        elif isinstance(ctx.bexp(), QXQRange):
+            lc = LocusCollector()
+            lc.visit(ctx.bexp())
+            bool_exp_id = lc.renv[0].ID()
+            for stmt in ctx.stmts():
+                lc.visit(stmt)
+                if isinstance(stmt, QXQAssign) and isinstance(stmt.exp(), QXSingle) and stmt.exp().op() == 'H':
+                    upgrade_en = True
+
+            if isinstance(ctx.bexp().cranges()[0].left(), QXBind) and isinstance(ctx.bexp().cranges()[0].right(), QXBin) and isinstance(ctx.bexp().cranges()[0].right().right(), QXNum) and ctx.bexp().cranges()[0].right().right().num() == 1:
+                bool_exp_index = DXBind(ctx.bexp().cranges()[0].left().ID())
+            else:
+                is_qrange = True
+            tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
 
         elif isinstance(ctx.bexp(), QXQComp):
             is_qcomp = True
@@ -1377,7 +1392,7 @@ class ProgramTransfer(ProgramVisitor):
 
         res += [DXAssign([DXBind('tmp', None, 0)], DXNum(0), True)]
 
-        def transfer_had_lambda(stmts : list, qstmt : QXStmt, qif : QXIf, loop_oldVars : dict, loop_newVars : dict, tmpvars : dict, is_qcomp : bool, bool_exp_id : str, bool_exp_index : QXAExp, bool_store_id : str, inv_dict : dict, loop_values : dict, loop_num : int):
+        def transfer_had_lambda(stmts : list, qstmt : QXStmt, qif : QXIf, loop_oldVars : dict, loop_newVars : dict, tmpvars : dict, is_qcomp : bool, bool_exp_id : str, bool_exp_index : QXAExp, bool_store_id : str, inv_dict : dict, loop_values : dict, loop_num : int, is_qrange : bool):
             hadamard_flag = False
             if isinstance(qstmt, QXQAssign) and isinstance(qstmt.exp(), QXSingle) and qstmt.exp().op() == 'H':
                 hadamard_flag = True
@@ -1397,7 +1412,10 @@ class ProgramTransfer(ProgramVisitor):
                     stmts += [DXAssign([tmpvars[x]], DXCall('duplicateSeq', [loop_oldVars[x], DXCall('pow2', [DXLength(application_range_old_var)])]), True) for x in tmpvars if x != 'amp' and x != bool_store_id]
                     loop_values[bool_store_id] = DXNum(1)
                 else:
-                    ifbexp = DXComp('==', DXIndex(loop_oldVars[bool_exp_id], bool_exp_index), DXNum(1))
+                    if is_qrange:
+                        ifbexp =  DXComp('==', DXCall('castBVInt',[loop_oldVars[bool_exp_id]]), DXNum(1))
+                    else:
+                        ifbexp = DXComp('==', DXIndex(loop_oldVars[bool_exp_id], bool_exp_index), DXNum(1))
                     stmts += [DXAssign([tmpvars[x]], DXCall('duplicateSeq', [loop_oldVars[x], DXCall('pow2', [DXLength(application_range_old_var)])]), True) for x in tmpvars if x != 'amp']
                 
                 self.libFuns.add('duplicateSeq')
@@ -1424,7 +1442,10 @@ class ProgramTransfer(ProgramVisitor):
                     self.libFuns.add('bool2BV1')
                     stmts += [DXAssign([DXBind('res')], DXCall('bool2BV1', [ifbexp]), True)] 
                 else:
-                    ifbexp = DXComp('==', DXIndex(loop_oldVars[bool_exp_id], bool_exp_index), DXNum(1))
+                    if is_qrange:
+                        ifbexp = DXComp('==', DXCall('castBVInt', [loop_oldVars[bool_exp_id]]), DXNum(1)) 
+                    else:
+                        ifbexp = DXComp('==', DXIndex(loop_oldVars[bool_exp_id], bool_exp_index), DXNum(1))
 
                 
                 lambda_fn_name = 'qif_lambda' + str(self.counter)
@@ -1436,6 +1457,7 @@ class ProgramTransfer(ProgramVisitor):
                     application_range_old_vars += [loop_oldVars[x] for x in loop_oldVars if x == tl.ID()]
 
                 lambda_op = qstmt
+                lambda_bindings = [x.ID() if isinstance(x, QXBind) else x for x in lambda_op.exp().bindings()]
 
                 for x in loop_newVars:
                     if x != application_range_id and x != 'amp':
@@ -1446,21 +1468,27 @@ class ProgramTransfer(ProgramVisitor):
                     application_range_old_num = application_range_old_num.bind()
 
 
-                lambda_preds = self.genPreds(application_locus, TyNor(), 1, 2, lambda_op.exp().ids(), lambda_op.exp().vectors(), lambda_op.exp().phase(), [])
+                lambda_preds = self.genPreds(application_locus, TyNor(), 1, 2, lambda_bindings, lambda_op.exp().vectors(), lambda_op.exp().amplitude_expr(), [])
 
                 ge0 = []
                 for vec in lambda_op.exp().vectors():
                     r = vec.accept(self)
-                    if isinstance(r, DXBin) and r.op() == '%' and isinstance(r.right(), DXBind):
-                        ge0 += [r.right()]
+
+                    def identify_division_zero_lamda(lself, x):
+                        if isinstance(x, DXBin) and r.op() == '%' and isinstance(r.right(), DXBind):
+                            lself.outputs.append(r.right())
+                    
+                    subst_lamb = SubstLambda(identify_division_zero_lamda)
+                    subst_lamb.visit(r)
+                    ge0 += subst_lamb.outputs
                 
                 tmpSubs = []
                 valSubst = []
 
-                for i in range(len(lambda_op.exp().ids())):
-                    subst = SubstDAExp(lambda_op.exp().ids()[i], loop_oldVars[lambda_op.locus()[i].ID()])
+                for i in range(len(lambda_bindings)):
+                    subst = SubstDAExp(lambda_bindings[i], loop_oldVars[lambda_op.locus()[i].ID()])
                     tmpSubs += [subst]
-                    valSubst = SubstDAExp(lambda_op.exp().ids()[i], loop_values[lambda_op.locus()[i].ID()])
+                    valSubst = SubstDAExp(lambda_bindings[i], loop_values[lambda_op.locus()[i].ID()])
 
                     def subsfunc(lself, x):
                         if isinstance(x, DXBind) and isinstance(x.type(), SeqType):
@@ -1474,7 +1502,7 @@ class ProgramTransfer(ProgramVisitor):
                     substres = valSubst.visit(lambda_op.exp().vectors()[i].accept(self))
                     loop_values[lambda_op.locus()[i].ID()] = lambSubst.visit(substres)
 
-                newp = lambda_op.exp().phase().accept(self)
+                newp = lambda_op.exp().amplitude_expr().accept(self)
 
                 for esub in tmpSubs:
                     newp = esub.visit(newp)
@@ -1496,7 +1524,7 @@ class ProgramTransfer(ProgramVisitor):
                 ic = BindingCollector()
                 varids = []
                 for i in lambda_op.exp().vectors():
-                    tmp = [x.accept(self) for x in i.vector().accept(ic) if x.ID() not in lambda_op.exp().ids()]
+                    tmp = [x.accept(self) for x in i.vector().accept(ic) if x.ID() not in lambda_bindings]
                     for j in tmp:
                         if j.type() is None:
                             if j.ID() in self.kenv[self.fvar][0]:
@@ -1533,7 +1561,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
         loop_values = {x : loop_oldVars[x] for x in loop_oldVars}
-        def buildWhile(looping_var, wctx, num, loop_oldVars, loop_newVars, nLoc, nqty, nnum, fqty, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, is_sub_loop, if_bexp_vals, loop_values):
+        def buildWhile(looping_var, wctx, num, loop_oldVars, loop_newVars, nLoc, nqty, nnum, fqty, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, is_sub_loop, if_bexp_vals, loop_values, is_qrange):
 
             stmts = []
 
@@ -1561,7 +1589,7 @@ class ProgramTransfer(ProgramVisitor):
                         hadamard_exist_flag = True
                         hadamard_id_list.append(qstmt.locus()[0].ID())
                     if (isinstance(qstmt, QXQAssign) and isinstance(qstmt.exp(), QXOracle)) or (isinstance(qstmt, QXQAssign) and isinstance(qstmt.exp(), QXSingle) and qstmt.exp().op() == 'H'):
-                        transfer_had_lambda(stmts, qstmt, wctx, loop_oldVars, loop_newVars, tmp_vars, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, inv_dict, loop_values, num)
+                        transfer_had_lambda(stmts, qstmt, wctx, loop_oldVars, loop_newVars, tmp_vars, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, inv_dict, loop_values, num, is_qrange)
 
                     elif isinstance(qstmt, QXIf):
                         is_sub_qcomp = False
@@ -1591,7 +1619,7 @@ class ProgramTransfer(ProgramVisitor):
                             
                             sub_loop_values = {x : tmp_vars[x] for x in tmp_vars}
 
-                            sub_stmts += [buildWhile(next_looping_var, qstmt, 0, tmp_vars, sub_loop_newVars, nLoc, TyEn(QXNum(1)), nnum, TyEn(QXNum(1)), is_sub_qcomp, sub_bool_exp_id, sub_bool_exp_index, sub_bool_store_id, True, if_bexp_vals, sub_loop_values)]
+                            sub_stmts += [buildWhile(next_looping_var, qstmt, 0, tmp_vars, sub_loop_newVars, nLoc, TyEn(QXNum(1)), nnum, TyEn(QXNum(1)), is_sub_qcomp, sub_bool_exp_id, sub_bool_exp_index, sub_bool_store_id, True, if_bexp_vals, sub_loop_values, True)]
                             sub_stmts += [DXAssign([tmp_vars[x]], sub_loop_newVars[x]) for x in sub_loop_newVars]
 
                             for lpv in sub_loop_values:
@@ -1670,7 +1698,10 @@ class ProgramTransfer(ProgramVisitor):
                     elif isinstance(wctx.bexp().right(), QXQRange):
                         ifbexp_inv = DXComp(wctx.bexp().op(),wctx.bexp().left().accept(self) , DXCall('castBVInt', [newvar]))
                 else:
-                    ifbexp_inv = DXComp('==', DXIndex(newvar, bool_exp_index), DXNum(1))
+                    if is_qrange:
+                        ifbexp_inv = DXComp('==', DXCall('castBVInt',[newvar]), DXNum(1))
+                    else:
+                        ifbexp_inv = DXComp('==', DXIndex(newvar, bool_exp_index), DXNum(1))
 
                 #generation of length equality invariants for new variables eg. forall k :: 0 <= k < |p7| ==> |p7[k]| == pow2(n)
                 st = SType('bv1')
@@ -1680,11 +1711,11 @@ class ProgramTransfer(ProgramVisitor):
                     tlvars_1 = {dc : self.createIndexFromType(tlvars[dc], st, DXBind('tmp', SType('nat'), self.counter)) for dc in tlvars}
                     if inv_l + 1 < fqty.flag().num() - num:
                         nLoc_index = inv_l + 1 + num
-                        rlen = nLoc[nLoc_index].crange().right().accept(self) if isinstance(nLoc[nLoc_index].crange().left(), QXNum) and nLoc[nLoc_index].crange().left().num() == 0 else DXBin('-', nLoc[nLoc_index].crange().right().accept(self), nLoc[nLoc_index].crange().left().accept(self))
+                        rlen = nLoc[nLoc_index].cranges()[0].right().accept(self) if isinstance(nLoc[nLoc_index].cranges()[0].left(), QXNum) and nLoc[nLoc_index].cranges()[0].left().num() == 0 else DXBin('-', nLoc[nLoc_index].cranges()[0].right().accept(self), nLoc[nLoc_index].cranges()[0].left().accept(self))
                         rlen = DXCall('pow2', [rlen])
                         invariants += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), rlen)) for x in tlvars]
                     else:
-                        invariants += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), (nLoc_dict[x].crange().right().accept(self) if isinstance(nLoc_dict[x].crange().left(), QXNum) and nLoc_dict[x].crange().left().num() == 0 else  DXBin('-', nLoc_dict[x].crange().right().accept(self), nLoc_dict[x].crange().left().accept(self))))) for x in tlvars if x != 'amp']
+                        invariants += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), (nLoc_dict[x].cranges()[0].right().accept(self) if isinstance(nLoc_dict[x].cranges()[0].left(), QXNum) and nLoc_dict[x].cranges()[0].left().num() == 0 else  DXBin('-', nLoc_dict[x].cranges()[0].right().accept(self), nLoc_dict[x].cranges()[0].left().accept(self))))) for x in tlvars if x != 'amp']
                     
                         
 
@@ -1786,7 +1817,7 @@ class ProgramTransfer(ProgramVisitor):
                 next_looping_var = DXBind('tmp', None, num + 1)
                 stmts.append(DXAssign([next_looping_var], DXNum(0), True))
                 tmp_new_vars = {x : DXBind('tmp' + str(num + 1) + x, loop_newVars[x].type().type()) for x in loop_newVars}
-                nestedWhile = buildWhile(next_looping_var, ctx, num + 1, loop_oldVars, tmp_new_vars, nLoc, nqty, nnum, fqty, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, False, if_bexp_vals, loop_values)
+                nestedWhile = buildWhile(next_looping_var, ctx, num + 1, loop_oldVars, tmp_new_vars, nLoc, nqty, nnum, fqty, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, False, if_bexp_vals, loop_values, is_qrange)
                 stmts.append(nestedWhile)
 
                 #invariant generation for outer loops
@@ -1815,11 +1846,11 @@ class ProgramTransfer(ProgramVisitor):
                     tlvars = {dc : self.getBindFromIndex(loop_newVars[dc]) for dc in loop_newVars}
                     tlvars_1 = {dc : self.createIndexFromType(tlvars[dc], st, DXBind('tmp', SType('nat'), self.counter)) for dc in tlvars}
                     if inv_l + 1 < fqty.flag().num() - num:
-                        rlen = nLoc[inv_l + 1].crange().right().accept(self) if isinstance(nLoc[inv_l + 1].crange().left(), QXNum) and nLoc[inv_l + 1].crange().left().num() == 0 else DXBin('-', nLoc[inv_l + 1].crange().right().accept(self), nLoc[inv_l + 1].crange().left().accept(self))
+                        rlen = nLoc[inv_l + 1].cranges()[0].right().accept(self) if isinstance(nLoc[inv_l + 1].cranges()[0].left(), QXNum) and nLoc[inv_l + 1].cranges()[0].left().num() == 0 else DXBin('-', nLoc[inv_l + 1].cranges()[0].right().accept(self), nLoc[inv_l + 1].cranges()[0].left().accept(self))
                         rlen = DXCall('pow2', [rlen])
                         inv_new += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), rlen)) for x in tlvars]
                     else:
-                        inv_new += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), (nLoc_dict[x].crange().right().accept(self) if isinstance(nLoc_dict[x].crange().left(), QXNum) and nLoc_dict[x].crange().left().num() == 0 else  DXBin('-', nLoc_dict[x].crange().right().accept(self), nLoc_dict[x].crange().left().accept(self))))) for x in tlvars if x != 'amp']
+                        inv_new += [self.genAllSpec_Simple(DXBind('tmp', None, self.counter), tlvars[x], st, DXComp('==', DXLength(tlvars_1[x]), (nLoc_dict[x].cranges()[0].right().accept(self) if isinstance(nLoc_dict[x].cranges()[0].left(), QXNum) and nLoc_dict[x].cranges()[0].left().num() == 0 else  DXBin('-', nLoc_dict[x].cranges()[0].right().accept(self), nLoc_dict[x].cranges()[0].left().accept(self))))) for x in tlvars if x != 'amp']
                 
                 for inv in innerloop_invariants:
 
@@ -1959,7 +1990,7 @@ class ProgramTransfer(ProgramVisitor):
             return DXWhile(while_predicate, stmts, invariants)
 
 
-        while_stmt = buildWhile(DXBind('tmp', None, 0), ctx, 0, loop_oldVars, loop_newVars, nLoc, nqty, nnum, fqty, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, False, [bool_exp_id], loop_values)
+        while_stmt = buildWhile(DXBind('tmp', None, 0), ctx, 0, loop_oldVars, loop_newVars, nLoc, nqty, nnum, fqty, is_qcomp, bool_exp_id, bool_exp_index, bool_store_id, False, [bool_exp_id], loop_values, is_qrange)
 
         res.append(while_stmt)
 
@@ -2092,7 +2123,7 @@ class ProgramTransfer(ProgramVisitor):
                                 tmpt = DXBin('+', tmpt, r)
 
                             if 'ampf' not in self.initial_locus_data[self.getMapIndex(ii)]:
-                                tmpf = DXBin('/', DXNum(1.0), DXCall('sqrt',[DXCast(SType('real'),DXCall('pow2',[nLoc[0].crange().right().accept(self)]))]))
+                                tmpf = DXBin('/', DXNum(1.0), DXCall('sqrt',[DXCast(SType('real'),DXCall('pow2',[nLoc[0].cranges()[0].right().accept(self)]))]))
                             else:
                                 tmpf = self.initial_locus_data[self.getMapIndex(ii)]['ampf']
 
@@ -2183,7 +2214,7 @@ class ProgramTransfer(ProgramVisitor):
                     lcounter += 1
                     
                     if ti == 0:
-                        pow2_var = DXCall('pow2',[DXVar(nLoc[ti+1].crange().right().ID() if isinstance(nLoc[ti+1].crange().right(), QXBind) else str(nLoc[ti+1].crange().right().num()))])
+                        pow2_var = DXCall('pow2',[DXVar(nLoc[ti+1].cranges()[0].right().ID() if isinstance(nLoc[ti+1].cranges()[0].right(), QXBind) else str(nLoc[ti+1].cranges()[0].right().num()))])
                         #if isinstance(pow2_var.exps()[0], DXNum) or isinstance(pow2_var.exps()[0], DXVar):
                             #pow2_var = DXNum(2**int(pow2_var.exps()[0].ID()))
                         left = DXLength(DXIndex(i, allvar))
@@ -2192,8 +2223,8 @@ class ProgramTransfer(ProgramVisitor):
                         invariants.append(tmp)
                         comp = tmp
                     else:
-                        pow2_in_var = DXCall('pow2',[DXVar(nLoc[ti-1].crange().right().ID())]) if isinstance(nLoc[ti-1].crange().right(), QXBind) else DXCall('pow2',[DXVar(str(nLoc[ti-1].crange().right().num()))])
-                        pow2_var = DXCall('pow2',[DXVar(nLoc[ti].crange().right().ID() if isinstance(nLoc[ti].crange().right(), QXBind) else str(nLoc[ti].crange().right().num()))]) if ti < len(nLoc) else DXVar(nLoc[ti-1].crange().right().ID() if isinstance(nLoc[ti-1].crange().right(), QXBind) else str(nLoc[ti-1].crange().right().num()))
+                        pow2_in_var = DXCall('pow2',[DXVar(nLoc[ti-1].cranges()[0].right().ID())]) if isinstance(nLoc[ti-1].cranges()[0].right(), QXBind) else DXCall('pow2',[DXVar(str(nLoc[ti-1].cranges()[0].right().num()))])
+                        pow2_var = DXCall('pow2',[DXVar(nLoc[ti].cranges()[0].right().ID() if isinstance(nLoc[ti].cranges()[0].right(), QXBind) else str(nLoc[ti].cranges()[0].right().num()))]) if ti < len(nLoc) else DXVar(nLoc[ti-1].cranges()[0].right().ID() if isinstance(nLoc[ti-1].cranges()[0].right(), QXBind) else str(nLoc[ti-1].cranges()[0].right().num()))
                         #if isinstance(pow2_var.exps()[0], DXNum) or isinstance(pow2_var.exps()[0], DXVar):
                             #pow2_var = DXNum(2**int(pow2_var.exps()[0].ID()))
                         left = DXLength(DXIndex(left.var(), allvar))
@@ -2301,8 +2332,8 @@ class ProgramTransfer(ProgramVisitor):
         for elem in ctx.stmts():
             tmpstmts += elem.accept(self)
 
-        lbound = ctx.crange().left().accept(self)
-        rbound = ctx.crange().right().accept(self)
+        lbound = ctx.cranges()[0].left().accept(self)
+        rbound = ctx.cranges()[0].right().accept(self)
         vx = DXBind(x, SType("nat"))
 
         return [DXInit(vx, lbound), DXWhile(DXComp("<", vx, rbound), tmpstmts, tmpinvs)]
@@ -2346,7 +2377,7 @@ class ProgramTransfer(ProgramVisitor):
         loc,qty,num = subLocus(ctx.locus(), self.outvarnums if self.t_ensures else self.varnums)
         self.qvars = makeVars(ctx.locus(), ctx.qty(), num)
         self.locus = ctx.locus()
-        return ctx.state().accept(self)
+        return ctx.states()[0].accept(self)
 
 
     def visitAA(self, ctx: Programmer.TyAA):
@@ -2375,11 +2406,11 @@ class ProgramTransfer(ProgramVisitor):
         if r is not None:
             l, qty, num = r
             for i in range(len(self.locus)):
-                left = self.locus[i].crange().left().accept(self)
-                right = self.locus[i].crange().right().accept(self)
+                left = self.locus[i].cranges()[0].left().accept(self)
+                right = self.locus[i].cranges()[0].right().accept(self)
                 if not(isinstance(left, DXNum) and left.num() == 0):
                     right = DXBin('-', right, left)
-                v = ctx.kets()[i].accept(self)
+                v = ctx.kets()[i][0].accept(self) if isinstance(ctx.kets()[i], list) else ctx.kets()[i].accept(self)
                 if isinstance(qty, TyNor):
                     tmp+=[DXComp('==',DXCall('castBVInt', [DXBind(self.locus[i].ID(), num = num)]), v)]
                     self.libFuns.add('castBVInt')
@@ -2398,12 +2429,12 @@ class ProgramTransfer(ProgramVisitor):
                 loc, qty, num = subLocus(self.locus, self.varnums)
                 for i in range(len(loc)):
                     subd = {}
-                    v = ctx.kets()[i].accept(self)
+                    v = ctx.kets()[i][0].accept(self) if isinstance(ctx.kets()[i], list) else ctx.kets()[i].accept(self)
                     subd['qty'] = qty
                     subd['val'] = v
-                    subd['length'] = loc[i].crange().right().ID() if isinstance(loc[i].crange().right(), QXBind) else loc[i].crange().right().num()
+                    subd['length'] = loc[i].cranges()[0].right().ID() if isinstance(loc[i].cranges()[0].right(), QXBind) else loc[i].cranges()[0].right().num()
                     toString = TargetToString()
-                    self.initial_locus_data[loc[i].ID() + loc[i].crange().left().accept(toString) + ',' + loc[i].crange().right().accept(toString)] = subd
+                    self.initial_locus_data[loc[i].ID() + loc[i].cranges()[0].left().accept(toString) + ',' + loc[i].cranges()[0].right().accept(toString)] = subd
         return tmp
 
 
@@ -2439,10 +2470,10 @@ class ProgramTransfer(ProgramVisitor):
                 v = ctx.kets()[i].accept(self)
                 subd['qty'] = qty
                 subd['val'] = v
-                subd['length'] = loc[i].crange().right().ID() if isinstance(loc[i].crange().right(), QXBind) else loc[i].crange().right().num()
+                subd['length'] = loc[i].cranges()[0].right().ID() if isinstance(loc[i].cranges()[0].right(), QXBind) else loc[i].cranges()[0].right().num()
                 subd['amp'] = ampl
                 toString = TargetToString()
-                self.initial_locus_data[loc[i].ID() + loc[i].crange().left().accept(toString) + ',' + loc[i].crange().right().accept(toString)] = subd
+                self.initial_locus_data[loc[i].ID() + loc[i].cranges()[0].left().accept(toString) + ',' + loc[i].cranges()[0].right().accept(toString)] = subd
         
         return ([eq]+tmp)
 

@@ -6,5 +6,5 @@ method lambdatest(n:nat, q : Q[n], k:nat)
   // induce superposition on the first qubit
   q[0,n) *= H;//should have an autocasting
   //(en)q[0,n); //it is best if we do not need this
-  q[0, n) *= λ (x => |x + 1⟩);
+  q[0, n) *= λ (x => |(x + 1) % 2^n⟩);
 }

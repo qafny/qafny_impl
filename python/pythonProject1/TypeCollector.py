@@ -125,7 +125,7 @@ class TypeCollector(ProgramVisitor):
 
         for var in tmp:
             v = self.fkenv[0].get(var).flag()
-            locus = [QXQRange(var, QXCRange(QXNum(0), v))]
+            locus = [QXQRange(var, [QXCRange(QXNum(0), v)])]
             ty = TyEn(QXNum(1))
             result += [(locus, ty)]
 
@@ -160,7 +160,7 @@ class TypeCollector(ProgramVisitor):
 
         for var in tmp:
             v = self.fkenv[0].get(var).flag()
-            locus = [QXQRange(var, QXCRange(QXNum(0), v))]
+            locus = [QXQRange(var, [QXCRange(QXNum(0), v)])]
             ty = TyEn(QXNum(1))
             result += [(locus, ty)]
 
@@ -205,22 +205,23 @@ class TypeCollector(ProgramVisitor):
     def visitRequires(self, ctx: Programmer.QXRequires):
         if isinstance(ctx.spec(), QXQSpec):
             for elem in ctx.spec().locus():
-                x = str(elem.ID())
-                kty = self.fkenv[0].get(x)
-                if not isinstance(kty, TyQ):
-                    return False
+                for crange in elem.cranges():
+                    x = str(elem.ID())
+                    kty = self.fkenv[0].get(x)
+                    if not isinstance(kty, TyQ):
+                        return False
 
-                left = elem.crange().left()
-                right = elem.crange().right()
+                    left = crange.left()
+                    right = crange.right()
 
-                if not left.accept(self) or not right.accept(self):
-                    return False
-                #Requires { x[i,j) : en(1) -> .... }
-                # i <= j, if i == j, then x[i,j) == {}
-                if not compareAExp(left, QXNum(0)):
-                    addElem((QXComp("<=",QXNum(0),left)), self.pred, True)
-                if not compareAExp(right, kty.flag()):
-                    addElem((QXComp("<=",right,kty.flag())), self.pred, True)
+                    if not left.accept(self) or not right.accept(self):
+                        return False
+                    #Requires { x[i,j) : en(1) -> .... }
+                    # i <= j, if i == j, then x[i,j) == {}
+                    if not compareAExp(left, QXNum(0)):
+                        addElem((QXComp("<=",QXNum(0),left)), self.pred, True)
+                    if not compareAExp(right, kty.flag()):
+                        addElem((QXComp("<=",right,kty.flag())), self.pred, True)
 
             self.tenv.append((ctx.spec().locus(), ctx.spec().qty()))
 
@@ -232,15 +233,15 @@ class TypeCollector(ProgramVisitor):
             tyy = self.fkenv[0].get(right)
 
             if isinstance(tyx, TyQ) and isinstance(tyy, TyQ):
-                xT = self.findLocus([QXQRange(left, QXCRange(QXNum(0),tyx.flag()))])
-                yT = self.findLocus([QXQRange(right, QXCRange(QXNum(0),tyy.flag()))])
+                xT = self.findLocus([QXQRange(left, [QXCRange(QXNum(0),tyx.flag())])])
+                yT = self.findLocus([QXQRange(right, [QXCRange(QXNum(0),tyy.flag())])])
 
                 if xT is None and yT is None:
                     return False
                 elif xT is None:
-                    self.tenv.append([QXQRange(left, QXCRange(QXNum(0),tyx.flag()))], yT)
+                    self.tenv.append([QXQRange(left, [QXCRange(QXNum(0),tyx.flag())])], yT)
                 elif yT is None:
-                    self.tenv.append([QXQRange(left, QXCRange(QXNum(0), tyx.flag()))], xT)
+                    self.tenv.append([QXQRange(left, [QXCRange(QXNum(0), tyx.flag())])], xT)
                 else:
                     re = compareType(xT, yT)
                     if re is None:
@@ -251,21 +252,22 @@ class TypeCollector(ProgramVisitor):
     def visitEnsures(self, ctx: Programmer.QXEnsures):
         if isinstance(ctx.spec(), QXQSpec):
             for elem in ctx.spec().locus():
-                x = str(elem.ID())
-                kty = self.fkenv[0].get(x)
-                if not isinstance(kty, TyQ):
-                    return False
+                for crange in elem.cranges():
+                    x = str(elem.ID())
+                    kty = self.fkenv[0].get(x)
+                    if not isinstance(kty, TyQ):
+                        return False
 
-                left = elem.crange().left()
-                right = elem.crange().right()
+                    left = crange.left()
+                    right = crange.right()
 
-                if not left.accept(self) or not right.accept(self):
-                    return False
+                    if not left.accept(self) or not right.accept(self):
+                        return False
 
-                if not compareAExp(left, QXNum(0)):
-                    addElem((QXComp("<=",QXNum(0),left)), self.pred, False)
-                if not compareAExp(right, kty.flag()):
-                    addElem((QXComp("<=",right,kty.flag())), self.pred, False)
+                    if not compareAExp(left, QXNum(0)):
+                        addElem((QXComp("<=",QXNum(0),left)), self.pred, False)
+                    if not compareAExp(right, kty.flag()):
+                        addElem((QXComp("<=",right,kty.flag())), self.pred, False)
 
             self.mkenv.append((ctx.spec().locus(), ctx.spec().qty()))
 
@@ -277,15 +279,15 @@ class TypeCollector(ProgramVisitor):
             tyy = self.fkenv[0].get(right)
 
             if isinstance(tyx, TyQ) and isinstance(tyy, TyQ):
-                xT = self.findLocus([QXQRange(left, QXCRange(QXNum(0),tyx.flag()))])
-                yT = self.findLocus([QXQRange(right, QXCRange(QXNum(0),tyy.flag()))])
+                xT = self.findLocus([QXQRange(left, [QXCRange(QXNum(0),tyx.flag())])])
+                yT = self.findLocus([QXQRange(right, [QXCRange(QXNum(0),tyy.flag())])])
 
                 if xT is None and yT is None:
                     return False
                 elif xT is None:
-                    self.mkenv.append([QXQRange(left, QXCRange(QXNum(0),tyx.flag()))], yT)
+                    self.mkenv.append([QXQRange(left, [QXCRange(QXNum(0),tyx.flag())])], yT)
                 elif yT is None:
-                    self.mkenv.append([QXQRange(left, QXCRange(QXNum(0), tyx.flag()))], xT)
+                    self.mkenv.append([QXQRange(left, [QXCRange(QXNum(0), tyx.flag())])], xT)
                 else:
                     re = compareType(xT, yT)
                     if re is None:

@@ -4,5 +4,5 @@ method lambdatest(n:nat, q : Q[n], k : nat)
   ensures  { q[0, n) : nor ↦ | (k + 1) % 2^n ⟩ }
 {
   // induce superposition on the first qubit
-  p[0, n) *= λ (x => |x + 1⟩);
+  q[0, n) *= λ (x => |(x + 1) % 2^n ⟩);
 }

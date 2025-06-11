@@ -101,6 +101,8 @@ class CleanupVisitor(TargetProgramVisitor):
         return DXNot(ctx.next().accept(self))
     
     def visitInRange(self, ctx):
+        if isinstance(ctx.right(), DXNum) and ctx.right().num() == 2:
+            return DXInRange(ctx.bind(), ctx.left().accept(self), DXCall('pow2', [DXNum(1)])) 
         return DXInRange(ctx.bind(), ctx.left().accept(self), ctx.right().accept(self))
     
     def visitBin(self, ctx: TargetProgrammer.DXBin):

@@ -1,5 +1,6 @@
 //Simple Had application
 method lambdatest(n:nat, q : Q[n], p: Q[n], a : nat, N: nat)
+  requires N > 0
   requires { q[0, n), p[0,n) : en(1) ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) | k ⟩| k ⟩ }
   ensures  { q[0, n), p[0,n) : en(1) ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) | k ⟩| a * k % N ⟩ }
 {

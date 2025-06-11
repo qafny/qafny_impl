@@ -1,8 +1,8 @@
 //Simple Had application
 method lambdatest(n:nat, q : Q[n], p : Q[n], k:nat)
   requires { q[0, n), p[0,n) : en(2) ↦ ∑ j ∈ [0, 2^n) . ∑ k ∈ [0, 2^n) . 1 / (2^n) | j ⟩| k ⟩ }
-  ensures  { q[0, n), p[0,n) : en(2) ↦ ∑ j ∈ [0, 2^n) . ∑ k ∈ [0, 2^n) . 1 / (2^n) * ω(k, 2^n) | j ⟩| k ⟩ }
+  ensures  { q[0, n), p[0,n) : en(2) ↦ ∑ j ∈ [0, 2^n) . ∑ k ∈ [0, 2^n) . (1 / (2^n)) * ω(k, 2^n) | j ⟩| k ⟩ }
 {
   // induce superposition on the first qubit
-  p[0, n) *= λ (x => ω(k, 2^n) |x⟩);
+  p[0, n) *= λ (x => ω(x, 2^n) |x⟩);
 }

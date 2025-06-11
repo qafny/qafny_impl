@@ -1089,7 +1089,10 @@ class ProgramTransformer(ExpVisitor):
         while (child := ctx.getChild(i)) is not None:
             if isinstance(child, ExpParser.IndexContext):
                 index = self.visitIndex(child)
-                cranges.append(QXCRange(index, QXBin("+", index, QXNum(1)), child)) # an index is a range with only one element
+                if isinstance(index, QXNum):
+                    cranges.append(QXCRange(index, QXNum(index.num() + 1), child))
+                else:
+                    cranges.append(QXCRange(index, QXBin("+", index, QXNum(1)), child))
             elif isinstance(child, ExpParser.CrangeContext):
                 cranges.append(self.visitCrange(child))
             elif isinstance(child, ExpParser.QsliceContext):
@@ -1126,6 +1129,8 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#baseTy.
     def visitBaseTy(self, ctx: ExpParser.BaseTyContext):
+        if isinstance(ctx, list):
+            return self.visitBaseTy(ctx[0])
         if isinstance(ctx, ExpParser.NaturalTypeContext):
             return TySingle("nat", ctx)
         elif isinstance(ctx, ExpParser.RealTypeContext):

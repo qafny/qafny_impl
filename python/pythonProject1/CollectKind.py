@@ -158,7 +158,9 @@ class CollectKind(ProgramVisitor):
     
     def visitOracle(self, ctx: Programmer.QXOracle):
         v = True
-        for i in ctx.ids():
+        for i in ctx.bindings():
+            if isinstance(i, QXBind):
+                i = i.ID()
             if str(i) not in self.tenv:
                 self.tenv.update({str(i):QXQTy()})
         
@@ -170,7 +172,10 @@ class CollectKind(ProgramVisitor):
         return ctx.vector().accept(self)
 
     def visitQRange(self, ctx: Programmer.QXQRange):
-        return ctx.crange().accept(self)
+        v = True
+        for i in ctx.cranges():
+            v = v and i.accept(self)
+        return v
     
     def visitCRange(self, ctx: Programmer.QXCRange):
         return ctx.left().accept(self) and ctx.right().accept(self)
@@ -208,7 +213,7 @@ class CollectKind(ProgramVisitor):
         return v
 
     def visitFor(self, ctx: Programmer.QXFor):
-        v = ctx.crange().accept(self)
+        v = ctx.cranges().accept(self)
 
         self.tenv.update({str(ctx.ID()), TySingle("nat")})
 
