@@ -339,6 +339,11 @@ class ExpVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by ExpParser#memberAccess.
+    def visitMemberAccess(self, ctx:ExpParser.MemberAccessContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by ExpParser#expr.
     def visitExpr(self, ctx:ExpParser.ExprContext):
         return self.visitChildren(ctx)
@@ -409,8 +414,8 @@ class ExpVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by ExpParser#sliceExpr.
-    def visitSliceExpr(self, ctx:ExpParser.SliceExprContext):
+    # Visit a parse tree produced by ExpParser#qslice.
+    def visitQslice(self, ctx:ExpParser.QsliceContext):
         return self.visitChildren(ctx)
 
 
@@ -494,13 +499,18 @@ class ExpVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by ExpParser#addOp.
-    def visitAddOp(self, ctx:ExpParser.AddOpContext):
+    # Visit a parse tree produced by ExpParser#additiveOp.
+    def visitAdditiveOp(self, ctx:ExpParser.AdditiveOpContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by ExpParser#op.
-    def visitOp(self, ctx:ExpParser.OpContext):
+    # Visit a parse tree produced by ExpParser#multiplicativeOp.
+    def visitMultiplicativeOp(self, ctx:ExpParser.MultiplicativeOpContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by ExpParser#exponentialOp.
+    def visitExponentialOp(self, ctx:ExpParser.ExponentialOpContext):
         return self.visitChildren(ctx)
 
 

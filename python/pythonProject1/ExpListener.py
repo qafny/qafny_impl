@@ -602,6 +602,15 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#memberAccess.
+    def enterMemberAccess(self, ctx:ExpParser.MemberAccessContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#memberAccess.
+    def exitMemberAccess(self, ctx:ExpParser.MemberAccessContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#expr.
     def enterExpr(self, ctx:ExpParser.ExprContext):
         pass
@@ -728,12 +737,12 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#sliceExpr.
-    def enterSliceExpr(self, ctx:ExpParser.SliceExprContext):
+    # Enter a parse tree produced by ExpParser#qslice.
+    def enterQslice(self, ctx:ExpParser.QsliceContext):
         pass
 
-    # Exit a parse tree produced by ExpParser#sliceExpr.
-    def exitSliceExpr(self, ctx:ExpParser.SliceExprContext):
+    # Exit a parse tree produced by ExpParser#qslice.
+    def exitQslice(self, ctx:ExpParser.QsliceContext):
         pass
 
 
@@ -881,21 +890,30 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#addOp.
-    def enterAddOp(self, ctx:ExpParser.AddOpContext):
+    # Enter a parse tree produced by ExpParser#additiveOp.
+    def enterAdditiveOp(self, ctx:ExpParser.AdditiveOpContext):
         pass
 
-    # Exit a parse tree produced by ExpParser#addOp.
-    def exitAddOp(self, ctx:ExpParser.AddOpContext):
+    # Exit a parse tree produced by ExpParser#additiveOp.
+    def exitAdditiveOp(self, ctx:ExpParser.AdditiveOpContext):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#op.
-    def enterOp(self, ctx:ExpParser.OpContext):
+    # Enter a parse tree produced by ExpParser#multiplicativeOp.
+    def enterMultiplicativeOp(self, ctx:ExpParser.MultiplicativeOpContext):
         pass
 
-    # Exit a parse tree produced by ExpParser#op.
-    def exitOp(self, ctx:ExpParser.OpContext):
+    # Exit a parse tree produced by ExpParser#multiplicativeOp.
+    def exitMultiplicativeOp(self, ctx:ExpParser.MultiplicativeOpContext):
+        pass
+
+
+    # Enter a parse tree produced by ExpParser#exponentialOp.
+    def enterExponentialOp(self, ctx:ExpParser.ExponentialOpContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#exponentialOp.
+    def exitExponentialOp(self, ctx:ExpParser.ExponentialOpContext):
         pass
 
 

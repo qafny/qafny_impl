@@ -4,7 +4,8 @@ from typing import (
     Dict,
     Tuple,
     Type,
-    TypeVar
+    TypeVar,
+    Union
 )
 
 import inspect
@@ -36,6 +37,7 @@ BRACES: Dict[type, Callable[[Any], Tuple[str, str, str]]] = {
 CONTAINERS = tuple(BRACES.keys())
 MAPPING_CONTAINERS = (dict, os._Environ, MappingProxyType, UserDict)
 
+
 def make_repr(class_name: str, props: {str: any}) -> str:
     '''Returns a string representation of an object closely matching python construction syntax.
     None types are hidden by default'''
@@ -49,6 +51,23 @@ def is_sequence(potential_seq) -> bool:
     return (not hasattr(potential_seq, "strip") and
             hasattr(potential_seq, "__iteritems__") or
             hasattr(potential_seq, "__iter__"))
+
+
+def is_integer(expr: str) -> bool:
+    '''Returns true if the expression str is parseable as a python int'''
+    try:
+        int(expr)
+        return True
+    except:
+        return False
+
+
+def str_to_num(expr: str) -> Union[float, int]:
+    '''Attempts to convert the string expression to a num, returning an integer if the expression is an integer or a float if the expression is a float.'''
+    try:
+        return int(expr)
+    except:
+        return float(expr)
 
 
 def listify(potential_list):

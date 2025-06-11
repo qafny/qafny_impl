@@ -1,3 +1,21 @@
+/* 
+ * # Qafny Grammar:
+ *
+ * Operator Precedence:
+ * function calls, ranges, in, member access (e.g. a.Length)
+ * unary subtraction (-), unitary not expr (not)
+ * exponential/xor (^, ⊕)
+ * product/quotient/remainder (*, /, %)
+ * sum/difference (+, -)
+ * relational (<, <=, >, >=)
+ * equality (==, !=)
+ * &&
+ * ||
+ * assignment (=, :=, etc.)
+ * ,
+ * 
+ */
+
 grammar Exp;
 
 // Root node for the ANTLR version of the Qafny AST
@@ -8,7 +26,7 @@ topLevel: TInclude | method | function | lemma | predicate;
 
 method: 'method' ('{' ':' Axiom '}')? ID '(' bindings ')' ('returns' returna)? conds ('{' stmts '}')?;
 
-function : Function ('{' ':' Axiom '}')? ID '(' bindings ')' (':' typeT)? ('{' arithExpr '}')?;
+function : Function ('{' ':' Axiom '}')? ID '(' bindings ')' (':' typeT)? ('{' (arithExpr | qspec) '}')?;
 
 lemma : Lemma ('{' ':' Axiom '}')? ID '(' bindings ')' conds;
 
@@ -50,12 +68,12 @@ chainBExp: arithExprWithSum (comOp arithExprWithSum)+;
 // comparison operators
 comOp :  GE | LE | EQ | NE | LT | GT;
 
-qtypeCreate: qty '↦' qspec ('+' qspec)*;
+// see SWAPTest.qfy for an instance where the amplitude is specified before the qspecs
+qtypeCreate: qty '↦' (arithExpr '.')? qspec ('+' qspec)*;
 
 qunspec : locus ':' qtypeCreate ('⊗' locus ':' qtypeCreate)*;
 
-// see SWAPTest.qfy for an instance where the amplitude is specified before the sum spec
-qspec : tensorall | arithExpr? manyketpart | (arithExpr '.')? sumspec;
+qspec : tensorall | arithExpr? manyketpart | sumspec;
 
 // 4 different calls for the partition function:
 // 1. part(n, function_predicate, true_amplitude, false_amplitude)
@@ -97,7 +115,7 @@ qcreate : 'var' (locus | ID) '*=' arithExpr ';';
 measure : idindices '*=' 'measure' '(' (locus | ID) ')' ';' | idindices '*=' 'measure' '(' (locus | ID) ',' arithExpr ')' ';' ;
 
 // see SWAPTest.qfy
-measureAbort: ids '*=' 'measA' '(' (locus | ID) ')' ';' | ids '*=' 'measA' '(' (locus | ID) ',' arithExpr ')' ';';
+measureAbort: idindices '*=' 'measA' '(' (locus | ID) (',' arithExpr)? ')' ';';
 
 returnStmt: Return ids ';';
 
@@ -123,21 +141,21 @@ fcall : ID '^{-1}'? '(' arithExprsOrKets ')';
 
 arithExprsOrKets : (arithExpr | ket) (',' (arithExpr | ket))*;
 
-arithExprWithSum: arithExpr | maySum arithExprWithSum | arithExpr op arithExprWithSum | '(' arithExprWithSum ')';
+// ANTLR will choose the first branch for a list of options, so for operator precendence to work properly, the operators must be split by their levels of precendence.
+// Put another way, higher precendence operators (evaluate these first) must come before lower precedence operators
+arithExprWithSum: arithExprWithSum exponentialOp arithExprWithSum | arithExprWithSum multiplicativeOp arithExprWithSum | arithExprWithSum additiveOp arithExprWithSum | maySum arithExprWithSum | '(' arithExprWithSum ')' | arithAtomic;
 
-arithExpr: cifexp | arithAtomic op arithExpr | arithAtomic | arithExpr (index | sliceExpr | crange); // | sumspec | qtypeCreate;
+arithExpr: cifexp | arithExpr exponentialOp arithExpr | arithExpr multiplicativeOp arithExpr | arithExpr additiveOp arithExpr | arithAtomic;
 
-// arithExprNoSum: cifexpNoSum | arithAtomic op arithExprNoSum | arithAtomic | arithExprNoSum (index | sliceExpr | crange) | '(' arithExprNoSum ')';
-
-arithAtomic: numexp | ID | TSub arithExpr | boolLiteral
+arithAtomic: numexp | ID | TSub arithAtomic | boolLiteral
           | '(' arithExpr ')'
-          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | rotExpr | notExpr | setInstance | qrange | ketCallExpr;
+          | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | rotExpr | notExpr | setInstance | qrange | ketCallExpr | memberAccess;
 
-sinExpr : 'sin' ('^' Number)? '(' arithExpr ')' | 'sin' arithAtomic;
+sinExpr : 'sin' ('^' numexp)? '(' arithExpr ')' | 'sin' arithAtomic;
 
-cosExpr : 'cos' ('^' Number)? '(' arithExpr ')' | 'cos' arithAtomic;
+cosExpr : 'cos' ('^' numexp)? '(' arithExpr ')' | 'cos' arithAtomic;
 
-sqrtExpr : 'sqrt' ('^' Number)? '(' arithExpr ')' | 'sqrt' arithAtomic;
+sqrtExpr : 'sqrt' ('^' numexp)? '(' arithExpr ')' | 'sqrt' arithAtomic;
 
 notExpr : 'not' '(' arithExpr ')';
 
@@ -150,6 +168,8 @@ rotExpr : 'rot' '(' arithExpr ')' ;
 ketCallExpr : 'ket' '(' arithExpr ')';
 
 setInstance : '[' (arithExpr (',' arithExpr)*)? ']';
+
+memberAccess: ID (TDot ID)+;
 
 expr : SHad | SQFT | RQFT | lambdaT | dis | ID;
 
@@ -170,7 +190,7 @@ ket : TSub? '|' qstate (',' qstate)* '⟩' | '⊗' arithExpr;
 
 ketsum : maySum arithExpr;
 
-qstate: arithExpr | addOp | ketsum;
+qstate: arithExpr | additiveOp | ketsum;
 
 bindings : binding ( ',' binding)*;
 
@@ -187,13 +207,13 @@ crange : '[' arithExpr ',' arithExpr ')';
 
 index: '[' arithExpr ']';
 
-sliceExpr: '[' left=arithExpr? '..' right=arithExpr? ']';
+qslice: '[' start=arithExpr? '..' end=arithExpr? ']'; // upto, but not including the end
 
 idindex : ID index;
 
 // rangeT: ID crange;
 
-qrange: ID (index | crange)+;
+qrange: (ID | fcall) (index | crange | qslice)+;
 
 // element : numexp | ID;
 
@@ -220,9 +240,13 @@ qty : Nor | Had | En | En '(' arithExpr ')' | aaType;
 
 aaType : AA | AA '(' qrange ')';
 
-addOp: TAdd | TSub;
+additiveOp: TAdd | TSub;
 
-op : addOp | TDiv | TMul | TMod | OPlus | TExp | TXor | Dot;
+multiplicativeOp: TMul | TDiv | TMod;
+
+exponentialOp: TExp | TXor;
+
+// op : addOp | TDiv | TMul | TMod | OPlus | TExp | TXor | Dot;
 
 boolLiteral: TrueLiteral | FalseLiteral;
 
@@ -253,7 +277,7 @@ Return : 'return';
 
 Forall : 'forall';
 
-// qafny classical types 
+// ────────── Classical Types ──────────
 TNat : 'nat';
 
 TReal : 'real';
@@ -264,7 +288,7 @@ TBool : 'bool' | 'Bool';
 
 TBV : 'bv' DIGIT+;
 
-// qafny operators
+// ────────── Operators ──────────
 TAdd : '+';
 
 TSub : '-';
@@ -277,9 +301,11 @@ TMod : '%';
 
 TExp : '^';
 
-TXor : 'xor';
+TXor : '⊕' | 'xor'; // xor and ⊕ are the same operator
 
-// qafny quantum types
+TDot : '.' ;
+
+// ────────── Quantum Types ──────────
 Nor : 'nor' | 'Nor';
 
 Had : 'had' | 'Had';
@@ -316,11 +342,7 @@ TIn : 'in' | '∈';
 
 TSum : 'Σ' | '∑';
 
-OPlus : '⊕';
-
 Invariant : 'invariant';
-
-Dot : '.' ;
 
 // Comparison operators
 And : '&&';
