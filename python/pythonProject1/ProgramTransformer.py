@@ -580,8 +580,7 @@ class ProgramTransformer(ExpVisitor):
 
         if ctx.arithExpr() is not None:
             value = self.visitArithExpr(ctx.arithExpr())
-            ids = [bind.ID() for bind in bindings]
-            stmts.append(QXCAssign(ids, value, ctx))
+            stmts.append(QXCAssign(bindings, value, ctx))
 
         return stmts
 
@@ -630,7 +629,9 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#qcreate.
     def visitQcreate(self, ctx: ExpParser.QcreateContext):
-        return self.visitChildren(ctx)
+        qrange = self.visitQrange(ctx.qrange())
+        size = self.visitArithExpr(ctx.arithExpr())
+        return QXQCreate(qrange, size, ctx)
 
     # Visit a parse tree produced by ExpParser#measure.
     def visitMeasure(self, ctx: ExpParser.MeasureContext):
@@ -765,7 +766,7 @@ class ProgramTransformer(ExpVisitor):
             if isinstance(child, ExpParser.ArithExprContext):
                 tmp.append(self.visitArithExpr(child))
             elif isinstance(child, ExpParser.KetContext):
-                tmp.append(self.visitKet(child))
+                tmp += self.visitKet(child)
             else:
                 if child.getText() != ',':
                     raise ValueError(f'Non arith expression or ket found in arithExprOrKets: "{child.getText()}"')
@@ -847,6 +848,8 @@ class ProgramTransformer(ExpVisitor):
             return self.visitSqrtExpr(ctx.sqrtExpr())
         elif ctx.omegaExpr() is not None:
             return self.visitOmegaExpr(ctx.omegaExpr())
+        elif ctx.rotExpr() is not None:
+            return self.visitRotExpr(ctx.rotExpr())
         elif ctx.notExpr() is not None:
             return self.visitNotExpr(ctx.notExpr())
         elif ctx.setInstance() is not None:
@@ -855,6 +858,8 @@ class ProgramTransformer(ExpVisitor):
             return self.visitQrange(ctx.qrange())
         elif ctx.ketCallExpr() is not None:
             return self.visitKetCallExpr(ctx.ketCallExpr())
+        elif ctx.memberAccess() is not None:
+            return self.visitMemberAccess(ctx.memberAccess())
         else:
             raise ValueError("[UNREACHABLE] Unreachable branch for arithAtomic")
 
@@ -929,7 +934,7 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#memberAccess.
     def visitMemberAccess(self, ctx:ExpParser.MemberAccessContext):
-        return QXAccessMember(ctx.ID(), ctx)
+        return QXMemberAccess(ctx.ID(), ctx)
 
     # Visit a parse tree produced by ExpParser#expr.
     def visitExpr(self, ctx: ExpParser.ExprContext):
@@ -1007,10 +1012,10 @@ class ProgramTransformer(ExpVisitor):
         if len(ctx.qstate()) > 0:
             kets = []
             for qstate in ctx.qstate():
-                kets.append(QXSKet(self.visitQstate(qstate), qstate))
+                kets.append(QXSKet(self.visitQstate(qstate), ctx.TSub() is not None, qstate))
             return kets
-        elif ctx.arithExpr() is not None:
-            return [QXVKet(self.visitArithExpr(ctx.arithExpr()), ctx)]
+        elif ctx.arithAtomic() is not None:
+            return [QXVKet(self.visitArithAtomic(ctx.arithAtomic()), ctx)]
 
     # Visit a parse tree produced by ExpParser#ketsum.
     def visitKetsum(self, ctx: ExpParser.KetsumContext):
@@ -1089,8 +1094,23 @@ class ProgramTransformer(ExpVisitor):
         while (child := ctx.getChild(i)) is not None:
             if isinstance(child, ExpParser.IndexContext):
                 index = self.visitIndex(child)
+                # TODO: There are a lot of edge cases where the next index could be simplified.
+                #       Should a "SimplifyVisitor" be written to post-process the tree into a better format?
+                #       Or should we attempt to catch all edge cases here?
                 if isinstance(index, QXNum):
                     cranges.append(QXCRange(index, QXNum(index.num() + 1), child))
+                elif isinstance(index, QXBin) and index.op() in ['+', '-'] and isinstance(index.right(), QXNum):
+                    next_num = None
+                    if index.op() == '+':
+                        next_num = index.right().num() + 1
+                    elif index.op() == '-':
+                        next_num = -index.right().num() + 1
+                    if next_num != 0:
+                        op = '+' if next_num > 0 else '-'
+                        cranges.append(QXCRange(index, QXBin(op, index.left(), QXNum(abs(next_num))), child))
+                    else:
+                        # for the second one (upper bound), we can ignore the summand
+                        cranges.append(QXCRange(index, index.left()))
                 else:
                     cranges.append(QXCRange(index, QXBin("+", index, QXNum(1)), child))
             elif isinstance(child, ExpParser.CrangeContext):

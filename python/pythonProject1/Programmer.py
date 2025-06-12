@@ -996,12 +996,16 @@ class QXKet(QXTop):
 @qafny.auto.equality
 class QXSKet(QXKet):
 
-    def __init__(self, vector: QXQExp, parser_context: antlr4.ParserRuleContext = None):
+    def __init__(self, vector: QXQExp, negative: bool = False, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._vector = vector
+        self._negative = negative
 
     def vector(self):
         return self._vector
+
+    def negative(self):
+        return self._negative
 
     def accept(self, visitor : AbstractProgramVisitor):
         return visitor.visitSKet(self)
@@ -1188,7 +1192,7 @@ class QXInit(QXStmt):
 @qafny.auto.equality
 class QXCAssign(QXStmt):
 
-    def __init__(self, ids: [Union[str, QXQIndex]], expr : QXAExp, parser_context: antlr4.ParserRuleContext = None):
+    def __init__(self, ids: [Union[QXBind, QXQIndex]], expr : QXAExp, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._ids = ids
         self._expr = expr
@@ -1237,6 +1241,33 @@ class QXQAssign(QXStmt):
 
     def __repr__(self):
         return f"QXQAssign(location={self._location}, expr={self._expr})"
+
+
+@qafny.auto.rich_repr
+@qafny.auto.equality
+class QXQCreate(QXStmt):
+    '''
+    Represents a statement that creates a q-bit string of a certain length.
+
+    example:
+    ╭────────────────────────╮
+    │ var p[0,n) *= init(n); │
+    ╰────────────────────────╯
+    '''
+
+    def __init__(self, qrange: QXQRange, size: QXAExp, parser_context: antlr4.ParserRuleContext = None):
+        super().__init__(parser_context=parser_context)
+        self._qrange = qrange
+        self._size = size
+
+    def qrange(self):
+        return self._qrange
+
+    def size(self):
+        return self._size
+
+    def __repr__(self):
+        return f'QXQCreate(locus={self._locus}, size={self._size})'
 
 
 @qafny.auto.rich_repr

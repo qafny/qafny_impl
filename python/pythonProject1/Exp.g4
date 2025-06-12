@@ -110,7 +110,7 @@ idindices: (ID | idindex) (',' (ID | idindex))*;
 
 qassign : (locus | ID) '*=' expr ';';
 
-qcreate : 'var' (locus | ID) '*=' arithExpr ';';
+qcreate : 'var' qrange '*=' 'init' '(' arithExpr ')' ';';
 
 measure : idindices '*=' 'measure' '(' (locus | ID) ')' ';' | idindices '*=' 'measure' '(' (locus | ID) ',' arithExpr ')' ';' ;
 
@@ -186,7 +186,7 @@ dis : 'dis' '(' expr ',' arithExpr ',' arithExpr ')';
 manyket: (ket)+;
 
 // TODO: what does the subtraction mean?
-ket : TSub? '|' qstate (',' qstate)* '⟩' | '⊗' arithExpr;
+ket : TSub? '|' qstate (',' qstate)* '⟩' | '⊗' arithAtomic;
 
 ketsum : maySum arithExpr;
 
