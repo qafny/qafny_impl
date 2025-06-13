@@ -391,17 +391,25 @@ class ProgramTransformer(ExpVisitor):
             if len(states) == 0:
                 states = new_states
             else:
-                old_states = states
+                old_states = states.copy()
                 states.clear()
-                for i in range(len(old_states)):
-                    for j in range(len(new_states)):
-                        states.append(self.mergeStates(old_states[i], new_states[j]))
+                print(old_states)
+                print()
+                print(new_states)
+                print()
+                for j in range(len(old_states)):
+                    for k in range(len(new_states)):
+                        states.append(self.mergeStates(old_states[j], new_states[k]))
+                        print(f'k: {k}')
+                    print(f'j: {j}')
+                print(states)
 
             i += 1
 
         return QXQSpec(locus, qty, states, ctx)
 
     def mergeStates(self, *args):
+        print(args)
         '''
         Merges any number of specifications together
         This is based on the fact that
@@ -419,15 +427,15 @@ class ProgramTransformer(ExpVisitor):
                 # combine sums
                 sums = spec.sums() + next.sums()
                 # combine amplitudes (if not None)
-                amplitude = spec.amplitude()
+                amplitude = spec.amp()
                 if amplitude is not None:
                     if next.amplitude() is not None:
-                        amplitude = QXBin("*", amplitude, next.amplitude(), ctx)
-                    else:
-                        amplitude = next.amplitude()
+                        amplitude = QXBin("*", amplitude, next.amp()) # TODO: how to attach line:col?
+                else:
+                    amplitude = next.amp()
                 # combine kets
                 kets = spec.kets() + next.kets() # TODO: check for overlapping ids
-                spec = QXSum(sums, amplitude, kets, ctx)
+                spec = QXSum(sums, amplitude, kets) # TODO: how to attach line:col
             elif isinstance(spec, QXTensor) and isinstance(next, QXTensor):
                 # combine tensors
                 raise NotImplementedError("Combining two tensors")
@@ -934,7 +942,7 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#memberAccess.
     def visitMemberAccess(self, ctx:ExpParser.MemberAccessContext):
-        return QXMemberAccess(ctx.ID(), ctx)
+        return QXMemberAccess([str(id) for id in ctx.ID()], ctx)
 
     # Visit a parse tree produced by ExpParser#expr.
     def visitExpr(self, ctx: ExpParser.ExprContext):

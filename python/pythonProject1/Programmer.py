@@ -1982,7 +1982,7 @@ class QXFunction(QXTop):
         self._id = id.getText() if isAntlrNode(id) else id
         self._axiom = axiom
         self._bindings = bindings
-        self._type = return_type
+        self._return_type = return_type
         self._arith_expr = arith_expr
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -1998,7 +1998,7 @@ class QXFunction(QXTop):
         return self._bindings
 
     def return_type(self):
-        return self._type
+        return self._return_type
 
     def arith_expr(self):
         return self._arith_expr

@@ -100,10 +100,12 @@ class TestSuite:
         cl_parser.add_argument('-s', '--force-output', action='store_true', help='print stdout and stderr even from passing cases')
         # an argument to indicate the cases to test (useful for skipping certain cases)
         cl_parser.add_argument('--cases', nargs='*', type=int, help='specify the exact test cases to run')
+        # an argument to indicate that output should be captured instead of directly printed to the command line
+        cl_parser.add_argument('-n', '--no-capture', action='store_true', help='output all text directly to the command line, do not capture it')
 
         return cl_parser.parse_args()
 
-    def constructor_fallbacks(self, fail_fast: bool, verbose: bool, force_output: bool, cases_to_run: [int]):
+    def constructor_fallbacks(self, fail_fast: bool, verbose: bool, force_output: bool, cases_to_run: [int], capture: bool):
         args = self.parse_cli()
 
         if args.fail_fast is None:
@@ -114,13 +116,15 @@ class TestSuite:
             args.force_output = force_output
         if args.cases is None:
             args.cases = cases_to_run
+        if args.no_capture is None:
+            args.no_capture = not capture
 
         return args
 
-    def __init__(self, *, fail_fast: bool = False, verbose: bool = False, force_output: bool = False, cases_to_run: [int] = None):
+    def __init__(self, *, fail_fast: bool = False, verbose: bool = False, force_output: bool = False, cases_to_run: [int] = None, capture: bool = True):
         '''Creates a new test suite. This constructor should be called by sub-classes.'''
         # parse arguments (if there are any)
-        ctor_args = self.constructor_fallbacks(fail_fast, verbose, force_output, cases_to_run)
+        ctor_args = self.constructor_fallbacks(fail_fast, verbose, force_output, cases_to_run, capture)
 
         # A number indicating the total number of test cases run
         self.total_cases = 0
@@ -132,6 +136,8 @@ class TestSuite:
         self.verbose = ctor_args.verbose
         # A flag indicating whether stdout/stderr should always be printed (regardless of whether the case succeeds/fails)
         self.force_output = ctor_args.force_output
+        # A flag indicating where stdout/stderr should be captured
+        self.capture = not ctor_args.no_capture
         # A list of the cases that we should run, or None to run all of the cases
         self.cases_to_run = ctor_args.cases
         self.__current_case_no = 0
@@ -154,6 +160,10 @@ class TestSuite:
         '''Starts capturing standard output and standard error.'''
         assert not self.__capturing, 'A new capture cannot be started whilst an old one is already underway.'
 
+        if not self.capture:
+            self.__capturing = True
+            return
+
         self.__old_stdout = sys.stdout
         self.__old_stderr = sys.stderr
         self.__stdout_pipe = StringIO()
@@ -166,6 +176,10 @@ class TestSuite:
     def end_capture(self) -> str: #  (str, str):
         '''Ends capturing standard output and standard error, returning them as two strings.'''
         assert self.__capturing, 'A capture cannot be stopped if none have started.'
+
+        if not self.capture:
+            self.__capturing = False
+            return ''
 
         sys.stdout = self.__old_stdout
         sys.stderr = self.__old_stderr
