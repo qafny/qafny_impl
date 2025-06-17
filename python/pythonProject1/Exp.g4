@@ -61,7 +61,7 @@ logicAndExp: logicNotExp '&&' logicAndExp | logicNotExp;
 
 logicNotExp: 'not' logicNotExp | fcall | chainBExp | logicInExpr | qunspec;
 
-logicInExpr: ID TIn ID;
+logicInExpr: arithExpr TIn arithExpr;
 
 chainBExp: arithExprWithSum (comOp arithExprWithSum)+;
 

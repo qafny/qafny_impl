@@ -328,8 +328,8 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#logicInExpr.
     def visitLogicInExpr(self, ctx: ExpParser.LogicInExprContext):
-        # right ID contains left ID
-        return QXSetContains(ctx.ID(1), ctx.ID(0), ctx)
+        # right contains left
+        return QXBin('∈', self.visitArithExpr(ctx.arithExpr(0)), self.visitArithExpr(ctx.arithExpr(1)), ctx)
 
     # Visit a parse tree produced by ExpParser#comOp.
     def visitComOp(self, ctx: ExpParser.ComOpContext):

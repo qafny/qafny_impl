@@ -282,6 +282,9 @@ class QXAExp(QXQExp, QXTop):
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class TyArray(QXType):
+    '''
+    Represents the array type, which contains an inner type and potentially a size.
+    '''
 
     def __init__(self, type: QXType, flag: QXAExp, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
@@ -309,7 +312,7 @@ class TyArray(QXType):
 @qafny.auto.equality
 class TySet(QXType):
     '''
-    Represents a set in dafny: set<xxx>
+    Represents a set in Qafny: set<xxx>, directly analogous to a Dafny set.
     '''
 
     def __init__(self, type: QXType, parser_context: antlr4.ParserRuleContext = None):
@@ -329,6 +332,9 @@ class TySet(QXType):
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class TySingle(QXType):
+    '''
+    Represents non-quantum types as a string indicating the type. i.e. 'nat' or 'bool'
+    '''
 
     def __init__(self, name: str, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
@@ -347,6 +353,9 @@ class TySingle(QXType):
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class TyQ(QXType):
+    '''
+    Represents the q-bit string type.
+    '''
 
     def __init__(self, flag: QXAExp, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
@@ -365,6 +374,9 @@ class TyQ(QXType):
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class TyFun(QXType):
+    '''
+    Represents a function type, which has a number of parameters and a single return type.
+    '''
 
     def __init__(self, parameters: [QXType], return_type: QXType, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
@@ -826,28 +838,6 @@ class QXSet(QXAExp):
 
     def __repr__(self):
         return f'QXSet(members={self._members})'
-
-
-@qafny.auto.rich_repr
-@qafny.auto.equality
-class QXSetContains(QXAExp):
-
-    def __init__(self, set_id: id_t, value_id: id_t, parser_context: antlr4.ParserRuleContext = None):
-        super().__init__(parser_context=parser_context)
-        self._set_id = coerceStr(set_id)
-        self._value_id = coerceStr(value_id)
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitSetContains(self)
-
-    def setID():
-        return self._set_id
-
-    def valueID():
-        return self._value_id
-
-    def __repr__(self):
-        return f'QXSetContains(set_id={self._set_id}, value_id={self._value_id})'
 
 
 @qafny.auto.rich_repr
