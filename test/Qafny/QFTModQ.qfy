@@ -25,7 +25,7 @@ method QPEQ(q: Q[n], p: Q[n], n: nat, a: nat, Q_divisor: nat)
   for i in [0, n) with q[i]
     separates q[0, n), p[0, n)
     invariant {
-      q[0, i), p[0, n) : en ↦ ∑ c ∈ [0, 2^i) . ∑ k ∈ [0, 2^n) . 1 / sqrt(2^i) * 1 / sqrt(2^n) . ω (k * a + c * a, 2^n) |c, k⟩
+      q[0, i), p[0, n) : en ↦ ∑ c ∈ [0, 2^i) . ∑ k ∈ [0, 2^n) . 1 / sqrt(2^i) * 1 / sqrt(2^n) * ω (k * a + c * a, 2^n) |c, k⟩
     }
    invariant { // is this necessary, before the loop, q is in Had, so q[k,n) in Had is well-known.
       q [k, n) : Had ↦ |+⟩
