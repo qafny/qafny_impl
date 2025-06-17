@@ -59,7 +59,7 @@ logicOrExp: logicAndExp '||' logicOrExp | logicAndExp;
 
 logicAndExp: logicNotExp '&&' logicAndExp | logicNotExp;
 
-logicNotExp: 'not' logicNotExp | fcall | chainBExp | logicInExpr;
+logicNotExp: 'not' logicNotExp | fcall | chainBExp | logicInExpr | qunspec;
 
 logicInExpr: ID TIn ID;
 
@@ -92,7 +92,7 @@ partsections: partsection ('+' partsection);
 
 tensorall: '⊗' ID '.' manyket | '⊗' ID TIn crange '.' manyket;
 
-sumspec: maySum (arithExpr? manyketpart ('&&' bexp)? | '(' arithExpr? manyketpart ('&&' bexp)? ')') | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
+sumspec: maySum (arithExpr? manyketpart | '(' arithExpr? manyketpart ')') | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
 
 maySum: TSum ID TIn crange (('on' | '@') '(' bexp ')')? '.';
 
@@ -240,7 +240,7 @@ qty : Nor | Had | En | En '(' arithExpr ')' | aaType;
 
 aaType : AA | AA '(' qrange ')';
 
-additiveOp: TAdd | TSub;
+additiveOp: TAdd | TSub | OPlus;
 
 multiplicativeOp: TMul | TDiv | TMod;
 
@@ -301,7 +301,9 @@ TMod : '%';
 
 TExp : '^';
 
-TXor : '⊕' | 'xor'; // xor and ⊕ are the same operator
+OPlus: '⊕';
+
+TXor : 'xor';
 
 TDot : '.' ;
 

@@ -305,6 +305,8 @@ class ProgramTransformer(ExpVisitor):
             return vs
         if ctx.logicInExpr() is not None:
             return self.visitLogicInExpr(ctx.logicInExpr())
+        if ctx.qunspec() is not None:
+            return self.visitQunspec(ctx.qunspec())
 
     # Visit a parse tree produced by ExpParser#chainBExp.
     def visitChainBExp(self, ctx: ExpParser.ChainBExpContext):
@@ -393,23 +395,15 @@ class ProgramTransformer(ExpVisitor):
             else:
                 old_states = states.copy()
                 states.clear()
-                print(old_states)
-                print()
-                print(new_states)
-                print()
                 for j in range(len(old_states)):
                     for k in range(len(new_states)):
                         states.append(self.mergeStates(old_states[j], new_states[k]))
-                        print(f'k: {k}')
-                    print(f'j: {j}')
-                print(states)
 
             i += 1
 
         return QXQSpec(locus, qty, states, ctx)
 
     def mergeStates(self, *args):
-        print(args)
         '''
         Merges any number of specifications together
         This is based on the fact that
@@ -728,7 +722,7 @@ class ProgramTransformer(ExpVisitor):
             child = ctx.getChild(i)
 
             if child.getText() not in ['(', ',', ')']:
-                converted_child = child.accept(self)
+                converted_child = child.accept(self) if not isinstance(child, antlr4.tree.Tree.TerminalNodeImpl) else QXBind(child, parser_context=child)
                 if isinstance(converted_child, list):
                     kets += converted_child
                 else:
@@ -743,11 +737,12 @@ class ProgramTransformer(ExpVisitor):
         id = ctx.ID()
         crange = self.visitCrange(ctx.crange())
         inv = self.visitLoopConds(ctx.loopConds())
-        stmts = self.visitStmts(ctx.stmts())
-        control = None
+        body = self.visitStmts(ctx.stmts())
         if ctx.bexp() is not None:
             control = self.visitBexp(ctx.bexp())
-        return QXFor(id, crange, inv, stmts, control, ctx)
+            # since we have a control, wrap the body in an if stmt
+            body = QXIf(control, body, None, ctx)
+        return QXFor(id, crange, inv, body, ctx)
 
     # Visit a parse tree produced by ExpParser#whileexp.
     def visitWhileexp(self, ctx: ExpParser.WhileexpContext):
@@ -1256,11 +1251,7 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#exponentialOp.
     def visitExponentialOp(self, ctx:ExpParser.ExponentialOpContext):
-        operator = ctx.getText()
-        if operator == 'xor':
-            return '⊕'
-        else:
-            return operator
+        return ctx.getText()
 
     # Visit a parse tree produced by ExpParser#boolLiteral.
     def visitBoolLiteral(self, ctx: ExpParser.BoolLiteralContext):

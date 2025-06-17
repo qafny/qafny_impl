@@ -1352,13 +1352,12 @@ class QXIf(QXStmt):
 @qafny.auto.equality
 class QXFor(QXStmt):
 
-    def __init__(self, id: str, crange: QXCRange, conds: [QXCond], stmts: [QXStmt], control: Optional[QXBExp] = None, parser_context: Optional[antlr4.ParserRuleContext] = None):
+    def __init__(self, id: str, crange: QXCRange, conds: [QXCond], stmts: [QXStmt], parser_context: Optional[antlr4.ParserRuleContext] = None):
         super().__init__(parser_context=parser_context)
         self._id = id.getText() if isAntlrNode(id) else id
         self._crange = crange
         self._conds = conds
         self._stmts = stmts
-        self._control = control
 
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitFor(self)
@@ -1387,11 +1386,8 @@ class QXFor(QXStmt):
     def stmts(self) -> [QXStmt]:
         return self._stmts
 
-    def control(self) -> QXBExp:
-        return self._control
-
     def __repr__(self):
-        return f"QXFor(id={repr(str(self._id))}, crange={self._crange}, conds={self._conds}, stmts={self._stmts}, control={self._control})"
+        return f"QXFor(id={repr(str(self._id))}, crange={self._crange}, conds={self._conds}, stmts={self._stmts})"
 
 
 @qafny.auto.rich_repr
