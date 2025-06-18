@@ -32,7 +32,10 @@ class TestQafnyGrammar(TestSuite): # (unittest.TestCase):
     def test_files(self):
         for filename in suite.TEST_FILES:
             # capture stdout
-            self.start_case(filename, f'Failed to parse: {filename}')
+            should_run = self.start_case(filename, f'Failed to parse: {filename}')
+            if not should_run:
+                continue
+            
             result = self.parse_file(filename)
             self.end_case(result)
 

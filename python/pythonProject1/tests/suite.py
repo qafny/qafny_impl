@@ -198,6 +198,7 @@ class TestSuite:
         self.__current_case_name = name
         self.__current_case_error_context = error_context
         self.begin_capture()
+
         return True
 
     def end_case(self, successful: bool):

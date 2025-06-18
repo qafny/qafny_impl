@@ -1298,6 +1298,17 @@ class QXMeasure(QXStmt):
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class QXMeasureAbort(QXStmt):
+    '''
+    A specific measure statement used in SWAPTest.qfy. Aborts the other qubits.
+
+    example (SWAPTest.qfy):
+    ...
+    ╭──────────────────────╮
+    │ y, prob *= measA(r); │ //we need a special measurement that will abort the other qubits and the main product is to compute the probablity of y.
+    ╰──────────────────────╯
+    ...
+
+    '''
 
     def __init__(self, ids: str, locus: Union[str, list[QXQRange]], res: QXAExp = None, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
@@ -1922,6 +1933,15 @@ class QXSeparates(QXCond):
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class QXInclude(QXTop):
+    '''
+    Represents an include top-level statment. The file to be included is provided as path.
+    example (from Superdense.qfy):
+    //Superdense Coding
+    ╭──────────────────────╮
+    │ include BellPair.qfy │
+    ╰──────────────────────╯
+    ...
+    '''
 
     def __init__(self, path: str, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
