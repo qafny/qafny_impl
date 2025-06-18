@@ -292,7 +292,7 @@ class TyArray(QXType):
         self._flag = flag
 
     def accept(self, visitor : AbstractProgramVisitor):
-        return visitor.visitSingleT(self)
+        return visitor.visitArrayT(self)
 
     def type(self):
         return self._type
@@ -320,7 +320,7 @@ class TySet(QXType):
         self._type = type
 
     def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitSingleT(self)
+        return visitor.visitTySet(self)
 
     def type(self):
         return self._type
@@ -504,7 +504,7 @@ class QXBind(QXAExp):
 
 class QXBool(QXBExp, QXSpec):
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         pass
 
 
@@ -518,7 +518,7 @@ class QXLogic(QXBool):
         self._left = left
         self._right = right
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitLogic(self)
 
     def op(self):
@@ -860,7 +860,7 @@ class QXMemberAccess(QXAExp):
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitMemberAccess(self)
 
-    def IDs():
+    def ids():
         return self._ids
 
     def __repr__(self):
@@ -900,7 +900,7 @@ class QXSumAExp(QXAExp):
     def sum(self):
         return self._sum
 
-    def axep(self):
+    def aexp(self):
         return self._aexp
 
     def __repr__(self):
@@ -944,6 +944,9 @@ class QXQNot(QXQBool):
     def __init__(self, next: QXQBool, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._next = next
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitQNot(self):
 
     def next(self):
         return self._next
@@ -1038,6 +1041,9 @@ class QXOracle(QXExp):
 
     def bindings(self):
         return self._bindings
+
+    def phase(self):
+        return self._amplitude_expr
 
     def amplitude_expr(self):
         return self._amplitude_expr
@@ -1250,6 +1256,9 @@ class QXQCreate(QXStmt):
         self._qrange = qrange
         self._size = size
 
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitQCreate(self)
+
     def qrange(self):
         return self._qrange
 
@@ -1331,7 +1340,7 @@ class QXIf(QXStmt):
     def stmts(self):
         return self._stmts
 
-    def else_branch(self):
+    def else_stmts(self):
         return self._else_branch
 
     def __repr__(self):
@@ -1453,7 +1462,7 @@ class QXReturn(QXStmt):
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitReturn(self)
 
-    def IDs(self):
+    def ids(self):
         return self._ids
 
     def __repr__(self):
@@ -1478,7 +1487,12 @@ class QXBreak(QXStmt):
         }
     ...
     '''
-    pass
+    
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitBreak(self)
+
+    def __repr__(self):
+        return 'QXBreak()'
 
 ########################################################################
 # Partitions:
@@ -1542,6 +1556,9 @@ class QXPartsection(QXTop):
         self._ket = ket
         # predicate should be of type QXCall
         self._predicate = predicate
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitPartsection(self)
 
     def amplitude(self) -> QXAExp:
         return self._amplitude
@@ -2053,14 +2070,14 @@ class QXPredicate(QXTop):
 @qafny.auto.equality
 class QXProgram(QXTop):
 
-    def __init__(self, exps: [QXMethod], parser_context: antlr4.ParserRuleContext = None):
+    def __init__(self, exps: [QXTop], parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._exps = exps
 
-    def accept(self, visitor : AbstractProgramVisitor):
+    def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitProgram(self)
 
-    def method(self):
+    def topLevelStmts(self):
         return self._exps
 
     def __repr__(self):
