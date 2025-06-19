@@ -216,21 +216,27 @@ class QXTop:
         self._range = range
 
     def line(self):
+        '''Returns the line number that this AST node starts on. If it is a multiline node, this returns the first line number.'''
         return self._line
 
     def setLine(self, line: int):
+        '''A setter for the line property.'''
         self._line = line
 
     def col(self):
+        '''Returns the column that this AST node starts at. If it inhabits multiple columns (anything over one character) it returns the first column.'''
         return self._col
 
     def setCol(self, col: int):
+        '''A setter for the column property.'''
         self._col = col
 
-    def range(self):
+    def range(self) -> Tuple[int, int]:
+        '''Returns the index of the first and last character associated with this AST node in the original source string.'''
         return self._range
 
     def setRange(self, range: Tuple[int, int]):
+        '''A setter for the range property.'''
         self._range = range
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -946,7 +952,7 @@ class QXQNot(QXQBool):
         self._next = next
 
     def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitQNot(self):
+        return visitor.visitQNot(self)
 
     def next(self):
         return self._next
