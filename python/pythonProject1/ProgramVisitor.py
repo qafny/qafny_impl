@@ -439,8 +439,10 @@ class ProgramVisitor(AbstractProgramVisitor):
                     e.accept(self)
             else:
                 elem.accept(self)
-        ctx.amp().accept(self)
-        ctx.range().accept(self)
+        if ctx.amp():
+            ctx.amp().accept(self)
+        if ctx.range():
+            ctx.range().accept(self)
         return ctx.ID()
 
     def visitSKet(self, ctx: Programmer.QXSKet):
@@ -464,7 +466,7 @@ class ProgramVisitor(AbstractProgramVisitor):
     # ────────── Sums and ranges ──────────
     def visitCon(self, ctx: Programmer.QXCon):
         ctx.range().accept(self)
-        if ctx.condition() is not None():
+        if ctx.condition() is not None:
             ctx.condition().accept(self)
         return ctx.ID()
 
