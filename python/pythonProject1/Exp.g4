@@ -57,12 +57,6 @@ allspec: logicExpr | 'forall' typeOptionalBinding '::' chainBExp '==>' logicImpl
 
 logicExpr: logicExpr '||' logicExpr | logicExpr '&&' logicExpr | 'not' logicExpr | chainBExp | logicInExpr | qunspec | arithExpr;
 
-// logicOrExp: logicAndExp '||' logicOrExp | logicAndExp;
-
-// logicAndExp: logicNotExp '&&' logicAndExp | logicNotExp;
-
-// logicNotExp: 'not' logicNotExp | fcall | chainBExp | logicInExpr | qunspec;
-
 logicInExpr: arithExpr TIn arithExpr;
 
 chainBExp: arithExprWithSum (comOp arithExprWithSum)+;
@@ -126,12 +120,6 @@ breakStmt: 'break' ';';
 ifexp: If ('(' bexp ')' | bexp) 'then'? '{' stmts '}' (Else '{' stmts '}')?;
 
 cifexp : If bexp 'then' (arithExpr | '{' arithExpr '}') Else (arithExpr | '{' arithExpr '}');
-
-// allows partspecs as as nodes in sum spec expressions (see test16.qfy for an example)
-// ketArithExpr: ketCifexp | partspec | '(' ketArithExpr ')';
-
-// allows partspecs for sum spec expressions
-// ketCifexp: If bexp 'then' ketArithExpr 'else' ketArithExpr;
 
 manyketpart: (ket | partspec | '(' ket (',' ket)* ')' | fcall | ID | idindex)+;
 
