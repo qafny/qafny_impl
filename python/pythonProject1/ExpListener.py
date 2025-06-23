@@ -161,30 +161,12 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#logicOrExp.
-    def enterLogicOrExp(self, ctx:ExpParser.LogicOrExpContext):
+    # Enter a parse tree produced by ExpParser#logicExpr.
+    def enterLogicExpr(self, ctx:ExpParser.LogicExprContext):
         pass
 
-    # Exit a parse tree produced by ExpParser#logicOrExp.
-    def exitLogicOrExp(self, ctx:ExpParser.LogicOrExpContext):
-        pass
-
-
-    # Enter a parse tree produced by ExpParser#logicAndExp.
-    def enterLogicAndExp(self, ctx:ExpParser.LogicAndExpContext):
-        pass
-
-    # Exit a parse tree produced by ExpParser#logicAndExp.
-    def exitLogicAndExp(self, ctx:ExpParser.LogicAndExpContext):
-        pass
-
-
-    # Enter a parse tree produced by ExpParser#logicNotExp.
-    def enterLogicNotExp(self, ctx:ExpParser.LogicNotExpContext):
-        pass
-
-    # Exit a parse tree produced by ExpParser#logicNotExp.
-    def exitLogicNotExp(self, ctx:ExpParser.LogicNotExpContext):
+    # Exit a parse tree produced by ExpParser#logicExpr.
+    def exitLogicExpr(self, ctx:ExpParser.LogicExprContext):
         pass
 
 
@@ -428,24 +410,6 @@ class ExpListener(ParseTreeListener):
 
     # Exit a parse tree produced by ExpParser#cifexp.
     def exitCifexp(self, ctx:ExpParser.CifexpContext):
-        pass
-
-
-    # Enter a parse tree produced by ExpParser#ketArithExpr.
-    def enterKetArithExpr(self, ctx:ExpParser.KetArithExprContext):
-        pass
-
-    # Exit a parse tree produced by ExpParser#ketArithExpr.
-    def exitKetArithExpr(self, ctx:ExpParser.KetArithExprContext):
-        pass
-
-
-    # Enter a parse tree produced by ExpParser#ketCifexp.
-    def enterKetCifexp(self, ctx:ExpParser.KetCifexpContext):
-        pass
-
-    # Exit a parse tree produced by ExpParser#ketCifexp.
-    def exitKetCifexp(self, ctx:ExpParser.KetCifexpContext):
         pass
 
 

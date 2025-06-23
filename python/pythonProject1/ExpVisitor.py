@@ -94,18 +94,8 @@ class ExpVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by ExpParser#logicOrExp.
-    def visitLogicOrExp(self, ctx:ExpParser.LogicOrExpContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by ExpParser#logicAndExp.
-    def visitLogicAndExp(self, ctx:ExpParser.LogicAndExpContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by ExpParser#logicNotExp.
-    def visitLogicNotExp(self, ctx:ExpParser.LogicNotExpContext):
+    # Visit a parse tree produced by ExpParser#logicExpr.
+    def visitLogicExpr(self, ctx:ExpParser.LogicExprContext):
         return self.visitChildren(ctx)
 
 
@@ -241,16 +231,6 @@ class ExpVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by ExpParser#cifexp.
     def visitCifexp(self, ctx:ExpParser.CifexpContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by ExpParser#ketArithExpr.
-    def visitKetArithExpr(self, ctx:ExpParser.KetArithExprContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by ExpParser#ketCifexp.
-    def visitKetCifexp(self, ctx:ExpParser.KetCifexpContext):
         return self.visitChildren(ctx)
 
 

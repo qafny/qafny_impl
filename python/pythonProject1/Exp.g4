@@ -1,7 +1,7 @@
 /* 
  * # Qafny Grammar:
  *
- * Operator Precedence:
+ * Operator Precedence (higher items bind tighter):
  * function calls, ranges, in, member access (e.g. a.Length)
  * unary subtraction (-), unitary not expr (not)
  * exponential/xor (^, ⊕)
@@ -47,19 +47,21 @@ stmt: asserting | casting | varcreate | assigning | qassign | qcreate | measure 
 
 spec : qunspec | logicImply | chainBExp | '{' (qunspec | logicImply | chainBExp) '}';
 
-bexp: logicOrExp | qbool | ID | boolLiteral;
+bexp: logicExpr | qbool | ID | boolLiteral;
 
 qbool: qrange | '{' locus '}' comOp arithExpr | arithExpr comOp arithExpr '@' idindex | 'not' qbool;
 
 logicImply: allspec | allspec '==>' logicImply | qunspec;
 
-allspec: logicOrExp | 'forall' typeOptionalBinding '::' chainBExp '==>' logicImply | 'forall' typeOptionalBinding TIn crange '==>' logicImply;
+allspec: logicExpr | 'forall' typeOptionalBinding '::' chainBExp '==>' logicImply | 'forall' typeOptionalBinding TIn crange '==>' logicImply;
 
-logicOrExp: logicAndExp '||' logicOrExp | logicAndExp;
+logicExpr: logicExpr '||' logicExpr | logicExpr '&&' logicExpr | 'not' logicExpr | chainBExp | logicInExpr | qunspec | arithExpr;
 
-logicAndExp: logicNotExp '&&' logicAndExp | logicNotExp;
+// logicOrExp: logicAndExp '||' logicOrExp | logicAndExp;
 
-logicNotExp: 'not' logicNotExp | fcall | chainBExp | logicInExpr | qunspec;
+// logicAndExp: logicNotExp '&&' logicAndExp | logicNotExp;
+
+// logicNotExp: 'not' logicNotExp | fcall | chainBExp | logicInExpr | qunspec;
 
 logicInExpr: arithExpr TIn arithExpr;
 
@@ -94,7 +96,7 @@ tensorall: '⊗' ID '.' manyket | '⊗' ID TIn crange '.' manyket;
 
 sumspec: maySum (arithExpr? manyketpart | '(' arithExpr? manyketpart ')') | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
 
-maySum: TSum ID TIn crange (('on' | '@') '(' bexp ')')? '.';
+maySum: TSum ID TIn crange '.'; // (('on' | '@') '(' bexp ')')?
 
 asserting: 'assert' spec ';';
 
@@ -126,12 +128,12 @@ ifexp: If ('(' bexp ')' | bexp) 'then'? '{' stmts '}' (Else '{' stmts '}')?;
 cifexp : If bexp 'then' (arithExpr | '{' arithExpr '}') Else (arithExpr | '{' arithExpr '}');
 
 // allows partspecs as as nodes in sum spec expressions (see test16.qfy for an example)
-ketArithExpr: ketCifexp | partspec | '(' ketArithExpr ')';
+// ketArithExpr: ketCifexp | partspec | '(' ketArithExpr ')';
 
 // allows partspecs for sum spec expressions
-ketCifexp: If bexp 'then' ketArithExpr 'else' ketArithExpr;
+// ketCifexp: If bexp 'then' ketArithExpr 'else' ketArithExpr;
 
-manyketpart: (ket | ketArithExpr | '(' ket (',' ket)* ')' | fcall | ID | idindex)+;
+manyketpart: (ket | partspec | '(' ket (',' ket)* ')' | fcall | ID | idindex)+;
 
 forexp : 'for' ID TIn crange (('with' | '&&') bexp)? loopConds '{' stmts '}';
 
@@ -148,7 +150,7 @@ arithExprWithSum: arithExprWithSum exponentialOp arithExprWithSum | arithExprWit
 arithExpr: cifexp | arithExpr exponentialOp arithExpr | arithExpr multiplicativeOp arithExpr | arithExpr additiveOp arithExpr | arithAtomic;
 
 arithAtomic: numexp | ID | TSub arithAtomic | boolLiteral
-          | '(' arithExpr ')'
+          | '(' arithExpr ')' | '(' logicExpr ')'
           | fcall |  absExpr | sinExpr | cosExpr | sqrtExpr | omegaExpr | rotExpr | notExpr | setInstance | qrange | ketCallExpr | memberAccess;
 
 sinExpr : 'sin' ('^' numexp)? '(' arithExpr ')' | 'sin' arithAtomic;
@@ -213,7 +215,7 @@ idindex : ID index;
 
 // rangeT: ID crange;
 
-qrange: (ID | fcall) (index | crange | qslice)+;
+qrange: (ID | fcall) (index | crange | qslice)+; // multiple cranges used in StateDistinguishing.qfy
 
 // element : numexp | ID;
 
