@@ -60,9 +60,20 @@ DEFAULT_FILENAMES = [
     example_program("simon"),
     example_program("DiscreteLog"),
     example_program("Grovers"),
-    example_program("DiscreteLog"),
     example_program("QPE"),
-    example_program("SWAPTest")
+    example_program("SWAPTest"),
+    example_program("AmpAmp"),
+    example_program("AmplitudeEstimation"),
+    example_program("AppxCounting"),
+    example_program("BHSP"),
+    example_program("FirstAmpEstimate"),
+    example_program("FOQA"),
+    example_program("LongDistanceEntangle"),
+    example_program("NonBoolean"),
+    example_program("QFTModQ"),
+    example_program("SimpleAmpEstimate"),
+    example_program("Stabilizer"),
+    example_program("StateDistinguishing")
 ]
 
 #######################################
@@ -201,4 +212,3 @@ if __name__ == "__main__":
                 # report status to the user
                 show_step_status(filename, "Verify", dafny_result.returncode == 0)
             print("") # newline break
-

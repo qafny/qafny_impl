@@ -42,7 +42,7 @@ TEST_FILES = [
     'AmplitudeEstimation',
     'AppxCounting',
     'BHSP',
-    # 'BHT', # phase kick-back is currently unimplemented
+    # 'BHT', # contains phase kick-back syntax that is currently unimplemented
     # 'BV',
     'FirstAmpEstimate',
     # 'FixedPtSearch', # currently unfinished

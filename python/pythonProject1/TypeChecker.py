@@ -7,7 +7,7 @@ from SubstAExp import SubstAExp
 
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
-    return (q1.ID() == q2.ID()
+    return (q1.location() == q2.location()
             and compareAExp(q1.cranges()[0].left(),q2.cranges()[0].left())
             and compareAExp(q1.cranges()[0].right(),q2.cranges()[0].right()))
 
@@ -99,16 +99,16 @@ def compareSingle(qs: [QXQRange], qv: [QXQRange]):
     vs = []
     for i in range(len(qs)):
         v = qs[i]
-        if elem.ID() == v.ID():
+        if elem.location() == v.location():
             if compareAExp(elem.cranges()[0].left(), v.cranges()[0].left()):
                 if compareAExp(elem.cranges()[0].right(), v.cranges()[0].right()):
                     qv = []
                     vs += (qs[i+1:len(qs)])
-                    return (QXQRange(elem.ID(), [QXCRange(v.cranges()[0].left(), v.cranges()[0].right())]), vs, qv)
+                    return (QXQRange(elem.location(), [QXCRange(v.cranges()[0].left(), v.cranges()[0].right())]), vs, qv)
                 else:
-                    qv = [QXQRange(elem.ID(), [QXCRange(v.cranges()[0].right(), elem.cranges()[0].right())])]
+                    qv = [QXQRange(elem.location(), [QXCRange(v.cranges()[0].right(), elem.cranges()[0].right())])]
                     vs += (qs[i+1:len(qs)])
-                    return (QXQRange(elem.ID(), [QXCRange(v.cranges()[0].left(), v.cranges()[0].right())]), vs, qv)
+                    return (QXQRange(elem.location(), [QXCRange(v.cranges()[0].left(), v.cranges()[0].right())]), vs, qv)
         vs += [v]
 
     return None
@@ -189,13 +189,13 @@ def subRangeLocus(elem: QXQRange, qs: [QXQRange]):
     vs = []
     for i in range(len(qs)):
         v = qs[i]
-        if elem.ID() == v.ID():
+        if elem.location() == v.location():
             if compareAExp(elem.cranges()[0].left(), v.cranges()[0].left()):
                 if compareAExp(elem.cranges()[0].right(), v.cranges()[0].right()):
                     vs += (qs[i + 1:len(qs)])
                     return vs
                 else:
-                    vs += [QXQRange(elem.ID(), [QXCRange(v.cranges()[0].right(), elem.cranges()[0].right())])] + (qs[i + 1:len(qs)])
+                    vs += [QXQRange(elem.location(), [QXCRange(v.cranges()[0].right(), elem.cranges()[0].right())])] + (qs[i + 1:len(qs)])
                     return vs
         vs = vs + [qs[i]]
     return None
@@ -469,7 +469,7 @@ class TypeChecker(ProgramVisitor):
 
         for loc, ty in endEnv:
             for ran in loc:
-                id = substQVar(tmpQVars, ran.ID())
+                id = substQVar(tmpQVars, ran.location())
                 left = substAllVars(substs, ran.cranges()[0].left())
                 right = substAllVars(substs, ran.cranges()[0].right())
                 v = QXQRange(id, [QXCRange(left, right)])

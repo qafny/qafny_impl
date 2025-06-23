@@ -8,8 +8,8 @@ def joinRange(q1:QXQRange, qs:[QXQRange]):
     tmp = []
     for i in range(len(qs)):
         elem = qs[i]
-        if q1.ID() == elem.ID() and compareAExp(elem.crange().right(), q1.crange().left()):
-                tmp += [QXQRange(q1.ID(), QXCRange(elem.crange().right(), q1.crange().left()))] + qs[i+1:len(qs)]
+        if q1.location() == elem.location() and compareAExp(elem.crange().right(), q1.crange().left()):
+                tmp += [QXQRange(q1.location(), QXCRange(elem.crange().right(), q1.crange().left()))] + qs[i+1:len(qs)]
                 return tmp
         else:
             tmp += [elem]
@@ -24,7 +24,7 @@ def joinLocus(q1:[QXQRange], qs:[QXQRange]):
 def getVars(q: [QXQRange]):
     tmp = []
     for elem in q:
-        tmp += [elem.ID()]
+        tmp += [elem.location()]
     return tmp
 
 def findLocus(q: [str], qs:[[QXQRange]]):
@@ -98,9 +98,9 @@ class LocusCollector(ProgramVisitor):
 
     def visitQIndex(self, ctx: Programmer.QXQIndex):
         if isinstance(ctx.index(), QXNum):
-            self.renv=joinLocus([QXQRange(ctx.ID(), QXCRange(ctx.index(), QXNum(ctx.index().num() + 1)))], self.renv)
+            self.renv=joinLocus([QXQRange(ctx.ID(), [QXCRange(ctx.index(), QXNum(ctx.index().num() + 1))])], self.renv)
         else:
-            self.renv=joinLocus([QXQRange(ctx.ID(), QXCRange(ctx.index(), QXBin("+", ctx.index(), QXNum(1))))], self.renv)
+            self.renv=joinLocus([QXQRange(ctx.ID(), [QXCRange(ctx.index(), QXBin("+", ctx.index(), QXNum(1)))])], self.renv)
         return True
 
     def visitQNot(self, ctx: Programmer.QXQNot):

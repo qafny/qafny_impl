@@ -109,9 +109,9 @@ class TypeCollector(ProgramVisitor):
             if isinstance(elem, QXRequires):
                 if isinstance(elem.spec(), QXQSpec):
                     for ran in elem.spec().locus():
-                        if ran.ID() in tmp:
-                            tmp.remove(ran.ID())
-                        elif ran.ID() in vars:
+                        if ran.location() in tmp:
+                            tmp.remove(ran.location())
+                        elif ran.location() in vars:
                             continue
                         else:
                             return None
@@ -144,9 +144,9 @@ class TypeCollector(ProgramVisitor):
             if isinstance(elem, QXEnsures):
                 if isinstance(elem.spec(), QXQSpec):
                     for ran in elem.spec().locus():
-                        if ran.ID() in tmp:
-                            tmp.remove(ran.ID())
-                        elif ran.ID() in vars:
+                        if ran.location() in tmp:
+                            tmp.remove(ran.location())
+                        elif ran.location() in vars:
                             continue
                         else:
                             return None
@@ -195,7 +195,7 @@ class TypeCollector(ProgramVisitor):
         return True
 
     def visitProgram(self, ctx: Programmer.QXProgram):
-        for elem in ctx.method():
+        for elem in ctx.topLevelStmts():
             v = elem.accept(self)
             if not v:
                 return False
@@ -206,7 +206,7 @@ class TypeCollector(ProgramVisitor):
         if isinstance(ctx.spec(), QXQSpec):
             for elem in ctx.spec().locus():
                 for crange in elem.cranges():
-                    x = str(elem.ID())
+                    x = str(elem.location())
                     kty = self.fkenv[0].get(x)
                     if not isinstance(kty, TyQ):
                         return False
@@ -253,7 +253,7 @@ class TypeCollector(ProgramVisitor):
         if isinstance(ctx.spec(), QXQSpec):
             for elem in ctx.spec().locus():
                 for crange in elem.cranges():
-                    x = str(elem.ID())
+                    x = str(elem.location())
                     kty = self.fkenv[0].get(x)
                     if not isinstance(kty, TyQ):
                         return False

@@ -88,7 +88,7 @@ class CollectKind(ProgramVisitor):
         return x_
 
     def visitProgram(self, ctx: Programmer.QXProgram):
-        for elem in ctx.method():
+        for elem in ctx.topLevelStmts():
             v = elem.accept(self)
             if not v:
                 return False
