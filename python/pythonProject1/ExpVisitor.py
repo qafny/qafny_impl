@@ -394,11 +394,6 @@ class ExpVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by ExpParser#qslice.
-    def visitQslice(self, ctx:ExpParser.QsliceContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by ExpParser#idindex.
     def visitIdindex(self, ctx:ExpParser.IdindexContext):
         return self.visitChildren(ctx)

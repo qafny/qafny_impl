@@ -701,15 +701,6 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#qslice.
-    def enterQslice(self, ctx:ExpParser.QsliceContext):
-        pass
-
-    # Exit a parse tree produced by ExpParser#qslice.
-    def exitQslice(self, ctx:ExpParser.QsliceContext):
-        pass
-
-
     # Enter a parse tree produced by ExpParser#idindex.
     def enterIdindex(self, ctx:ExpParser.IdindexContext):
         pass

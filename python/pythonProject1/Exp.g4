@@ -197,13 +197,9 @@ crange : '[' arithExpr ',' arithExpr ')';
 
 index: '[' arithExpr ']';
 
-qslice: '[' start=arithExpr? '..' end=arithExpr? ']'; // upto, but not including the end
-
 idindex : ID index;
 
-// rangeT: ID crange;
-
-qrange: (ID | fcall) (index | crange | qslice)+; // multiple cranges used in StateDistinguishing.qfy
+qrange: (ID | fcall) (index | index crange | crange); // multiple cranges used in StateDistinguishing.qfy
 
 // element : numexp | ID;
 
