@@ -222,8 +222,8 @@ class ProgramTransformer(ExpVisitor):
         
         if ctx.qbool() is not None:
             return self.visitQbool(ctx.qbool())
-        elif ctx.logicOrExp() is not None:
-            return self.visitLogicOrExp(ctx.logicOrExp())
+        elif ctx.logicExpr() is not None:
+            return self.visitLogicExpr(ctx.logicExpr())
         elif ctx.ID() is not None:
             return QXBind(ctx.ID())
         elif ctx.boolLiteral() is not None:
@@ -274,8 +274,26 @@ class ProgramTransformer(ExpVisitor):
 
             return QXAll(bind, bounds, imply, ctx)
         else:
-            return self.visitLogicOrExp(ctx.logicOrExp())
+            return self.visitLogicExpr(ctx.logicExpr())
 
+    # Visit a parse tree produced by ExpParser#logicExpr.
+    def visitLogicExpr(self, ctx: ExpParser.LogicExprContext):
+        if len(ctx.logicExpr()) > 0:
+            # could be or, and or not
+            if ctx.getChild(0).getText() == 'not':
+                return QXCNot(self.visitLogicExpr(ctx.logicExpr(0)))
+            return QXLogic(ctx.getChild(1), self.visitLogicExpr(ctx.logicExpr(0)), self.visitLogicExpr(ctx.logicExpr(1)))
+        elif ctx.chainBExp() is not None:
+            return self.visitChainBExp(ctx.chainBExp())
+        elif ctx.logicInExpr() is not None:
+            return self.visitLogicInExpr(ctx.logicInExpr())
+        elif ctx.qunspec() is not None:
+            return self.visitQunspec(ctx.qunspec())
+        elif ctx.arithExpr() is not None:
+            return self.visitArithExpr(ctx.arithExpr())
+        else:
+            raise ValueError("[UNREACHABLE] Unreachable branch in visitLogicExpr(...)")
+    '''
     # Visit a parse tree produced by ExpParser#logicOrExp.
     def visitLogicOrExp(self, ctx: ExpParser.LogicOrExpContext):
         if not ctx:
@@ -307,6 +325,7 @@ class ProgramTransformer(ExpVisitor):
             return self.visitLogicInExpr(ctx.logicInExpr())
         if ctx.qunspec() is not None:
             return self.visitQunspec(ctx.qunspec())
+    '''
 
     # Visit a parse tree produced by ExpParser#chainBExp.
     def visitChainBExp(self, ctx: ExpParser.ChainBExpContext):
@@ -543,7 +562,7 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#maySum.
     def visitMaySum(self, ctx: ExpParser.MaySumContext):
-        return QXCon(ctx.ID(), self.visitCrange(ctx.crange()), self.visitBexp(ctx.bexp()))
+        return QXCon(ctx.ID(), self.visitCrange(ctx.crange()), ctx)
         # tmp = []
         # i = 0
         # while ctx.ID(i) is not None:
@@ -694,24 +713,6 @@ class ProgramTransformer(ExpVisitor):
         r = self.visitArithExpr(ctx.arithExpr(1))
         return QXIfExp(b, l, r, ctx)
 
-    # Visit a parse tree produced by ExpParser#ketArithExpr.
-    def visitKetArithExpr(self, ctx: ExpParser.KetArithExprContext):
-        if ctx.ketCifexp() is not None:
-            return self.visitKetCifexp(ctx.ketCifexp())
-        elif ctx.partspec() is not None:
-            return self.visitPartspec(ctx.partspec())
-        elif ctx.ketArithExpr() is not None:
-            return self.visitKetArithExpr(ctx.ketArithExpr()) # parentheses unwrapping
-        else:
-            raise ValueError("Unreachable code block in visitKetArithExpr(...)")
-
-    # Visit a parse tree produced by ExpParser#ketCifexp.
-    def visitKetCifexp(self, ctx: ExpParser.KetCifexpContext):
-        conditional = self.visitBexp(ctx.bexp())
-        true_branch = self.visitKetArithExpr(ctx.ketArithExpr(0))
-        false_branch = self.visitKetArithExpr(ctx.ketArithExpr(1))
-        return QXIfExp(conditional, true_branch, false_branch, ctx)
-
     # Visit a parse tree produced by ExpParser#manyketpart.
     def visitManyketpart(self, ctx: ExpParser.ManyketpartContext):
         # not just kets, but can include ket arith expr, function calls, ids and id indices
@@ -839,6 +840,8 @@ class ProgramTransformer(ExpVisitor):
             return self.visitBoolLiteral(ctx.boolLiteral())
         elif ctx.arithExpr() is not None:
             return self.visitArithExpr(ctx.arithExpr())
+        elif ctx.logicExpr() is not None:
+            return self.visitLogicExpr(ctx.logicExpr())
         elif ctx.fcall() is not None:
             return self.visitFcall(ctx.fcall())
         elif ctx.absExpr() is not None:
