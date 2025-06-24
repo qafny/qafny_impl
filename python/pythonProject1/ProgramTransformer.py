@@ -98,17 +98,6 @@ class ProgramTransformer(ExpVisitor):
             return []
         return self.visitBindings(ctx.bindings())
 
-    # def dealWithList(self, op: str, specs: [QXSpec]):
-    #     tmp = []
-    #     if op == "requires":
-    #         for elem in specs:
-    #             tmp.append(QXRequires(elem))
-    #         return tmp
-    #     if op == "ensures":
-    #         for elem in specs:
-    #             tmp.append(QXEnsures(elem))
-    #         return tmp
-
     # Visit a parse tree produced by ExpParser#conds.
     def visitConds(self, ctx: ExpParser.CondsContext):
         if ctx is None:
@@ -125,7 +114,6 @@ class ProgramTransformer(ExpVisitor):
             elif top == 'ensures':
                 conds.append(QXEnsures(spec, ctx))
 
-            # conds += self.dealWithList(top, self.visitSpec(ctx.spec(i)))
             i = i + 1
 
         # convert decreases
@@ -293,39 +281,6 @@ class ProgramTransformer(ExpVisitor):
             return self.visitArithExpr(ctx.arithExpr())
         else:
             raise ValueError("[UNREACHABLE] Unreachable branch in visitLogicExpr(...)")
-    '''
-    # Visit a parse tree produced by ExpParser#logicOrExp.
-    def visitLogicOrExp(self, ctx: ExpParser.LogicOrExpContext):
-        if not ctx:
-            return None
-        if ctx.logicOrExp() is not None:
-            v1 = self.visitLogicAndExp(ctx.logicAndExp())
-            v2 = self.visitLogicOrExp(ctx.logicOrExp())
-            return QXLogic("||", v1, v2, ctx)
-        return self.visitLogicAndExp(ctx.logicAndExp())
-
-    # Visit a parse tree produced by ExpParser#logicAndExp.
-    def visitLogicAndExp(self, ctx: ExpParser.LogicAndExpContext):
-        if ctx.logicAndExp() is not None:
-            v1 = self.visitLogicNotExp(ctx.logicNotExp())
-            v2 = self.visitLogicAndExp(ctx.logicAndExp())
-            return QXLogic("&&", v1, v2, ctx)
-        return self.visitLogicNotExp(ctx.logicNotExp())
-
-    # Visit a parse tree produced by ExpParser#logicNotExp.
-    def visitLogicNotExp(self, ctx: ExpParser.LogicNotExpContext):
-        if ctx.logicNotExp() is not None:
-            return QXCNot(self.visitLogicNotExp(ctx.logicNotExp()))
-        if ctx.fcall() is not None:
-            return self.visitFcall(ctx.fcall())
-        if ctx.chainBExp() is not None:
-            vs = self.visitChainBExp(ctx.chainBExp())
-            return vs
-        if ctx.logicInExpr() is not None:
-            return self.visitLogicInExpr(ctx.logicInExpr())
-        if ctx.qunspec() is not None:
-            return self.visitQunspec(ctx.qunspec())
-    '''
 
     # Visit a parse tree produced by ExpParser#chainBExp.
     def visitChainBExp(self, ctx: ExpParser.ChainBExpContext):
@@ -563,21 +518,10 @@ class ProgramTransformer(ExpVisitor):
     # Visit a parse tree produced by ExpParser#maySum.
     def visitMaySum(self, ctx: ExpParser.MaySumContext):
         return QXCon(ctx.ID(), self.visitCrange(ctx.crange()), ctx)
-        # tmp = []
-        # i = 0
-        # while ctx.ID(i) is not None:
-        #     tmp.append(QXCon(ctx.ID(i), self.visitCrange(ctx.crange(i))))
-        #     i = i + 1
-        # return tmp
 
     # Visit a parse tree produced by ExpParser#asserting.
     def visitAsserting(self, ctx: ExpParser.AssertingContext):
         return QXAssert(self.visitSpec(ctx.spec()))
-        # tmp = self.visitSpec(ctx.spec())
-        # value = []
-        # for elem in tmp:
-        #     value.append(QXAssert(elem))
-        # return value
 
     # Visit a parse tree produced by ExpParser#casting.
     def visitCasting(self, ctx: ExpParser.CastingContext):
@@ -868,12 +812,6 @@ class ProgramTransformer(ExpVisitor):
             return self.visitMemberAccess(ctx.memberAccess())
         else:
             raise ValueError("[UNREACHABLE] Unreachable branch for arithAtomic")
-
-    # Visit a parse tree produced by ExpParser#arithExprSumSpec.
-    # def visitArithExprSumSpec(self, ctx: ExpParser.ArithExprSumSpecContext):
-    #     summation = self.visitMaySum(ctx.maySum())
-    #     aexp = self.visitArithExpr(ctx.arithExpr())
-    #     return QXSumAExp(summation, aexp)
 
     def visitUniCall(self, ctx: Union[ExpParser.SinExprContext, ExpParser.CosExprContext, ExpParser.SqrtExprContext]):
         '''Since the syntax of sin, cos and sqrt expressions is similar, they can all be handled by this function'''
