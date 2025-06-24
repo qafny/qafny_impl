@@ -191,13 +191,13 @@ class ProgramTransformer(ExpVisitor):
             return [self.visitReturnStmt(ctx.returnStmt())]
         elif ctx.breakStmt() is not None:
             return [self.visitBreakStmt(ctx.breakStmt())]
+        else:
+            raise ValueError("[UNREACHABLE] Unreachable branch in visitStmt.")
 
     # Visit a parse tree produced by ExpParser#spec.
     def visitSpec(self, ctx: ExpParser.SpecContext):
         if ctx.qunspec() is not None:
             return self.visitQunspec(ctx.qunspec())
-        # if ctx.allspec() is not None:
-        #     return [self.visitAllspec(ctx.allspec())]
         elif ctx.logicImply() is not None:
             return self.visitLogicImply(ctx.logicImply())
         elif ctx.chainBExp() is not None:
