@@ -722,10 +722,11 @@ class QXCRange(QXTop):
 @qafny.auto.equality
 class QXQRange(QXTop):
 
-    def __init__(self, location: str, cranges: [QXCRange], parser_context: antlr4.ParserRuleContext = None):
+    def __init__(self, location: str, index: QXAExp = None, crange: QXCRange = None, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._location = location
-        self._cranges = cranges
+        self._index = index
+        self.crange = crange
 
     def accept(self, visitor : AbstractProgramVisitor):
         return visitor.visitQRange(self)
@@ -734,8 +735,13 @@ class QXQRange(QXTop):
         '''Can be a str or a QXCall'''
         return self._location
 
-    def cranges(self):
-        return self._cranges
+    def index(self):
+        '''If the range includes an index, i.e. q[0][0, n), it is accessed here. Note: this member is only set for 2-d arrays, q[0] will transform into a crange {q[0, 1)}'''
+        return self._index
+
+    def crange(self):
+        '''The crange associated with this QXQRange'''
+        return self._crange
 
     def __repr__(self):
         return f"QXQRange(location={repr(str(self._location))}, cranges={self._cranges})"
@@ -1104,11 +1110,12 @@ class QXTensor(QXQState):
 @qafny.auto.equality
 class QXSum(QXQState):
 
-    def __init__(self, sums: [QXCon], amp: QXAExp, kets: [QXKet], parser_context: antlr4.ParserRuleContext = None):
+    def __init__(self, sums: [QXCon], amp: QXAExp, kets: [QXKet], condition: QXBExp = None, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._sums = sums
         self._amp = amp
         self._kets = kets
+        self._condition = condition
 
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitSum(self)
@@ -1122,8 +1129,12 @@ class QXSum(QXQState):
     def kets(self):
         return self._kets
 
+    def condition(self):
+        '''Returns the condition of this sum, indicating when it should be tested against. Most conditions will include variables from the QXCon'''
+        return self._condition
+
     def __repr__(self):
-        return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets})"
+        return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets}, condition={self._condition})"
 
 class QXStmt(QXTop):
     '''Parent class of all statements.'''
@@ -1434,7 +1445,7 @@ class QXWhile(QXStmt):
 
 @qafny.auto.rich_repr
 @qafny.auto.equality
-class QXCall(QXStmt, QXBool, QXAExp):
+class QXCall(QXStmt, QXAExp):
 
     def __init__(self, id: str, exps: [QXAExp], inverse: bool = False, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)

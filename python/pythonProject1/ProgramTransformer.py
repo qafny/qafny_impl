@@ -339,7 +339,7 @@ class ProgramTransformer(ExpVisitor):
                         qspecs[i] = QXTensor(qspec.kets(), qspec.ID(), qspec.range(), amplitude)
                 elif isinstance(qspec, QXSum):
                     # the same sum with the amplitude multiplied in
-                    qspecs[i] = QXSum(qspec.sums(), QXBin('*', amplitude, qspec.amp()), qspec.kets()) # TODO: how to handle line:column information here?
+                    qspecs[i] = QXSum(qspec.sums(), QXBin('*', amplitude, qspec.amp()), qspec.kets(), qspec.condition()) # TODO: how to handle line:column information here?
                 else:
                     raise ValueError(f"[UNREACHABLE] All qspecs are expected to be either a QXTensor or a QXSum, but a {type(qspec)} was found!")
         return (type, qspecs)
@@ -403,7 +403,14 @@ class ProgramTransformer(ExpVisitor):
                     amplitude = next.amp()
                 # combine kets
                 kets = spec.kets() + next.kets() # TODO: check for overlapping ids
-                spec = QXSum(sums, amplitude, kets) # TODO: how to attach line:col
+
+                # combine the conditions (and)
+                condition = spec.condition()
+                if condition is not None and next.condition() is not None:
+                    condition = QXLogic('&&', condition, next.condition()) # TODO: attach line:col
+                else:
+                    condition = next.condition()
+                spec = QXSum(sums, amplitude, kets, condition) # TODO: how to attach line:col
             elif isinstance(spec, QXTensor) and isinstance(next, QXTensor):
                 # combine tensors
                 raise NotImplementedError("Combining two tensors")
@@ -483,34 +490,132 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#sumspec.
     def visitSumspec(self, ctx: ExpParser.SumspecContext):
+        def extract_condition(expr: QXAExp):
+            '''Returns a tuple of the conditon and the fixed amplitude expression.'''
+            # cases:
+            # bexp / aexp ==> bexp, 1 / aexp
+            # bexp * aexp ==> bexp, aexp
+            # aexp * bexp ==> bexp, aexp
+            # bexp * bexp ==> bexp, 1
+            if isinstance(expr, QXBin):
+                # binary operation
+                if expr.op() == '*':
+                    # explore both branches
+                    condition = None
+                    tree = expr
+                    if isinstance(expr.left(), QXBExp):
+                        # the left is a boolean expression, extract it and fix the tree
+                        condition = expr.left()
+                        tree = expr.right()
+
+                    if isinstance(expr.right(), QXBExp):
+                        # the right is a boolean expression, extract it and fix the tree
+                        if condition is not None:
+                            # left was also a QXBExp, condition should contain both right and left
+                            condition = QXLogic('&&', expr.left(), expr.right())
+                            tree = QXNum(1)
+                        else:
+                            condition = expr.right()
+                            tree = expr.left()
+
+                    if condition is None:
+                        # no condition was found, we will have to explore both branches
+                        left_condition, left_tree = extract_condition(expr.left())
+                        right_condition, right_tree = extract_condition(expr.right())
+                        if left_condition is not None or right_condition is not None:
+                            # a condition was found, the current tree is invalidated
+                            tree = QXBin('*', left_tree, right_tree)
+
+                            if left_condition is not None and right_condition is not None:
+                                # both must be true for the amplitude to evaluate to non-zero
+                                condition = QXLogic('&&', left_condition, right_condition)
+                            else:
+                                # choose the correct one (or None if no condition was found)
+                                condition = left_condition if left_condition is not None else right_condition
+                            
+                    else:
+                        # explore the remaining side of the tree
+                        tree_condition, tree = extract_condition(tree)
+                        if tree_condition is not None:
+                            # we extracted another condition, add it to the current one
+                            condition = QXLogic('&&', condition, tree_condition)
+
+                    return (condition, tree)
+
+                    left_cond = extract_condition(expr.left())
+                    right_cond = extract_condition(expr.right())
+                    cond = None
+                    if left_cond is not None and right_cond is not None:
+                        # both must be true for the amplitude to evaluate to non-zero
+                        cond = QXLogic('&&', left_cond, right_cond)
+                    else:
+                        # choose the correct one
+                        cond = left_cond if left_cond is not None else right_cond
+
+                    return cond
+                elif expr.op() == '/':
+                    # explore numerator branch (denominator would make no sense as it could lead to divide by zero errors)
+                    if isinstance(expr.left(), QXBExp):
+                        # left is directly a boolean expression, extract it and fix the tree
+                        return expr.left(), QXBin('/', QXNum(1), expr.right())
+                    else:
+                        condition, left_expr = extract_condition(expr.left())
+                        # need to repair the QXAExp if the condition was modified
+                        if condition is not None:
+                            return (condition, QXBin('/', left_expr, expr.right()))
+                        else:
+                            return (None, expr)
+                else:
+                    # base case, for +, -, or any other operation, the boolean expression cannot be removed
+                    return (None, expr)
+            else:
+                # if it's not a binary expression, there is nothing to explore
+                return (None, expr)
+
+
         if ctx.manyketpart() is not None:
             # the end sumspec (not recursive)
             sum = self.visitMaySum(ctx.maySum())
             amp = None
+            condition = None
             if ctx.arithExpr() is not None:
                 amp = self.visitArithExpr(ctx.arithExpr())
+                # if we have a condition, we want to extract it from the amplitude expression
+                condition, amp = extract_condition(amp)
+
             
             kets = self.visitManyketpart(ctx.manyketpart())
 
-            return QXSum([sum], amp, kets, ctx)
+            return QXSum([sum], amp, kets, condition, ctx)
         elif ctx.maySum() is not None:
             # recursive sum spec, add to this sum
             this_sum = self.visitMaySum(ctx.maySum())
 
             amp = None
+            condition = None
             if ctx.arithExpr() is not None:
                 amp = self.visitArithExpr(ctx.arithExpr())
+                # extract the condition if it exists
+                condition, amp = extract_condition(amp)
 
             next_sum = self.visitSumspec(ctx.sumspec())
 
             # combine sum specs
             sums = [this_sum] + next_sum.sums()
+
+            # combine the amplitudes
             if amp is not None:
                 amp = QXBin('*', amp, next_sum.amp())
             else:
                 amp = next_sum.amp()
 
-            return QXSum(sums, amp, next_sum.kets(), ctx)
+            # combine the conditions
+            if condition is not None and next_sum.condition() is not None:
+                condition = QXLogic('&&', condition, next_sum.condition())
+            else:
+                condition = next_sum.condition()
+
+            return QXSum(sums, amp, next_sum.kets(), condition, ctx)
         elif ctx.sumspec() is not None:
             # unwrap parentheses
             return self.visitSumspec(ctx.sumspec())
@@ -1021,49 +1126,12 @@ class ProgramTransformer(ExpVisitor):
     def visitIndex(self, ctx: ExpParser.IndexContext):
         return self.visitArithExpr(ctx.arithExpr())
 
-    # Visit a parse tree produced by ExpParser#qslice.
-    def visitQslice(self, ctx: ExpParser.QsliceContext):
-        start = self.visitArithExpr(ctx.start) if ctx.start is not None else None
-        end = self.visitArithExpr(ctx.end) if ctx.end is not None else None
-        return QXCRange(start, end, ctx)
-
     # Visit a parse tree produced by ExpParser#idindex.
     def visitIdindex(self, ctx: ExpParser.IdindexContext):
         return QXQIndex(ctx.ID(), self.visitIndex(ctx.index()), ctx)
 
     # Visit a parse tree produced by ExpParser#qrange.
     def visitQrange(self, ctx: ExpParser.QrangeContext):
-        i = 0
-        cranges = []
-        while (child := ctx.getChild(i)) is not None:
-            if isinstance(child, ExpParser.IndexContext):
-                index = self.visitIndex(child)
-                # TODO: There are a lot of edge cases where the next index could be simplified.
-                #       Should a "SimplifyVisitor" be written to post-process the tree into a better format?
-                #       Or should we attempt to catch all edge cases here?
-                if isinstance(index, QXNum):
-                    cranges.append(QXCRange(index, QXNum(index.num() + 1), child))
-                elif isinstance(index, QXBin) and index.op() in ['+', '-'] and isinstance(index.right(), QXNum):
-                    next_num = None
-                    if index.op() == '+':
-                        next_num = index.right().num() + 1
-                    elif index.op() == '-':
-                        next_num = -index.right().num() + 1
-                    if next_num != 0:
-                        op = '+' if next_num > 0 else '-'
-                        cranges.append(QXCRange(index, QXBin(op, index.left(), QXNum(abs(next_num))), child))
-                    else:
-                        # for the second one (upper bound), we can ignore the summand
-                        cranges.append(QXCRange(index, index.left()))
-                else:
-                    cranges.append(QXCRange(index, QXBin("+", index, QXNum(1)), child))
-            elif isinstance(child, ExpParser.CrangeContext):
-                cranges.append(self.visitCrange(child))
-            elif isinstance(child, ExpParser.QsliceContext):
-                cranges.append(self.visitQslice(child))
-
-            i += 1
-
         location = None
         if ctx.ID() is not None:
             location = str(ctx.ID())
@@ -1072,7 +1140,34 @@ class ProgramTransformer(ExpVisitor):
         else:
             raise ValueError("Qranges must operate on either an identifier or a function call")
 
-        return QXQRange(location, cranges, ctx)
+        index = self.visitIndex(ctx.index()) if ctx.index() is not None else None
+        crange = self.visitCrange(ctx.crange()) if ctx.crange() is not None else None
+
+        if index is not None and crange is None:
+            # index should only be used for 2-d arrays
+            # TODO: There are a lot of edge cases where the next index could be simplified.
+            #       Should a "SimplifyVisitor" be written to post-process the tree into a better format?
+            #       Or should we attempt to catch all edge cases here?
+            if isinstance(index, QXNum):
+                crange = QXCRange(index, QXNum(index.num() + 1), ctx.index())
+            elif isinstance(index, QXBin) and index.op() in ['+', '-'] and isinstance(index.right(), QXNum):
+                next_num = None
+                if index.op() == '+':
+                    next_num = index.right().num() + 1
+                elif index.op() == '-':
+                    next_num = -index.right().num() + 1
+                if next_num != 0:
+                    op = '+' if next_num > 0 else '-'
+                    crange = QXCRange(index, QXBin(op, index.left(), QXNum(abs(next_num))), ctx.index())
+                else:
+                    # for the second one (upper bound), we can ignore the summand
+                    crange = QXCRange(index, index.left(), ctx.index())
+            else:
+                crange = QXCRange(index, QXBin("+", index, QXNum(1)), ctx.index())
+
+            index = None
+
+        return QXQRange(location, index, crange, ctx)
 
     # Visit a parse tree produced by ExpParser#numexp.
     def visitNumexp(self, ctx: ExpParser.NumexpContext):
