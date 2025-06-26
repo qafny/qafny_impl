@@ -726,7 +726,7 @@ class QXQRange(QXTop):
         super().__init__(parser_context=parser_context)
         self._location = location
         self._index = index
-        self.crange = crange
+        self._crange = crange
 
     def accept(self, visitor : AbstractProgramVisitor):
         return visitor.visitQRange(self)
@@ -744,7 +744,7 @@ class QXQRange(QXTop):
         return self._crange
 
     def __repr__(self):
-        return f"QXQRange(location={repr(str(self._location))}, cranges={self._cranges})"
+        return f"QXQRange(location={repr(str(self._location))}, crange={self._crange})"
 
 
 @qafny.auto.rich_repr

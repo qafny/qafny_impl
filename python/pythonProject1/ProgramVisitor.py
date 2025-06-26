@@ -466,8 +466,6 @@ class ProgramVisitor(AbstractProgramVisitor):
     # ────────── Sums and ranges ──────────
     def visitCon(self, ctx: Programmer.QXCon):
         ctx.range().accept(self)
-        if ctx.condition() is not None:
-            ctx.condition().accept(self)
         return ctx.ID()
 
     def visitCRange(self, ctx: Programmer.QXCRange):
@@ -491,8 +489,7 @@ class ProgramVisitor(AbstractProgramVisitor):
             member.accept(self)
 
     def visitQRange(self, ctx: Programmer.QXQRange):
-        for crange in ctx.cranges():
-            crange.accept(self)
+        ctx.crange().accept(self)
 
         if isinstance(ctx.location(), Programmer.QXCall):
             return ctx.location().accept(self)

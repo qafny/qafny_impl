@@ -98,9 +98,9 @@ class LocusCollector(ProgramVisitor):
 
     def visitQIndex(self, ctx: Programmer.QXQIndex):
         if isinstance(ctx.index(), QXNum):
-            self.renv=joinLocus([QXQRange(ctx.ID(), [QXCRange(ctx.index(), QXNum(ctx.index().num() + 1))])], self.renv)
+            self.renv=joinLocus([QXQRange(ctx.ID(), QXCRange(ctx.index(), QXNum(ctx.index().num() + 1)))], self.renv)
         else:
-            self.renv=joinLocus([QXQRange(ctx.ID(), [QXCRange(ctx.index(), QXBin("+", ctx.index(), QXNum(1)))])], self.renv)
+            self.renv=joinLocus([QXQRange(ctx.ID(), QXCRange(ctx.index(), QXBin("+", ctx.index(), QXNum(1))))], self.renv)
         return True
 
     def visitQNot(self, ctx: Programmer.QXQNot):
