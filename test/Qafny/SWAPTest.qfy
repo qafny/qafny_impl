@@ -22,18 +22,18 @@ method nswap(q: Q[n], p: Q[n], n : nat)
   ensures { p[0,n) : nor ↦ ⊗ x }
 {
       for i in [0,n)
-        invariant forall k in [0, i) ==> q[0,k) == old(p[0,k))
-        invariant forall k in [0, i) ==> p[0,k) == old(q[0,k))
+        invariant { forall k in [0, i) ==> q[0,k) == old(p[0,k))}
+        invariant { forall k in [0, i) ==> p[0,k) == old(q[0,k))}
       {
         swap(q[i], p[i]);
       }
 }
 
-method SWAPTest(q: Q[n], p: Q[n], r: Q[1], n : nat) returns (y:nat, prob:real)
+method SWAPTest(n: nat, q: Q[n], p: Q[n], r: Q[1]) returns (y:nat, prob:real)
     requires { r[0] : nor ↦ |0⟩ }
-    requires { q[0, n) : en ↦ ∑ k ∈ [0 , 2^n) . x[k] }
+    requires { q[0, n) : en ↦ ∑ k ∈ [0 , 2^n) . x[k] } //what is x and what is y?
     requires { p[0, n) : en ↦ ∑ j ∈ [0 , 2^n) . y[j] }
-    ensures { y == 0 ==> prob == 1/2 + 1/2 * (∑ k ∈ [0, 2^n) . a[k] * b[k]) }
+    ensures { y == 0 ==> prob == 1/2 + 1/2 * (∑ k ∈ [0, 2^n) . a[k] * b[k]) } //what are a and b?
     //this fact relies on an axiom that the measurement result of 0 for y is:
     // 1/2 (s ⊗ t + t ⊗ s) 1/2(s ⊗ t + t ⊗ s)^*
     //== 1/4 (s ⊗ t + t ⊗ s) ((s ⊗ t)^* + (t ⊗ s)^*)

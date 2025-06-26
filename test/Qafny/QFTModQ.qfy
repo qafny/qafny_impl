@@ -44,7 +44,7 @@ method QPEQ(q: Q[n], p: Q[n], n: nat, a: nat, Q_divisor: nat)
 //ω (v * a, 2^n) (|k> -> |k + 2^j mod Q>) actually turns   ω (v * a, 2^n) to be ω (v * a - 2^j * a, 2^n), without the final measurement
 //Then, the steps from 39 to 55 are just the inversed QPE. In quantum, if a unitary is given, we can have the axiom,
 //where the inversed function f^-1 takes the output of the original function f and it produces the input.
-method QFTModQ(q: Q[n], p: Q[n], n: nat, a: nat, Q_divisor: nat)
+method QFTModQ(n: nat, q: Q[n], p: Q[n], a: nat, Q_divisor: nat)
   requires forall k :: 0 <= k < 2^(n-1) ==> f(n2b(k)) == f(s xor n2b(k+2^n))
   requires b2n(s) != 0
     // we can assume that all elements in the function are lined up with, without losing generality, since we do not rely on the structure

@@ -4,7 +4,7 @@
 // q and p are messages, we want to check if they are equal. r is initialized to all zeroes
 // r is one qubit. q and p are n qubits.
 //there is no input requires assumption of q, so, we can assume that it is a en(1) type qubit
-method Teleporation(q: Q[1], p: Q[1], r: Q[1]) returns (y:nat, prob:real)
+method Teleporation(q: Q[1], p: Q[1], r: Q[1]) returns (y:nat, z:nat, p1:real, p2:real)
     requires { p[0] : nor ↦ |0⟩ }
     requires { r[0] : nor ↦ |0⟩ }
     ensures r == q //qubit q[0] is teleported to r[0]

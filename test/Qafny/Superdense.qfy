@@ -1,5 +1,16 @@
 //Superdense Coding
-include BellPair.qfy //should we allow inclusion? This is not an important feature. Maybe a simple script
+//include BellPair.qfy //should we allow inclusion? This is not an important feature. Maybe a simple script
+
+method BellPair(q : Q[2])
+  requires { q[0, 2) : nor ↦ |0⟩ }
+  ensures  { q[0, 2) : en ↦ ∑ j ∈ [0 , 2) . 1/sqrt(2) |j⟩|j⟩ }
+{
+  q[0] *= H;
+  //assert { q [0] : had ↦ |+⟩ };
+  if (q[0]) { 
+    q[1] *= λ (x => |(x + 1) % 2 ⟩); 
+    } //can be remove the % 2, since q[1] is one qubit, why the type checking cannot infer that the % 2 is unnecessary
+}
 
 //we should have a boolean type for our system, and then we should make bv1 and boolean type to be the same.
 //In quantum algorithms, they are the same.

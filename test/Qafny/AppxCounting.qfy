@@ -68,9 +68,9 @@ method AppxCounting(n: nat, epsilon: real, f: [Bool] -> Bool) returns (a: nat)
     requires epsilon > 0
     ensures |a - t| <= 2/3
 {   
-    var m := n / 2;
-    var l := 0;
-    var t := 0;
+    var m: real := n / 2;
+    var l: nat := 0;
+    var t: nat := 0;
     
     while (t == 0 && 2^l < 2 * 2^m)
        decreases 2 * sqrt(2^n) - 2^l

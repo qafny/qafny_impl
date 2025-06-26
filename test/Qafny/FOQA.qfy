@@ -1,13 +1,13 @@
 // Non-Boolean Amp
 // https://arxiv.org/abs/2102.04975
 
-method {:axiom} vf(q: Q[n], n: nat)
+method {:axiom} vf(n: nat, q: Q[n])
     ensures { q[0, n) : en ↦ ∑ k ∈ [0, Pow2(n)) . (-omega(v) |k, 0⟩ |k, 0⟩) }
     
-method {:axiom} uf(r: Q[1], q: Q[n], n: nat)
+method {:axiom} uf(n: nat, r: Q[1], q: Q[n])
     ensures { r[1], q[0, n) : en ↦ sin (theta) |0⟩vf(|k⟩) + cos (theta) |1⟩|k⟩ }
 
-method LCUApp(p: Q[1], r: Q[1], q: Q[n], n: nat, alpha: [real])
+method LCUApp(n: nat, p: Q[1], r: Q[1], q: Q[n], alpha: [real])
   requires forall k :: 0 <= k < |alpha| ==> 0 <= alpha[k] < 1
 {
   p[0] *= λ(x => rot(alpha));
@@ -18,7 +18,7 @@ method LCUApp(p: Q[1], r: Q[1], q: Q[n], n: nat, alpha: [real])
   p[0] *= λ^{-1}(x => rot(alpha));
 }
 
-method FOQA(p: Q[1], r: Q[n], q: Q[m], n: nat, m: nat, alpha: [real]) returns (y: nat, prob: real)
+method FOQA(n: nat, m: nat, p: Q[1], r: Q[n], q: Q[m], alpha: [real]) returns (y: nat, prob: real)
     requires { p[0] : nor ↦ |0⟩ }
     requires |alpha| == n
     ensures { p[0], q[0, n) : en ↦ sin (theta) |0⟩vf(|k⟩) + cos (theta) |1⟩|k⟩ }

@@ -791,7 +791,7 @@ class ProgramTransformer(ExpVisitor):
         if ctx.bexp() is not None:
             control = self.visitBexp(ctx.bexp())
             # since we have a control, wrap the body in an if stmt
-            body = QXIf(control, body, None, ctx)
+            body = [QXIf(control, body, None, ctx)]
         return QXFor(id, crange, inv, body, ctx)
 
     # Visit a parse tree produced by ExpParser#whileexp.
@@ -972,6 +972,7 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#ketCallExpr.
     def visitKetCallExpr(self, ctx: ExpParser.KetCallExprContext):
+        return QXUni("ket", self.visitArithExpr(ctx.arithExpr()), ctx)
         return QXUni("ket", self.visitArithExpr(ctx.arithExpr()), ctx)
 
     # Visit a parse tree produced by ExpParser#setInstance.

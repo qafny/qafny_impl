@@ -46,7 +46,7 @@ method Grovers(n: nat, q: Q[n], f: nat -> bool, m: nat, N: nat) returns (y: nat,
                     //any structure above will have the same effect as amp (difference in terms of the theta degree)
   }
 
-  y,p *= measure(q);
+  y,p *= measure(q[0, n));
   // we can see that after a fixed number N interation, the chance p of measuring out q which is a key in f(y) == 1 is sin (2*N * theta + theta).
   // the chance of it to close to 1 will be to make 2*N*theta + theta == pi / 2.
   // so N will be roughly pi / (4*theta) - 1/2, theta can be estimated to be sqrt(m/2^n). N will be N == pi / 4 * sqrt(2^n)

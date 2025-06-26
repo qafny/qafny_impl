@@ -5,10 +5,10 @@
 //M: performs "phase-kickback".
 //M: p and r are not actually entangled
 //this documents show an example of Grover's search with the phase-kickback implementation.
-method {:axiom} uf(p: Q[n], r: Q[1], f: [Bool] -> Bool, n: nat)
+method {:axiom} uf(n: nat, p: Q[n], r: Q[1], f: [Bool] -> Bool)
   ensures { p[0, n), r[0] : Nor ↦ ω (f(k), 2)  | k ⟩ |-⟩ } //phase-kick-back
   
-method qstep(p: Q[n], r: Q[1], f: [Bool] -> Bool, n: nat, t: nat)
+method qstep(n: nat, p: Q[n], r: Q[1], f: [Bool] -> Bool, t: nat)
   // constrain the q-bits + natural number
   requires t <= Pow2(n)
   requires { p[0, n), r[0] : En ↦ ∑ k ∈ [0, 2^n) . 1 / sqrt(2^n) | k ⟩|-⟩ } // registers should be in super position + entangled

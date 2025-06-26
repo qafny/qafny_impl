@@ -1,6 +1,6 @@
 //The DeutschJozsa proof in Qafny
               //do we really want nat -> nat or bitvector, like seq<bv1> ? we can have bitvectors in our system
-method DeutschJozsa(q : Q[n], p : Q[1], n : nat, f : nat -> bool) returns ( k : nat, prob : real)
+method DeutschJozsa(n : nat, q : Q[n], p : Q[1],  f : nat -> bool) returns ( k : nat, prob : real)
   requires n >= 1
   requires { q[0,n) : nor ↦ |0⟩  }
   requires { p[0] : nor ↦ |1⟩  }

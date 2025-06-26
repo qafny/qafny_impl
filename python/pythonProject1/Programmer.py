@@ -1041,10 +1041,10 @@ class QXVKet(QXKet):
 @qafny.auto.equality
 class QXOracle(QXExp):
 
-    def __init__(self, bindings: [QXBind], amplitude_expr: QXAExp, kets: [QXKet], inverse: bool = False, parser_context: antlr4.ParserRuleContext = None):
+    def __init__(self, bindings: [QXBind], amp: QXAExp, kets: [QXKet], inverse: bool = False, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._bindings = bindings
-        self._amplitude_expr = amplitude_expr
+        self._amp = amp
         self._kets = kets
         self._inverse = inverse
 
@@ -1055,10 +1055,10 @@ class QXOracle(QXExp):
         return self._bindings
 
     def phase(self):
-        return self._amplitude_expr
+        return self._amp
 
-    def amplitude_expr(self):
-        return self._amplitude_expr
+    def amp(self):
+        return self._amp
 
     def vectors(self):
         return self._kets
@@ -1067,7 +1067,7 @@ class QXOracle(QXExp):
         return self._inverse
 
     def __repr__(self):
-        return f"QXOracle(bindings={self._bindings}, amplitude_expr={self._amplitude}, kets={self._kets}, inverse={self._inverse})"
+        return f"QXOracle(bindings={self._bindings}, amp={self._amp}, kets={self._kets}, inverse={self._inverse})"
 
 
 class QXQState(QXTop):
@@ -1220,7 +1220,7 @@ class QXCAssign(QXStmt):
         return self._expr
 
     def __repr__(self):
-        return f"QXCAssign(id={repr(str(self._id))}, expr={self._expr})"
+        return f"QXCAssign(id={repr(str(self._ids))}, expr={self._expr})"
 
 
 @qafny.auto.rich_repr
@@ -1283,14 +1283,14 @@ class QXQCreate(QXStmt):
         return self._size
 
     def __repr__(self):
-        return f'QXQCreate(locus={self._locus}, size={self._size})'
+        return f'QXQCreate(locus={self._qrange}, size={self._size})'
 
 
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class QXMeasure(QXStmt):
 
-    def __init__(self, ids: [str | QXQIndex], locus: Union[str, list[QXQRange]], res: QXAExp = None, parser_context: antlr4.ParserRuleContext = None):
+    def __init__(self, ids: [QXBind | QXQIndex], locus: Union[str, list[QXQRange]], res: QXAExp = None, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._ids = ids
         self._locus = locus.getText() if isinstance(locus, antlr4.tree.Tree.TerminalNodeImpl) else locus
@@ -1353,7 +1353,7 @@ class QXMeasureAbort(QXStmt):
 @qafny.auto.equality
 class QXIf(QXStmt):
 
-    def __init__(self, bexp: QXBExp, stmts: [QXStmt], else_branch: [QXStmt], parser_context: antlr4.ParserRuleContext = None):
+    def __init__(self, bexp: QXBExp | QXBoolLiteral, stmts: [QXStmt], else_branch: [QXStmt], parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._bexp = bexp
         self._stmts = stmts
@@ -1720,7 +1720,7 @@ class QXPartGroup(QXQState):
 
     def fpred(self):
         '''Returns the function predicate associated with this partition call'''
-        return self._fpred if isinstance(self._fred, str) else self._fred.getText()
+        return self._fpred if isinstance(self._fpred, str) else self._fpred.getText()
 
     def bool(self):
         '''Returns the boolean associated with this partition'''
@@ -1761,7 +1761,7 @@ class QXPartLambda(QXQState):
 
     def fpred(self):
         '''Returns the function predicate associated with this partition call'''
-        return self._fpred if isinstance(self._fred, str) else self._fred.getText()
+        return self._fpred
 
     def amplitude(self):
         return self._amplitude
@@ -1937,7 +1937,7 @@ class QXSeparates(QXCond):
         return self._locus
 
     def __repr__(self):
-        return f"QXSeparates(locus={self._spec})"
+        return f"QXSeparates(locus={self._locus})"
 
 
 ########################################################################
@@ -2044,7 +2044,7 @@ class QXFunction(QXTop):
         return self._arith_expr
 
     def __repr__(self):
-        return f'QXFunction(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, return_type={self._type}, arith_expr={self._arith_expr})'
+        return f'QXFunction(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, return_type={self._return_type}, arith_expr={self._arith_expr})'
 
 
 @qafny.auto.rich_repr

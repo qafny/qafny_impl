@@ -4,7 +4,7 @@
 
 // q and p are messages, we want to check if they are equal. r is initialized to all zeroes
 // r is one qubit. q and p are n qubits.
-method swap(q: Q[n], p: Q[n], n: nat)
+method swap(n: nat, q: Q[n], p: Q[n])
 	ensures { q[0, n) : en ↦ old(p[0, n)) }
 	ensures { p[0, n) : en ↦ old(q[0, n)) }
 {
@@ -15,7 +15,7 @@ method swap(q: Q[n], p: Q[n], n: nat)
 	}     
 }
 
-method permLoop(r: Q[k][n], q: Q[k][n], p: Q[k][n], t: nat, k: nat, n: nat) 
+method permLoop(k: nat, n: nat, r: Q[k][n], q: Q[k][n], p: Q[k][n], t: nat) 
 	ensures { q[t][0, n) : en ↦ old(p[k][0, n)) }
 	ensures { p[k][0, n) : en ↦ old(q[t][0, n)) }
 {
@@ -25,7 +25,7 @@ method permLoop(r: Q[k][n], q: Q[k][n], p: Q[k][n], t: nat, k: nat, n: nat)
 }
 
 
-method StateDist(r: Q[k][n], q: Q[k][n], p: Q[k][n], m: nat, n: nat) returns (y: nat, prob: real)
+method StateDist(m: nat, n: nat, r: Q[k][n], q: Q[k][n], p: Q[k][n]) returns (y: nat, prob: real)
 	requires { forall j :: 0 <= j < k ==> r[k][0, n) : nor ↦ |0⟩ }
 	requires { q[0, n) : en ↦ u }
 	requires { p[0, n) : en ↦ v }
