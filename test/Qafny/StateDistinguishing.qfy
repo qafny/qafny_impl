@@ -15,12 +15,16 @@ method swap(n: nat, q: Q[n], p: Q[n])
 	}     
 }
 
+method permLoop(r: Q[k][n], q: Q[k][n], p: Q[k][n], t: nat, k: nat, n: nat)
+	requires t < k
+	ensures { q[t][0, n) : en ↦ old(p[k - 1][0, n)) }
+	ensures { p[k - 1][0, n) : en ↦ old(q[t][0, n)) }
 method permLoop(k: nat, n: nat, r: Q[k][n], q: Q[k][n], p: Q[k][n], t: nat) 
 	ensures { q[t][0, n) : en ↦ old(p[k][0, n)) }
 	ensures { p[k][0, n) : en ↦ old(q[t][0, n)) }
 {
 	for j in [0, k) && r[j] == k {
-		swap(q, p[k], n);
+		swap(q[t], p[k - 1], n);
 	}
 }
 
@@ -32,6 +36,7 @@ method StateDist(m: nat, n: nat, r: Q[k][n], q: Q[k][n], p: Q[k][n]) returns (y:
 	ensures { u == v ==> y == 1 ==> prob == 0 }
 	ensures { u != v ==> y == 1 ==> prob == 1/2 - 1/2 * norm(u, v) } // we need to define norm of two states.
 {
+	// Apply F to register P
 	permInit(r, n, k); //use another gate to do permutation this step will be very hard. Need to think of an implementation or assumption
 
 	// controlled SWAP (controlled by first qubit of r)
@@ -44,7 +49,9 @@ method StateDist(m: nat, n: nat, r: Q[k][n], q: Q[k][n], p: Q[k][n]) returns (y:
 		}
 	}
 
+	// Apply F† to P
 	permInit(r, n, k); //use another gate to do reversed permutation
 
-	y, prob *= measure(r);
+	// measure final state of P
+	y, prob *= measure(r[0][0, n));
 }

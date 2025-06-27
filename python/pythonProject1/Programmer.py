@@ -726,7 +726,7 @@ class QXQRange(QXTop):
         super().__init__(parser_context=parser_context)
         self._location = location
         self._index = index
-        self.crange = crange
+        self._crange = crange
 
     def accept(self, visitor : AbstractProgramVisitor):
         return visitor.visitQRange(self)
@@ -744,7 +744,7 @@ class QXQRange(QXTop):
         return self._crange
 
     def __repr__(self):
-        return f"QXQRange(location={repr(str(self._location))}, cranges={self._cranges})"
+        return f"QXQRange(location={repr(str(self._location))}, crange={self._crange})"
 
 
 @qafny.auto.rich_repr
@@ -1290,10 +1290,11 @@ class QXQCreate(QXStmt):
 @qafny.auto.equality
 class QXMeasure(QXStmt):
 
+    def __init__(self, ids: [str | QXQIndex], locus: QXQRange, res: QXAExp = None, parser_context: antlr4.ParserRuleContext = None):
     def __init__(self, ids: [QXBind | QXQIndex], locus: Union[str, list[QXQRange]], res: QXAExp = None, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._ids = ids
-        self._locus = locus.getText() if isinstance(locus, antlr4.tree.Tree.TerminalNodeImpl) else locus
+        self._locus = locus
         self._res = res
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -1327,10 +1328,10 @@ class QXMeasureAbort(QXStmt):
 
     '''
 
-    def __init__(self, ids: str, locus: Union[str, list[QXQRange]], res: QXAExp = None, parser_context: antlr4.ParserRuleContext = None):
+    def __init__(self, ids: str, locus: list[QXQRange], res: QXAExp = None, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._ids = ids
-        self._locus = locus.getText() if isinstance(locus, antlr4.tree.Tree.TerminalNodeImpl) else locus
+        self._locus = locus
         self._res = res
 
     def accept(self, visitor: AbstractProgramVisitor):

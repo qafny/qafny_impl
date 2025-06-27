@@ -707,37 +707,25 @@ class ProgramTransformer(ExpVisitor):
     def visitMeasure(self, ctx: ExpParser.MeasureContext):
         assign_to = self.visitIdindices(ctx.idindices())
         
-        measure_from = None
-        if ctx.locus() is not None:
-            measure_from = self.visitLocus(ctx.locus())
-        elif ctx.ID() is not None:
-            measure_from = QXBind(ctx.ID(), parser_context=ctx.ID())
-        else:
-            raise ValueError('Unreachable code block in visitMeasure(...).')
+        locus = self.visitLocus(ctx.locus())
 
         restrict = None
         if ctx.arithExpr() is not None:
             restrict = self.visitArithExpr(ctx.arithExpr())
         
-        return QXMeasure(assign_to, measure_from, restrict, ctx)
+        return QXMeasure(assign_to, locus, restrict, ctx)
 
     # Visit a parse tree produced by ExpParser#measureAbort.
     def visitMeasureAbort(self, ctx: ExpParser.MeasureAbortContext):
         assign_to = self.visitIdindices(ctx.idindices())
 
-        measure_from = None
-        if ctx.locus() is not None:
-            measure_from = self.visitLocus(ctx.locus())
-        elif ctx.ID() is not None:
-            measure_from = QXBind(ctx.ID(), parser_context=ctx.ID())
-        else:
-            raise ValueError('Unreachable code block in visitMeasure(...).')
+        locus = self.visitLocus(ctx.locus())
 
         restrict = None
         if ctx.arithExpr() is not None:
             restrict = self.visitArithExpr(ctx.arithExpr())
 
-        return QXMeasureAbort(assign_to, measure_from, restrict, ctx)
+        return QXMeasureAbort(assign_to, locus, restrict, ctx)
 
     # Visit a parse tree produced by ExpParser#return.
     def visitReturnStmt(self, ctx: ExpParser.ReturnStmtContext):

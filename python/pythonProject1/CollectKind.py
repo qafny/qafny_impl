@@ -173,8 +173,8 @@ class CollectKind(ProgramVisitor):
 
     def visitQRange(self, ctx: Programmer.QXQRange):
         v = True
-        for i in ctx.cranges():
-            v = v and i.accept(self)
+        v = v and ctx.crange().accept(self)
+            
         return v
     
     def visitCRange(self, ctx: Programmer.QXCRange):
@@ -213,7 +213,7 @@ class CollectKind(ProgramVisitor):
         return v
 
     def visitFor(self, ctx: Programmer.QXFor):
-        v = ctx.cranges().accept(self)
+        v = ctx.crange().accept(self)
 
         self.tenv.update({str(ctx.ID()), TySingle("nat")})
 

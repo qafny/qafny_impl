@@ -49,7 +49,7 @@ method Simon(n:nat, q : Q[n], p : Q[n], f : nat -> nat, s : nat) returns (y:nat,
   // then we can measures out different cases of k_z . y_z = 0 , and then utilize the outputs as a linear system to get s.
   assert { q[0, n), p[0, n) : en ↦ ∑ y ∈ [0, 2^n) . 1 / sqrt(2^n) * (1 / sqrt(2^n)) . ∑ k ∈ [0, 2^n) . ω (k * y, 2) |y⟩ |f(k)⟩ };
   
-  y, p *= measure(q, 0);
+  y, p *= measure(q[0, n), 0);
   // we will need the post-analysis leading to the above result set up in https://en.wikipedia.org/wiki/Simon%27s_problem
 }  
 

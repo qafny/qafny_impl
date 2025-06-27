@@ -21,11 +21,12 @@ method Teleporation(q: Q[2], p: Q[1], r: Q[1]) returns (y:nat, prob:real)
     assert { q[0, 1), p[0], r[0] : en ↦ (∑ j ∈ [0 , 2) . ∑ k ∈ [0, 2) . 1/2 * a[j] |j⟩|P(j)⟩|j ⊕ k⟩|k⟩) };
     //P(j) is the hadamard-basis of the qubits as + , -, where P(0) = + and P(1) = -
 
-//    y, p1 *= measure(p); //y = j ⊕ k and p1 is igoared, it should be 1/2
-    y, p1 *= measure(p[0]); //for the sake of parsing  
+    y, p1 *= measure(p[0]); //y = j ⊕ k and p1 is igoared, it should be 1/2
+    
     assert { q[0, 1), r[0] : en ↦ ∑ j ∈ [0 , 2) . ∑ k ∈ [0, 2) . 1/sqrt(2) * a[j] |j⟩|P(j)⟩|k⟩ && y == j ⊕ k};
     // measurement leads to that y == j ⊕ k, and we remove the ket |j ⊕ k⟩ 
 
+    z, p2 *= measure(q[1]); // z == 0 || z == 1, and p2 = 1/2
 
 //    z, p2 *= measure(q); // z == 0 || z == 1, and p2 = 1/2 which qubit q1 or q2?
       z, p2 *= measure(q[0,1)); //assuming q[0] now for the sake of parsing
