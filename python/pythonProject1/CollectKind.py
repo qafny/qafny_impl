@@ -73,7 +73,7 @@ class CollectKind(ProgramVisitor):
                 return False
             self.xenv.update({y: tv})
 
-        self.reenv = self.xenv.copy()
+        self.reenv = list(self.xenv.keys())
 
         for condelem in ctx.conds():
             condelem.accept(self)
@@ -105,7 +105,10 @@ class CollectKind(ProgramVisitor):
             ty1 = self.xenv.get(str(ctx.ID()))
             if ty1 is None:
                 return False
-            self.reenv.remove(str(ctx.ID()))
+        #    del self.reenv[str(ctx.ID())]
+            if str(ctx.ID()) in self.reenv:
+        #        print(f"{self.reenv} removing {str(ctx.ID())}")
+                self.reenv.remove(str(ctx.ID()))
 
             if ctx.type() is not None:
                 return compareType(ty1, ctx.type())
@@ -189,54 +192,90 @@ class CollectKind(ProgramVisitor):
         for elem in ctx.locus():
             v = v and elem.accept(self)
         for id in ctx.ids():
-            ty = self.tenv.get(id)
+            ty = self.tenv.get(id.ID())
             if ty is not None:
                 v = v and self.isBitType(ty)
             else:
-                ty1 = self.xenv.get(id)
+                ty1 = self.xenv.get(id.ID())
                 if ty1 is None:
                     return False
-                self.reenv.remove(id)
+#                del self.reenv[id.ID()]
+#                print(self.reenv, id.ID())
+                # if id.ID() in self.reenv:
+                #     self.reenv.remove(id.ID())
                 v = v and self.isBitType(ty1)
         return v
 
 
     def visitCAssign(self, ctx: Programmer.QXCAssign):
         v = ctx.aexp().accept(self)
-        v = v and str(ctx.ID())
+        v = v and str(ctx.ids())
         return v
 
     def visitIf(self, ctx: Programmer.QXIf):
-        v = ctx.bexp().accept(self)
+        v = ctx.bexp().accept(self)  if isinstance(ctx.bexp(), Programmer.QXBExp) else True
         for elem in ctx.stmts():
             v = v and elem.accept(self)
         return v
 
     def visitFor(self, ctx: Programmer.QXFor):
         v = ctx.crange().accept(self)
-
-        self.tenv.update({str(ctx.ID()), TySingle("nat")})
+        self.tenv.update({str(ctx.ID()): TySingle("nat")})
 
         for ielem in ctx.inv():
             v = v and ielem.accept(self)
-
+        
+    #    print("\nvisiting for stmts", ctx.stmts())
         for elem in ctx.stmts():
             v = v and elem.accept(self)
         return v
 
     def visitCall(self, ctx: Programmer.QXCall):
-        if str(ctx.ID()) in self.env.keys():
-            v = True
-            for elem in ctx.exps():
-                v = v and elem.accept(self)
-                return v
-        return False
+        v = True
+        for elem in ctx.exps():
+            v = v and elem.accept(self)
+        return v
+        
+        
+        
+        
+        
+        
+        # if str(ctx.ID()) in self.env.keys():
+        #     v = True
+        #     for elem in ctx.exps():
+        #         v = v and elem.accept(self)
+        #         return v
+        #return False
+    def visitQSpec(self, ctx: Programmer.QXQSpec):
+        for elem in ctx.locus():
+            elem.accept(self)
+        for state in ctx.states():
+            state.accept(self)
+        ctx.qty().accept(self)
+        return True
     
     def visitAssert(self, ctx: Programmer.QXAssert):
         if isinstance(ctx.spec(), QXQSpec):
             return True
         return ctx.spec().accept(self)
+    
+    def visitSingle(self, ctx: Programmer.QXSingle):
+        """Visit a single quantum operation"""
+        # We assume that the type of a single quantum operation is always valid
+        return True
+    
+    def visitInclude(self, ctx):
+        return True   
+    
+    #need to check if the asserted var is in the tenv or xenv
+    #leave the check later
+    def visitAll(self, ctx: Programmer.QXAll):
+        """Visit a QXAll operation"""
+        # We assume that the type of a QXAll operation is always valid
+        return True
 
     def get_kenv(self):
         """Returns the kenv used by TypeCollector and TypeChecker"""
         return self.env
+    
