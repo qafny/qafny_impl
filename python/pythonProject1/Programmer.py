@@ -872,7 +872,7 @@ class QXMemberAccess(QXAExp):
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitMemberAccess(self)
 
-    def ids():
+    def ids(self):
         return self._ids
 
     def __repr__(self):
@@ -1429,13 +1429,13 @@ class QXWhile(QXStmt):
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitWhile(self)
 
-    def bexp():
+    def bexp(self):
         return self._bexp
 
-    def conds():
+    def conds(self):
         return self._conds
 
-    def stmts():
+    def stmts(self):
         return self._stmts
 
     def __repr__(self):
