@@ -26,7 +26,7 @@ method Stabilizer (q : Q[n], k: nat, n: nat, a: array<bv1>, F: (nat, [Bool]) -> 
 
         q'[0,n) *= H;
 
-        y, p *= measure(q');
+        y, p *= measure(q'[0, n));
         // y is an element of H
         assert y ∈ H_check;
         assert F(y, a) == a;

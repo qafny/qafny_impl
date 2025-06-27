@@ -19,7 +19,7 @@ method AmplitudeAmplification(q: Q[n], p: Q[n], A: [bool] -> [bool], n: nat, chi
 
         q[0, n) *= A;
 
-        z, prob *= measure(q);
+        z, prob *= measure(q[0, n));
 
         if chi(z) == 1
         {
@@ -31,7 +31,7 @@ method AmplitudeAmplification(q: Q[n], p: Q[n], A: [bool] -> [bool], n: nat, chi
 
         p *= F;
 
-        z, prob *= measure(p);
+        z, prob *= measure(p[0, n));
 
         if chi(z) == 1
         {

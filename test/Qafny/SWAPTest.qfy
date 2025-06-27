@@ -64,6 +64,6 @@ method SWAPTest(q: Q[n], p: Q[n], r: Q[1], n : nat) returns (y:nat, prob:real)
     //converting the state to be based on 0 / 1 computational basis
     //assert {r[0],p[0,n),q[0,n) : en ↦ 1/2 . |0⟩ (s ⊗ t + t ⊗ s) + 1/2  |1⟩ ⊗ (s ⊗ t - t ⊗ s) } 
     
-    y, prob *= measA(r); //we need a special measurement that will abort the other qubits and the main product is to compute the probablity of y.
+    y, prob *= measA(r[0]); //we need a special measurement that will abort the other qubits and the main product is to compute the probablity of y.
     
 }
