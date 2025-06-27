@@ -4,3 +4,13 @@ __pycache__
 
 # Haskell
 .stack-work
+.history/
+dafny_code/
+python/.DS_Store
+.DS_Store
+dist-newstyle/.DS_Store
+python/pythonProject1/.DS_Store
+scr/.DS_Store
+test/.DS_Store
+python/pythonProject1/generated/
+

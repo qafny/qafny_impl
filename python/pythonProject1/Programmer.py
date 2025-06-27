@@ -1289,8 +1289,6 @@ class QXQCreate(QXStmt):
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class QXMeasure(QXStmt):
-
-    def __init__(self, ids: [str | QXQIndex], locus: QXQRange, res: QXAExp = None, parser_context: antlr4.ParserRuleContext = None):
     def __init__(self, ids: [QXBind | QXQIndex], locus: Union[str, list[QXQRange]], res: QXAExp = None, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._ids = ids

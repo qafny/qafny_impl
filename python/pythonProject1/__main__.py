@@ -28,11 +28,16 @@ from error_reporter.CodeReport import CodeReport
 ## Functions required for the Qafny Options
 
 # returns a path transformed to be relative to this script file as opposed to the current working directory 
-def path_relative_to_self(path: str) -> str:
-    return os.path.relpath(path, start=os.path.dirname(__file__))
+from pathlib import Path
 
-# returns a path following the format "../../test/Qafny/<name.qfy>"
+def path_relative_to_self(path: str) -> str:
+    """Return path relative to the current script (__file__)."""
+    script_dir = Path(__file__).resolve().parent
+    full_path = (script_dir / path).resolve()
+    return str(full_path)
+
 def example_program(filename: str) -> str:
+    """Return full path to '../../test/Qafny/<filename>.qfy' relative to __main__.py."""
     return path_relative_to_self(f"../../test/Qafny/{filename}.qfy")
 
 # The suite of test qafny files (Qafny defaults to verifying these)
@@ -79,6 +84,8 @@ DEFAULT_FILENAMES = [
 #######################################
 # Helper Functions
 #######################################
+output_dir = "generated"
+os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
 
 def show_step_status(filename: str, description: str, is_success: bool):
     """show_step_status shows a status message to the user about the current file"""
@@ -149,6 +156,7 @@ if __name__ == "__main__":
             # Transform ANTLR AST to Qafny AST
             transformer = ProgramTransformer()
             qafny_ast = transformer.visitProgram(ast)
+#            print(f"\n qafny_ast:{qafny_ast}")
 
             # Collect the types + kinds in the AST
             collect_kind = CollectKind()
@@ -158,6 +166,7 @@ if __name__ == "__main__":
             type_collector.visit(qafny_ast)
 
             # Convert to Dafny AST
+#            print(f"\nkinds:{collect_kind.get_kenv()}\ntypes:{type_collector.get_env()}")
             dafny_transfer = ProgramTransfer(collect_kind.get_kenv(), type_collector.get_env())
             dafny_ast = dafny_transfer.visit(qafny_ast)
 
@@ -184,31 +193,29 @@ if __name__ == "__main__":
             if args.print_dafny:
                 print("Dafny:")
                 print(CodeReport(dafny_code))
-
+            output_filename = None
             if args.output is not None:
                 # in the case of a default const (the argument was specified, but no filename provided)
                 if args.output == '':
-                    args.output = os.path.splitext(human_readable_filename)[0] + '.dfy'
+                    output_filename = os.path.join(output_dir, os.path.splitext(human_readable_filename)[0] + '_generated.dfy')
                     # check if this file exists, if so, keep trying random bits on the end till one doesn't exist
+                else:
+                    output_filename = os.path.join(output_dir, args.output)
 
-
-                # status message
-                blue_filename = stylize(f'"{args.output}"', fore('blue'))
+            if output_filename is not None:
+                blue_filename = stylize(f'"{output_filename}"', fore('blue'))
                 print(f'Saving Dafny to: {blue_filename}')
-
-                # write to disk
-                with open(args.output, 'w') as dafny_file:
+                with open(output_filename, 'w') as dafny_file:
                     dafny_file.write(dafny_code)
-
                 if not args.skip_verify:
-                    # Call dafny for the verification result by running it on the file
-                    dafny_result = subprocess.run(["dafny", "verify", args.output])
+                    dafny_result = subprocess.run(["dafny", "verify", output_filename])
             else:
                 if not args.skip_verify:
-                    # Call dafny for the verification result, piping the code through stdin
-                    dafny_result = subprocess.run(["dafny", "verify", "--stdin", "--allow-warnings", "--verification-time-limit=60"], input=dafny_code, text=True)
+                    dafny_result = subprocess.run(
+                        ["dafny", "verify", "--stdin", "--allow-warnings", "--verification-time-limit=60"],
+                        input=dafny_code, text=True
+                    )
 
             if not args.skip_verify:
-                # report status to the user
                 show_step_status(filename, "Verify", dafny_result.returncode == 0)
             print("") # newline break

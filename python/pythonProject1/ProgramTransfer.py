@@ -1112,7 +1112,7 @@ class ProgramTransfer(ProgramVisitor):
                         rpreds += [DXRequires(DXComp('>', b, DXNum(0)))]
 
 
-                preds += self.genPreds(loc, qty, num, newNum, ids, ctx.exp().vectors(), ctx.exp().amplitude_expr(), unchanged_range)
+                preds += self.genPreds(loc, qty, num, newNum, ids, ctx.exp().vectors(), ctx.exp().amp(), unchanged_range)
                 newConds = rpreds
                 for pred in preds:
                     newConds += [DXEnsures(pred)]
@@ -1129,7 +1129,7 @@ class ProgramTransfer(ProgramVisitor):
                     varids += [DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self)) for t in lamb_subst.outputs if t.ID() not in ids]
                             
                 lamb_subst = SubstLambda(lambda_check)
-                lamb_subst.visit(ctx.exp().amplitude_expr().accept(self))  
+                lamb_subst.visit(ctx.exp().amp().accept(self))  
                 varids += [DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self)) for t in lamb_subst.outputs if t.ID() not in ids]
 
                 cvars = vars + varids
@@ -1521,7 +1521,7 @@ class ProgramTransfer(ProgramVisitor):
                     application_range_old_num = application_range_old_num.bind()
 
 
-                lambda_preds = self.genPreds(application_locus, TyNor(), 1, 2, lambda_bindings, lambda_op.exp().vectors(), lambda_op.exp().amplitude_expr(), [])
+                lambda_preds = self.genPreds(application_locus, TyNor(), 1, 2, lambda_bindings, lambda_op.exp().vectors(), lambda_op.exp().amp(), [])
 
                 ge0 = []
                 for vec in lambda_op.exp().vectors():
@@ -1555,7 +1555,7 @@ class ProgramTransfer(ProgramVisitor):
                     substres = valSubst.visit(lambda_op.exp().vectors()[i].accept(self))
                     loop_values[lambda_op.locus()[i].location()] = lambSubst.visit(substres)
 
-                newp = lambda_op.exp().amplitude_expr().accept(self)
+                newp = lambda_op.exp().amp().accept(self)
 
                 for esub in tmpSubs:
                     newp = esub.visit(newp)

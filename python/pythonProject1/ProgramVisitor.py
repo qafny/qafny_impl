@@ -306,7 +306,7 @@ class ProgramVisitor(AbstractProgramVisitor):
         ctx.falsePred().accept(self)
 
     def visitPartGroup(self, ctx: Programmer.QXPartGroup):
-        ctx.fpred().accept(self)
+        ctx.fpred().accept(self) if not isinstance(ctx.fpred(), str) else ctx.fpred()
         ctx.bool().accept(self)
         ctx.amplitude().accept(self)
 

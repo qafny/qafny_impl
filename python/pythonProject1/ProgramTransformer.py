@@ -961,7 +961,6 @@ class ProgramTransformer(ExpVisitor):
     # Visit a parse tree produced by ExpParser#ketCallExpr.
     def visitKetCallExpr(self, ctx: ExpParser.KetCallExprContext):
         return QXUni("ket", self.visitArithExpr(ctx.arithExpr()), ctx)
-        return QXUni("ket", self.visitArithExpr(ctx.arithExpr()), ctx)
 
     # Visit a parse tree produced by ExpParser#setInstance.
     def visitSetInstance(self, ctx: ExpParser.SetInstanceContext):
