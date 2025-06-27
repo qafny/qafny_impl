@@ -101,14 +101,14 @@ def compareSingle(qs: [QXQRange], qv: [QXQRange]):
         v = qs[i]
         if elem.location() == v.location():
             if compareAExp(elem.crange().left(), v.crange().left()):
-                if compareAExp(elem.crange().right(), v.crange().right()):
+                if compareAExp(elem.crange().right(), v.crange().right()): #(exactmatch, vs, [])
                     qv = []
                     vs += (qs[i+1:len(qs)])
-                    return (QXQRange(elem.location(), crange = QXCRange(v.crange().left(), v.crange().right())), vs, qv)
-                else:
-                    qv = [QXQRange(elem.location(), crange = QXCRange(v.crange().right(), elem.crange().right()))]
+                    return QXQRange(location=elem.location(), crange=v.crange()), vs, qv
+                else: #(matched_qxrange, vs, [remaining_qxrange])
+                    qv = [QXQRange(location=elem.location(), crange=QXCRange(v.crange().right(), elem.crange().right()))] 
                     vs += (qs[i+1:len(qs)])
-                    return (QXQRange(elem.location(), crange = QXCRange(v.crange().left(), v.crange().right())), vs, qv)
+                    return QXQRange(location=elem.location(), crange=v.crange()), vs, qv
         vs += [v]
 
     return None
@@ -195,7 +195,7 @@ def subRangeLocus(elem: QXQRange, qs: [QXQRange]):
                     vs += (qs[i + 1:len(qs)])
                     return vs
                 else:
-                    vs += [QXQRange(elem.location(), crange = QXCRange(v.crange().right(), elem.crange().right()))] + (qs[i + 1:len(qs)])
+                    vs += [QXQRange(location=elem.location(), crange=[QXCRange(v.crange().right(), elem.crange().right())])] + (qs[i + 1:len(qs)])
                     return vs
         vs = vs + [qs[i]]
     return None
@@ -472,7 +472,7 @@ class TypeChecker(ProgramVisitor):
                 id = substQVar(tmpQVars, ran.location())
                 left = substAllVars(substs, ran.crange().left())
                 right = substAllVars(substs, ran.crange().right())
-                v = QXQRange(id, crange = QXCRange(left, right))
+                v = QXQRange(location=id, crange=[QXCRange(left, right)])
                 tmpNewEnv += [(v,ty)]
 
         modEnv = self.renv
