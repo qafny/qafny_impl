@@ -176,9 +176,9 @@ class ProgramTransformer(ExpVisitor):
         elif ctx.qcreate() is not None:
             return [self.visitQcreate(ctx.qcreate())]
         elif ctx.measure() is not None:
-            return [self.visitMeasure(ctx.measure())]
+            return self.visitMeasure(ctx.measure())
         elif ctx.measureAbort() is not None:
-            return [self.visitMeasureAbort(ctx.measureAbort())]
+            return self.visitMeasureAbort(ctx.measureAbort())
         elif ctx.ifexp() is not None:
             return [self.visitIfexp(ctx.ifexp())]
         elif ctx.forexp() is not None:
@@ -705,7 +705,27 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#measure.
     def visitMeasure(self, ctx: ExpParser.MeasureContext):
+        stmts = [] # this might hold the inits and the measure or just the measure
+
         assign_to = self.visitIdindices(ctx.idindices())
+        
+        # if var specified, add QXInit
+        if ctx.getChild(0).getText() == 'var':
+            # there should only be two variables, the first is a natural number, the second a real
+            for i in range(0, 2):
+                if not isinstance(assign_to[i], QXQIndex):
+                    # change the bind to add type info (if needed)
+                    type = None
+                    if i == 0:
+                        type = TySingle('nat')
+                    elif i == 1:
+                        type = TySingle('real')
+                    else:
+                        raise ValueError('UNREACHABLE')
+
+                    bind = QXBind(assign_to[i].ID(), type, assign_to[i])
+                    stmts.append(QXInit(bind, assign_to[i])) # todo: attach line:col information
+
         
         locus = self.visitLocus(ctx.locus())
 
@@ -713,11 +733,30 @@ class ProgramTransformer(ExpVisitor):
         if ctx.arithExpr() is not None:
             restrict = self.visitArithExpr(ctx.arithExpr())
         
-        return QXMeasure(assign_to, locus, restrict, ctx)
+        stmts.append(QXMeasure(assign_to, locus, restrict, ctx))
+        return stmts
 
     # Visit a parse tree produced by ExpParser#measureAbort.
     def visitMeasureAbort(self, ctx: ExpParser.MeasureAbortContext):
+        stmts = [] # this might hold the inits and the measure or just the measure
         assign_to = self.visitIdindices(ctx.idindices())
+
+        # if var specified, add QXInit
+        if ctx.getChild(0).getText() == 'var':
+            # there should only be two variables, the first is a natural number, the second a real
+            for i in range(0, 2):
+                if not isinstance(assign_to[i], QXQIndex):
+                    # change the bind to add type info (if needed)
+                    type = None
+                    if i == 0:
+                        type = TySingle('nat')
+                    elif i == 1:
+                        type = TySingle('real')
+                    else:
+                        raise ValueError('UNREACHABLE')
+
+                    bind = QXBind(assign_to[i].ID(), type, assign_to[i])
+                    stmts.append(QXInit(bind, assign_to[i])) # todo: attach line:col information
 
         locus = self.visitLocus(ctx.locus())
 
@@ -725,7 +764,8 @@ class ProgramTransformer(ExpVisitor):
         if ctx.arithExpr() is not None:
             restrict = self.visitArithExpr(ctx.arithExpr())
 
-        return QXMeasureAbort(assign_to, locus, restrict, ctx)
+        stmts.append(QXMeasureAbort(assign_to, locus, restrict, ctx))
+        return stmts
 
     # Visit a parse tree produced by ExpParser#return.
     def visitReturnStmt(self, ctx: ExpParser.ReturnStmtContext):
