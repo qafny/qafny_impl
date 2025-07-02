@@ -712,14 +712,14 @@ class ProgramTransformer(ExpVisitor):
         # if var specified, add QXInit
         if ctx.getChild(0).getText() == 'var':
             # there should only be two variables, the first is a natural number, the second a real
-            for i in range(0, 2):
+            for i in range(0, len(assign_to)):
                 if not isinstance(assign_to[i], QXQIndex):
                     # change the bind to add type info (if needed)
                     type = None
-                    if i == 0:
-                        type = TySingle('nat')
-                    elif i == 1:
-                        type = TySingle('real')
+                    if i + 1 < len(assign_to):
+                        type = TySingle('nat')  # all numbers (excluding the last) should be naturals
+                    elif i + 1 == len(assign_to):
+                        type = TySingle('real')  # the last number is probability
                     else:
                         raise ValueError('UNREACHABLE')
 
@@ -744,14 +744,14 @@ class ProgramTransformer(ExpVisitor):
         # if var specified, add QXInit
         if ctx.getChild(0).getText() == 'var':
             # there should only be two variables, the first is a natural number, the second a real
-            for i in range(0, 2):
+            for i in range(0, len(assign_to)):
                 if not isinstance(assign_to[i], QXQIndex):
                     # change the bind to add type info (if needed)
                     type = None
-                    if i == 0:
-                        type = TySingle('nat')
-                    elif i == 1:
-                        type = TySingle('real')
+                    if i + 1 < len(assign_to):
+                        type = TySingle('nat')  # all numbers (excluding the last) should be naturals
+                    elif i + 1 == len(assign_to):
+                        type = TySingle('real')  # the last number is probability
                     else:
                         raise ValueError('UNREACHABLE')
 
