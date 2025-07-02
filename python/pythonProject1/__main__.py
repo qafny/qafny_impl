@@ -18,6 +18,7 @@ from DafnyLibrary import DafnyLibrary # usage: generating template library funct
 from CleanupVisitor import CleanupVisitor # usage: perforaming final cleanup operations before verifying such as convertiong x ^ y to powN(x, y)
 
 import subprocess # usage: calling dafny to verify generated code
+import re # to extract the error line number from dafny output
 
 from error_reporter.CodeReport import CodeReport
 
@@ -174,12 +175,17 @@ if __name__ == "__main__":
             cleanup = CleanupVisitor()
             dafny_ast = cleanup.visitProgram(dafny_ast)
 
-            # Convert Dafny AST to string
-            target_printer_visitor = PrinterVisitor()
+            
             dafny_code = ''
 
             # add library functions
             dafny_code += DafnyLibrary.buildLibrary(dafny_transfer.libFuns)
+
+            # count line numbers of library functions
+            library_line_count = len(dafny_code.split('\n'))
+
+            # Convert Dafny AST to string
+            target_printer_visitor = PrinterVisitor(library_line_count)
 
             # this is required to print out the generated lambda functions
             for i in dafny_transfer.addFuns:
@@ -210,11 +216,27 @@ if __name__ == "__main__":
                 if not args.skip_verify:
                     dafny_result = subprocess.run(["dafny", "verify", output_filename])
             else:
+                dafny_result = None
                 if not args.skip_verify:
+                    
                     dafny_result = subprocess.run(
                         ["dafny", "verify", "--stdin", "--allow-warnings", "--verification-time-limit=60"],
-                        input=dafny_code, text=True
+                        input=dafny_code, text=True, capture_output=True
                     )
+                    if dafny_result.returncode != 0: 
+                        error_message = dafny_result.stdout
+                        pattern = r"<stdin>\((?P<line>\d+),.*?\): Error:"
+                        match = re.search(pattern, error_message)
+                        if match:
+                            line_number = int(match.group('line'))
+                            if line_number in target_printer_visitor.line_mapping:
+                                print('Estimated qafny error line number', target_printer_visitor.line_mapping[line_number].qafny_line_number())
+                            else:
+                                print('Could not find qafny line number')
+                                print(error_message)
+
+                        else:
+                            print("Could not find error line number.")
 
             if not args.skip_verify:
                 show_step_status(filename, "Verify", dafny_result.returncode == 0)
