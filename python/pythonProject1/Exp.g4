@@ -225,7 +225,7 @@ baseTy: TNat # NaturalType
 
 qty : Nor | Had | En | En '(' arithExpr ')' | aaType;
 
-aaType : AA | AA '(' arithExpr ')';
+aaType : AA | AA '(' qrange ')';
 
 additiveOp: TAdd | TSub | OPlus;
 

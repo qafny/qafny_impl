@@ -1301,8 +1301,6 @@ class ProgramTransfer(ProgramVisitor):
         return res
         
     def visitIf(self, ctx: Programmer.QXIf):
-        self.conds.append(ctx.bexp().accept(self))
-        print(self.conds)
         if isinstance(ctx.bexp(), QXBool):
             bex = ctx.bexp().accept(self)
             terms = []
@@ -2509,8 +2507,8 @@ class ProgramTransfer(ProgramVisitor):
             for con in ctx.sums()[::-1]:
                 x = DXBind(con.ID(), SType("nat"))
                 arange = DXInRange(x,con.range().left().accept(self), con.range().right().accept(self), qafny_line_number=ctx.line_number())
-                #if con.condition():
-                    #arange = DXBin('&&', arange, con.condition().accept(self))
+                if con.condition():
+                    arange = DXBin('&&', arange, con.condition().accept(self))
                 eq = DXAll(x, DXLogic("==>",arange,eq), qafny_line_number=ctx.line_number())
             tmp += [eq]
 
@@ -2521,6 +2519,8 @@ class ProgramTransfer(ProgramVisitor):
         for con in ctx.sums()[::-1]:
             x = DXBind(con.ID(), SType("nat"))
             arange = DXInRange(x, con.range().left().accept(self), con.range().right().accept(self), qafny_line_number=ctx.line_number())
+            if con.condition():
+                    arange = DXBin('&&', arange, con.condition().accept(self))
             eq = DXAll(x, DXLogic("==>", arange, eq), qafny_line_number=ctx.line_number())
 
         if not self.t_ensures:

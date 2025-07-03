@@ -294,11 +294,11 @@ class ProgramTransformer(ExpVisitor):
         while ctx.comOp(i):
             op.append(self.visitComOp(ctx.comOp(i)))
             i += 1
-        i = len(op) - 1
-        while i >= 0:
-            va[i] = QXComp(op[i], va[i], va[i+1], ctx,line_number=ctx.start.line)
-            i -= 1
-        return va[0]
+        # Left-associative grouping
+        result = va[0]
+        for i in range(len(op)):
+            result = QXComp(op[i], result, va[i+1], ctx, line_number=ctx.start.line)
+        return result
 
     # Visit a parse tree produced by ExpParser#logicInExpr.
     def visitLogicInExpr(self, ctx: ExpParser.LogicInExprContext):
@@ -610,19 +610,19 @@ class ProgramTransformer(ExpVisitor):
                 amp = next_sum.amp()
 
             # combine the conditions
-            if condition is not None and next_sum.condition() is not None:
-                condition = QXLogic('&&', condition, next_sum.condition(), line_number=ctx.start.line)
-            else:
-                condition = next_sum.condition()
+            # if condition is not None and next_sum.condition() is not None:
+            #     condition = QXLogic('&&', condition, next_sum.condition(), line_number=ctx.start.line)
+            # else:
+            #     condition = next_sum.condition()
 
-            return QXSum(sums, amp, next_sum.kets(), condition, ctx,line_number=ctx.start.line)
+            return QXSum(sums, amp, next_sum.kets(), ctx,line_number=ctx.start.line)
         elif ctx.sumspec() is not None:
             # unwrap parentheses
             return self.visitSumspec(ctx.sumspec())
 
     # Visit a parse tree produced by ExpParser#maySum.
     def visitMaySum(self, ctx: ExpParser.MaySumContext):
-        return QXCon(ctx.ID(), self.visitCrange(ctx.crange()), ctx,line_number=ctx.start.line)
+        return QXCon(ctx.ID(), self.visitCrange(ctx.crange()), self.visitBexp(ctx.bexp()), ctx, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#asserting.
     def visitAsserting(self, ctx: ExpParser.AssertingContext):
