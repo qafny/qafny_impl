@@ -109,10 +109,10 @@ qassign : (locus | ID) '*=' expr ';';
 qcreate : 'var' qrange '*=' 'init' '(' arithExpr ')' ';';
 
 // enforce only locuses in measure, no IDs.
-measure : idindices '*=' 'measure' '(' locus (',' arithExpr)? ')' ';' ;
+measure : 'var'? idindices '*=' 'measure' '(' locus (',' arithExpr)? ')' ';' ;
 
 // see SWAPTest.qfy
-measureAbort: idindices '*=' 'measA' '(' locus (',' arithExpr)? ')' ';';
+measureAbort: 'var'? idindices '*=' 'measA' '(' locus (',' arithExpr)? ')' ';';
 
 returnStmt: Return ids ';';
 

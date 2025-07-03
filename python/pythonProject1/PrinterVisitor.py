@@ -5,12 +5,17 @@ from TargetProgramVisitor import TargetProgramVisitor
 
 
 class PrinterVisitor(TargetProgramVisitor):
+
+    def __init__(self, current_line: int = 1):
+        self.line_mapping = {}
+        self.current_line = current_line
     
     def visitProgram(self, ctx: TargetProgrammer.DXProgram):
         # visit all the methods and append them to create a program 
         program = ''
         for method in ctx.method():
             program += method.accept(self) + "\n\n"
+            self.current_line += 2
         return program
     
     def visitMethod(self, ctx: TargetProgrammer.DXMethod):
@@ -26,12 +31,17 @@ class PrinterVisitor(TargetProgramVisitor):
             returns += rbinding.ID() + (str(rbinding.num()) if rbinding.num() else '') + ': ' + rbinding.type().accept(self) + ', ' if rbinding.type() else '' 
 
         returns = (returns[:-2] + ')\n') if len(ctx.returns()) > 0 else '\n'
-
+        self.line_mapping[self.current_line] = ctx
+        self.current_line += 1
         conds = ''
         for cond in ctx.conds():
             r = cond.accept(self)
             conds += '  ' + r + '\n' if r else ''
+            if r:
+                self.line_mapping[self.current_line] = cond
+                self.current_line += 1
 
+        self.current_line += 1
         if ctx.axiom():
             method = 'method {:axiom} ' + ctx.ID() + '(' + bindings + ') ' + returns + conds
             return method
@@ -39,6 +49,8 @@ class PrinterVisitor(TargetProgramVisitor):
         stmts = ''
         for stmt in ctx.stmts():
             stmts += '  ' + stmt.accept(self) + '\n'
+            self.line_mapping[self.current_line] = stmt
+            self.current_line += 1
 
         method = 'method ' + ctx.ID() + '(' + bindings + ') ' + returns + conds + '{\n' + stmts + '}'
 
@@ -111,25 +123,37 @@ class PrinterVisitor(TargetProgramVisitor):
         stmts = ''
         for stmt in ctx.stmts():
             stmts += '  ' + stmt.accept(self) + '\n'
+            self.line_mapping[self.current_line] = stmt
+            self.current_line += 1
         inv = ''
         if ctx.inv():
             for i in ctx.inv():
                 inv += '  invariant ' + i.accept(self) + '\n'
+                self.line_mapping[self.current_line] = i
+                self.current_line += 1
+            
+        self.current_line += 2
         return 'while(' + ctx.cond().accept(self) + ')\n' + inv + '{\n' + stmts + '}'
     
     def visitIf(self, ctx: TargetProgrammer.DXIf):
         stmts = ''
         for stmt in ctx.left():
+            self.line_mapping[self.current_line] = stmt
+            self.current_line += 1
             stmts += '  ' + stmt.accept(self) + '\n'
 
         elsestmts = ''
         for stmt in ctx.right():
+            self.line_mapping[self.current_line] = stmt
+            self.current_line += 1
             elsestmts += '  ' + stmt.accept(self) + '\n'
 
         elsepart = ''
         if len(elsestmts) > 0:
             elsepart = '\nelse {\n' + elsestmts + '}' 
+            self.current_line += 2
 
+        self.current_line += 1
         return 'if (' + ctx.cond().accept(self) + '){\n' + stmts + '}' + elsepart
     
     def visitVar(self, ctx: TargetProgrammer.DXVar):
