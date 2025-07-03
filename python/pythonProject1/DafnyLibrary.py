@@ -32,7 +32,7 @@ class DafnyLibrary:
     'powN' : '''function {:axiom} powN(N:nat, k: nat) : int
                     ensures powN(N, k) > 0''',
     'powNTimesMod' : '''lemma {:axiom} powNTimesMod()
-          ensures forall k: nat, j: nat, l : nat, N:nat :: N > 0 ==> powN(k, j) * (powN(k, l) % N) % N == powN(k, j + l) % N''',
+          ensures forall k: nat, j: nat, l : nat, N:nat {:trigger powN(k, j) * (powN(k, l) % N)}:: N > 0 ==> powN(k, j) * (powN(k, l) % N) % N == powN(k, j + l) % N''',
 
     'pow2mul' : Method('''lemma {:axiom} pow2mul()
                 ensures forall k : nat, j : nat :: pow2(k) * pow2(j) == pow2(k + j)''', ['pow2']),

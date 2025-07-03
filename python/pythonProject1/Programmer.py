@@ -751,11 +751,11 @@ class QXQRange(QXTop):
 @qafny.auto.equality
 class QXCon(QXTop):
 
-    def __init__(self, id: str, crange: QXCRange, parser_context: antlr4.ParserRuleContext = None):
+    def __init__(self, id: str, crange: QXCRange, condition: QXBExp, parser_context: antlr4.ParserRuleContext = None):
         super().__init__(parser_context=parser_context)
         self._id = id.getText() if isAntlrNode(id) else id
         self._crange = crange
-        # self._condition = condition
+        self._condition = condition
 
     def ID(self):
         return self._id if isinstance(self._id, str) else self._id.getText()
@@ -763,14 +763,14 @@ class QXCon(QXTop):
     def range(self):
         return self._crange
 
-    # def condition(self):
-    #    return self._condition
+    def condition(self):
+        return self._condition
 
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitCon(self)
 
     def __repr__(self):
-        return f"QXCon(id={repr(str(self._id))}, crange={self._crange})"
+        return f"QXCon(id={repr(str(self._id))}, crange={self._crange}, condition={self._condition})"
 
 
 @qafny.auto.rich_repr
@@ -1129,12 +1129,12 @@ class QXSum(QXQState):
     def kets(self):
         return self._kets
 
-    def condition(self):
-        '''Returns the condition of this sum, indicating when it should be tested against. Most conditions will include variables from the QXCon'''
-        return self._condition
+    # def condition(self):
+    #     '''Returns the condition of this sum, indicating when it should be tested against. Most conditions will include variables from the QXCon'''
+    #     return self._condition
 
     def __repr__(self):
-        return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets}, condition={self._condition})"
+        return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets})"
 
 class QXStmt(QXTop):
     '''Parent class of all statements.'''

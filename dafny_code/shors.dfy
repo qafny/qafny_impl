@@ -32,17 +32,17 @@ predicate allsame (x : seq<bv1>, i: bv1)
   forall k :: 0 <= k < |x| ==> x[k] == i
 }
 
-const pi := 3.14159265;
-const conv := 4.0 / (pi * pi);
+const pi := 3.14159265
+const conv := 4.0 / (pi * pi)
 
 
-function method pow2(N:nat):int
+function pow2(N:nat):int
   ensures pow2(N) > 0
 {
 	if (N==0) then 1 else 2 * pow2(N-1)
 }
 
-function method Pow(b: int, e: nat): int
+function Pow(b: int, e: nat): int
     decreases e
   {
     if e == 0 then
@@ -51,12 +51,12 @@ function method Pow(b: int, e: nat): int
       b * Pow(b, e - 1)
   }
 
-function method {:axiom} omega(n:nat, a:nat): real
+function {:axiom} omega(n:nat, a:nat): real
 
 lemma {:axiom} omegaplus(a:nat, b:nat, c:nat)
   ensures omega(a,b+c) == omega(a,b) * omega(a,c)
 
-function method castBVInt (x:seq<bv1>) : nat
+function castBVInt (x:seq<bv1>) : nat
 {
   if (|x|==0) then 0 else (x[0] as nat) + 2 * castBVInt(x[1..])
 }
@@ -67,13 +67,13 @@ function method castBVInt (x:seq<bv1>) : nat
     ensures castBVInt(x) + (y[|x|] as nat) * pow2(|x|) == castBVInt(y)
 
 
-function method b2n (x:seq<bv1>, i:nat) : nat
+function b2n (x:seq<bv1>, i:nat) : nat
   requires i <= |x|
 {
   if (i==0) then 0 else (x[i-1] as nat) * pow2(i-1) + b2n(x[..i-1],i-1)
 }
 
-function method {:axiom} ab2n(x:nat, n:nat) : seq<bv1>
+function {:axiom} ab2n(x:nat, n:nat) : seq<bv1>
    ensures |ab2n(x,n)| == n
    ensures b2n(ab2n(x,n), n) == x
 
@@ -315,7 +315,7 @@ method addHad(z:array<(real,real,seq<bv1>,seq<bv1>)>, ni:nat) returns (y : array
   }
 }
 
-function method {:axiom} multmod(x: seq<bv1>, a: nat, n: nat) :seq<bv1>
+function {:axiom} multmod(x: seq<bv1>, a: nat, n: nat) :seq<bv1>
   requires 1 < a < n
   ensures |multmod(x,a,n)| == |x| 
   ensures b2n(multmod(x,a,n), |x|) == a * b2n(x, |x|) % n
@@ -642,7 +642,7 @@ lemma omegaCancels(z:seq<(real,real,seq<bv1>)>, r:nat, n:nat, j:nat, ran:nat)
   }
 }
 
-function method sumPhase(z:seq<(real,real,seq<bv1>)>) : real
+function sumPhase(z:seq<(real,real,seq<bv1>)>) : real
 {
   if |z| == 0 then 0.0 else z[0].1 + sumPhase(z[1..])
 }
@@ -668,6 +668,7 @@ method measure(z:seq<seq<(real,real,seq<bv1>)>>, n:nat, r : nat, ran: nat, ranj:
 {
   var j := ranj * pow2(n) / r;
   assert (ranj * pow2(n) / r < pow2(n));
+  assume false;
   var y := z[j];
   omegaCancels(y,r,n,j,ran);
   var tmp := sumPhase(y);

@@ -1,4 +1,4 @@
-function method {:axiom} omega(n:nat, a:nat): real
+function {:axiom} omega(n:nat, a:nat): real
 
 function castBVInt (x:seq<bv1>) : nat
 {
@@ -22,6 +22,7 @@ method {:axiom} hadEn(x1:seq<seq<bv1>>, x2:seq<seq<bv1>>,  amp: seq<real>, phase
             returns (y1 : seq<seq<seq<bv1>>>, y2:seq<seq<seq<bv1>>>, ampy: seq<seq<real>>, py: seq<seq<real>>) 
   requires |x1| == |amp| == |phase|
   requires |x2| == |amp| == |phase|
+  //requires forall k ::0 <= k < |x1| ==> x1[k] == x2[k]
   ensures |y1| == |x1|
   ensures |y2| == |x2|
   ensures |y1| == |y2|

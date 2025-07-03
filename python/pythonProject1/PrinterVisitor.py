@@ -145,7 +145,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return ctx.left().accept(self) + ' ' + ctx.op() + ' ' + ctx.right().accept(self)
     
     def visitNot(self, ctx: TargetProgrammer.DXNot):
-        return '!' + ctx.next().accept(self)
+        return '!' + '(' + ctx.next().accept(self) + ')'
     
     def visitInRange(self, ctx: TargetProgrammer.DXInRange):
         return ctx.left().accept(self) + " <= " + ctx.bind().accept(self) + " < " + ctx.right().accept(self)

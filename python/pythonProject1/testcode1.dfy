@@ -1,4 +1,4 @@
-function method {:axiom} omega(n:nat, a:nat): real
+function {:axiom} omega(n:nat, a:nat): real
 
 method hadNorHad(x:seq<bv1>) returns (y : seq<real>)
   ensures |y| == |x|

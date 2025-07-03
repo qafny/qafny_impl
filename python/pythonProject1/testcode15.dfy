@@ -1,12 +1,12 @@
-function method {:axiom} omega(a:nat, n:nat): real
+function {:axiom} omega(a:nat, n:nat): real
 
 
-function method {:axiom} cos(a:real): real
+function {:axiom} cos(a:real): real
 
-function method {:axiom} sin(a:real): real
+function {:axiom} sin(a:real): real
 
 //WLOG,we assume theta is in [0,pi/2] 
-function method {:axiom} arcsin(x: real) : real
+function {:axiom} arcsin(x: real) : real
   ensures arcsin(x) >= 0.0
   
 
@@ -31,7 +31,7 @@ function sumFun(f: nat -> bool, n: nat): int
 }
 
 
-function method {:axiom} sqrt(a:real) :real 
+function {:axiom} sqrt(a:real) :real 
 
 lemma {:axiom} SqrtGt(a:real)
   requires a > 0.0

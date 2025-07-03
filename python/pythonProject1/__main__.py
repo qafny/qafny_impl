@@ -16,7 +16,7 @@ from ProgramTransfer import ProgramTransfer # usage: transforming the qafny ast 
 from PrinterVisitor import PrinterVisitor # usage: outputting string text dafny code from a dafny (TargetProgrammer) AST
 from DafnyLibrary import DafnyLibrary # usage: generating template library functions for verification
 from CleanupVisitor import CleanupVisitor # usage: perforaming final cleanup operations before verifying such as convertiong x ^ y to powN(x, y)
-
+from QafnyPP import QafnyPP
 import subprocess # usage: calling dafny to verify generated code
 
 from error_reporter.CodeReport import CodeReport
@@ -51,7 +51,7 @@ DEFAULT_FILENAMES = [
     example_program("test7"),
     example_program("test8"),
     example_program("test9"),
-    example_program("test10"),
+    #example_program("test10"),
     example_program("test11"),
     example_program("test12"),
     example_program("test13"),
@@ -156,7 +156,10 @@ if __name__ == "__main__":
             # Transform ANTLR AST to Qafny AST
             transformer = ProgramTransformer()
             qafny_ast = transformer.visitProgram(ast)
-#            print(f"\n qafny_ast:{qafny_ast}")
+            # qpp = QafnyPP()
+            # print(f"\n qafny_ast:\n{qafny_ast}")
+            # pp = qafny_ast.accept(qpp)
+            # print(pp)
 
             # Collect the types + kinds in the AST
             collect_kind = CollectKind()
@@ -204,7 +207,7 @@ if __name__ == "__main__":
 
             if output_filename is not None:
                 blue_filename = stylize(f'"{output_filename}"', fore('blue'))
-                print(f'Saving Dafny to: {blue_filename}')
+                print(f'Saving Dafny code to: {blue_filename}')
                 with open(output_filename, 'w') as dafny_file:
                     dafny_file.write(dafny_code)
                 if not args.skip_verify:

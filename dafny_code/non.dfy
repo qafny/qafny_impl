@@ -1,27 +1,26 @@
-datatype Qubit = Qubit(index: nat)
 datatype En2 = En2(k: nat, j: nat)
 datatype En1 = En1(k: nat)
 
-function method pow2(N:nat):int
+function pow2(N:nat):int
   ensures pow2(N) > 0
 {
 	if (N==0) then 1 else 2 * pow2(N-1)
 }
 
-function method {:axiom} sqrt(a:real) :real 
+function {:axiom} sqrt(a:real) :real 
     requires a > 0.0
     ensures sqrt(a) > 0.0
 
-function method {:axiom} a(j: nat): real
-function method {:axiom} ph(j: nat): real
-function method {:axiom} omega(a:real, n:nat): real
-function method {:axiom} cos(a:real): real
+function {:axiom} a(j: nat): real //the unary operation first applied to |0>
+function {:axiom} ph(j: nat): real
+function {:axiom} omega(a:real, n:nat): real
+function {:axiom} cos(a:real): real
 
 //WLOG we assume theta is in [0,pi/2]
-function method {:axiom} sin(a:real): real
+function {:axiom} sin(a:real): real
     ensures sin(a) != 0.0
 
-function method phi(n: nat): (En2 -> real)
+function phi(n: nat): (En2 -> real)
   requires n >= 0
   ensures forall state :: phi(n)(state) == 
            if 0 <= state.k < 2 && 0 <= state.j < pow2(n) 
@@ -35,10 +34,9 @@ function method phi(n: nat): (En2 -> real)
       0.0
 }
 
-function method alpha(n: nat): (En2 -> real)
+function alpha(n: nat): (En2 -> real)
   requires n >= 0
-  ensures forall state :: alpha(n)(state) == 
-    if state.k == 0 && 0 <= state.j < pow2(n) then
+  ensures forall state :: alpha(n)(state) == if state.k == 0 && 0 <= state.j < pow2(n) then
       (1.0/sqrt(2.0)) * a(state.j) * omega(ph(state.j), pow2(n))
     else if state.k == 1 && 0 <= state.j < pow2(n) then
       (1.0/sqrt(2.0)) * a(state.j) * omega(-ph(state.j), pow2(n))
@@ -54,10 +52,9 @@ function method alpha(n: nat): (En2 -> real)
       0.0
 }
 
-function method beta(n: nat): (En2 -> real)
+function beta(n: nat): (En2 -> real)
   requires n >= 0
-  ensures forall state :: beta(n)(state) == 
-    if state.k == 1 && 0 <= state.j < pow2(n) then
+  ensures forall state :: beta(n)(state) == if state.k == 1 && 0 <= state.j < pow2(n) then
       (1.0/sqrt(2.0)) * a(state.j) * omega(-ph(state.j), pow2(n))
     else if state.k == 0 && 0 <= state.j < pow2(n) then
       (1.0/sqrt(2.0)) * a(state.j) * omega(ph(state.j), pow2(n))
@@ -75,34 +72,34 @@ function method beta(n: nat): (En2 -> real)
 
 //cos(theta) is the expected value of cos(ph(x))
 //apply SU on phi -> phi and alpha
-function method sfphiOp(theta: real, phi: (En2 -> real), alpha: (En2 -> real)): (En2 -> real) 
+function sfphiOp(theta: real, phi: (En2 -> real), alpha: (En2 -> real)): (En2 -> real) 
   ensures forall state: En2 :: 
       sfphiOp(theta, phi, alpha)(state) == 2.0 * cos(theta) * phi(state) - alpha(state)
   {
   (state: En2) => 2.0 * cos(theta) * phi(state) - alpha(state)
 }
 
-function method sfbetaOp(theta: real, phi: (En2 -> real)): (En2 -> real) 
+function sfbetaOp(theta: real, phi: (En2 -> real)): (En2 -> real) 
   ensures forall state: En2 :: 
     sfbetaOp(theta, phi)(state) == phi(state){
   (state: En2) => phi(state)
 }
 
 
-function method sf_phiOp(theta: real, phi: (En2 -> real), beta: (En2 -> real)): (En2 -> real) 
+function sf_phiOp(theta: real, phi: (En2 -> real), beta: (En2 -> real)): (En2 -> real) 
   ensures forall state: En2 :: 
     sf_phiOp(theta, phi, beta)(state) == 2.0 * cos(theta) * phi(state) - beta(state){
   (state: En2) => 2.0 * cos(theta) * phi(state) - beta(state)
 }
 
 
-function method sf_alphaOp(phi: (En2 -> real), alpha: (En2 -> real)): (En2 -> real) 
+function sf_alphaOp(phi: (En2 -> real), alpha: (En2 -> real)): (En2 -> real) 
   ensures forall state: En2 ::
     sf_alphaOp(phi, alpha)(state) == phi(state){
     (state: En2) => phi(state)
     }
 
-function method phi_t(t: nat, theta: real, phi: (En2 -> real), alpha: (En2 -> real), beta: (En2 -> real)): (En2 -> real)
+function phi_t(t: nat, theta: real, phi: (En2 -> real), alpha: (En2 -> real), beta: (En2 -> real)): (En2 -> real)
   requires theta > 0.0
 {
   (state: En2) =>

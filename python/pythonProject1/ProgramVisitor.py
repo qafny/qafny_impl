@@ -245,8 +245,9 @@ class ProgramVisitor(AbstractProgramVisitor):
         for elem in ctx.stmts():
             elem.accept(self)
 
-        for elem in ctx.else_stmts():
-            elem.accept(self)
+        if ctx.else_stmts():
+            for elem in ctx.else_stmts():
+                elem.accept(self)
 
     def visitInit(self, ctx: Programmer.QXInit):
         return ctx.binding().accept(self)
