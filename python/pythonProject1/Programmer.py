@@ -840,11 +840,11 @@ class QXQRange(QXTop):
 @qafny.auto.equality
 class QXCon(QXTop):
 
-    def __init__(self, id: str, crange: QXCRange, condition: QXBExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
+    def __init__(self, id: str, crange: QXCRange, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
         super().__init__(parser_context=parser_context)
         self._id = id.getText() if isAntlrNode(id) else id
         self._crange = crange
-        self._condition = condition
+        # self._condition = condition
         self._line_number = line_number
 
     def ID(self):
@@ -860,7 +860,7 @@ class QXCon(QXTop):
         return visitor.visitCon(self)
 
     def __repr__(self):
-        return f"QXCon(id={repr(str(self._id))}, crange={self._crange}, condition={self._condition})"
+        return f"QXCon(id={repr(str(self._id))}, crange={self._crange})"
     
     def line_number(self):
         return self._line_number
@@ -1285,6 +1285,9 @@ class QXSum(QXQState):
 
     def __repr__(self):
         return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets}, condition={self._condition})"
+    
+    def line_number(self):
+        return self._line_number
 
 class QXStmt(QXTop):
     '''Parent class of all statements.'''

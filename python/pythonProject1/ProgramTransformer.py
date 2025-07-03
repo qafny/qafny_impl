@@ -294,11 +294,11 @@ class ProgramTransformer(ExpVisitor):
         while ctx.comOp(i):
             op.append(self.visitComOp(ctx.comOp(i)))
             i += 1
-        # Left-associative grouping
-        result = va[0]
-        for i in range(len(op)):
-            result = QXComp(op[i], result, va[i+1], ctx,line_number=ctx.start.line)
-        return result
+        i = len(op) - 1
+        while i >= 0:
+            va[i] = QXComp(op[i], va[i], va[i+1], ctx,line_number=ctx.start.line)
+            i -= 1
+        return va[0]
 
     # Visit a parse tree produced by ExpParser#logicInExpr.
     def visitLogicInExpr(self, ctx: ExpParser.LogicInExprContext):

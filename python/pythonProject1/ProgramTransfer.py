@@ -238,9 +238,6 @@ class ProgramTransfer(ProgramVisitor):
                     tr = DXCall('pow2', [DXVar(locus[i].crange().right().ID() if isinstance(locus[i].crange().right(), QXBind) else str(locus[i].crange().right().num()))], qafny_line_number=self.current_qafny_line_number)
                     tmp = DXComp('==', DXLength(curr_bind), tr, qafny_line_number=self.current_qafny_line_number)
                     res.append(DXRequires(tmp, qafny_line_number=self.current_qafny_line_number))
-                    tr = generate_pow2_expr(locus[i].crange().right())
-                    tmp = DXComp('==', DXLength(curr_bind), tr)
-                    res.append(DXRequires(tmp))
                 else:
                     allvar = DXBind('tmp', SType('nat'), lcounter)
                     lcounter += 1
