@@ -3,7 +3,8 @@
 
 import argparse  # usage: parsing cli arguments, printing help
 import os  # usage: getting relative paths and directoy names
-from colored import stylize, fore # console ui styling
+import rich # usage: console ui
+# from colored import stylize, fore # console ui styling
 
 from antlr4 import FileStream, CommonTokenStream  # usage: reading in a file and creating a token stream
 from ExpLexer import ExpLexer  # usage: lexing the file stream
@@ -91,12 +92,11 @@ os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
 def show_step_status(filename: str, description: str, is_success: bool):
     """show_step_status shows a status message to the user about the current file"""
     human_readable_filename = os.path.basename(filename)
-    blue_hr_filename = stylize(f'"{human_readable_filename}"', fore('blue'))
-    print(f"{description} {blue_hr_filename}: ", end='')
+    rich.print(f"{description} [blue]{human_readable_filename}[/]:", end='')
     if is_success:
-        print(stylize("✓ (pass)", fore('green')))
+        rich.print("[green] ✓ (pass)")
     else:
-        print(stylize("🞫 (fail)", fore('red')))
+        rich.print("[red] 🞫 (fail)")
 
 #######################################
 # Main Routine
@@ -132,8 +132,7 @@ if __name__ == "__main__":
     for filename in args.filename:
         # filename w/o the folders
         human_readable_filename = os.path.basename(filename)
-        blue_hr_filename = stylize(f'"{human_readable_filename}"', fore('blue'))
-        print(f"Verifying: {blue_hr_filename}")
+        rich.print(f"Verifying: [blue]{human_readable_filename}[/]")
         # create a file stream
         file_stream = FileStream(filename, encoding="utf-8")
         # scan (lex the file)
@@ -212,8 +211,7 @@ if __name__ == "__main__":
 
             # write out dafny code (if specified)
             if output_filename is not None:
-                blue_filename = stylize(f'"{output_filename}"', fore('blue'))
-                print(f'Saving Dafny code to: {blue_filename}')
+                rich.print(f'Saving Dafny code to: [blue]{output_filename}')
                 with open(output_filename, 'w') as dafny_file:
                     dafny_file.write(dafny_code)
             
