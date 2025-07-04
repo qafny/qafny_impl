@@ -157,6 +157,7 @@ if __name__ == "__main__":
             # Transform ANTLR AST to Qafny AST
             transformer = ProgramTransformer()
             qafny_ast = transformer.visitProgram(ast)
+
             # qpp = QafnyPP()
             # print(f"\n qafny_ast:\n{qafny_ast}")
             # pp = qafny_ast.accept(qpp)
@@ -165,12 +166,11 @@ if __name__ == "__main__":
             # Collect the types + kinds in the AST
             collect_kind = CollectKind()
             collect_kind.visit(qafny_ast)
-            
+
             type_collector = TypeCollector(collect_kind.get_kenv())
             type_collector.visit(qafny_ast)
 
             # Convert to Dafny AST
-#            print(f"\nkinds:{collect_kind.get_kenv()}\ntypes:{type_collector.get_env()}")
             dafny_transfer = ProgramTransfer(collect_kind.get_kenv(), type_collector.get_env())
             dafny_ast = dafny_transfer.visit(qafny_ast)
 
@@ -178,7 +178,6 @@ if __name__ == "__main__":
             cleanup = CleanupVisitor()
             dafny_ast = cleanup.visitProgram(dafny_ast)
 
-            
             dafny_code = ''
 
             # add library functions
@@ -211,36 +210,41 @@ if __name__ == "__main__":
                 else:
                     output_filename = os.path.join(output_dir, args.output)
 
+            # write out dafny code (if specified)
             if output_filename is not None:
                 blue_filename = stylize(f'"{output_filename}"', fore('blue'))
                 print(f'Saving Dafny code to: {blue_filename}')
                 with open(output_filename, 'w') as dafny_file:
                     dafny_file.write(dafny_code)
-                if not args.skip_verify:
-                    dafny_result = subprocess.run(["dafny", "verify", output_filename])
-            else:
-                dafny_result = None
-                if not args.skip_verify:
-                    
+            
+            # ask dafny for verification
+            dafny_result = None
+            if not args.skip_verify:
+                if output_filename is not None:
+                    dafny_result = subprocess.run(["dafny", "verify", "--allow-warnings", "--verification-time-limit=60", output_filename])
+                else:
                     dafny_result = subprocess.run(
                         ["dafny", "verify", "--stdin", "--allow-warnings", "--verification-time-limit=60"],
                         input=dafny_code, text=True, capture_output=True
                     )
-                    if dafny_result.returncode != 0: 
-                        error_message = dafny_result.stdout
-                        pattern = r"<stdin>\((?P<line>\d+),.*?\): Error:"
-                        match = re.search(pattern, error_message)
-                        if match:
-                            line_number = int(match.group('line'))
-                            if line_number in target_printer_visitor.line_mapping:
-                                print('Estimated qafny error line number', target_printer_visitor.line_mapping[line_number].qafny_line_number())
-                            else:
-                                print('Could not find qafny line number')
-                                print(error_message)
 
+                if dafny_result.returncode != 0: 
+                    error_message = dafny_result.stdout
+                    pattern = r"<stdin>\((?P<line>\d+),.*?\): Error:"
+                    match = re.search(pattern, error_message)
+                    if match:
+                        line_number = int(match.group('line'))
+                        if line_number in target_printer_visitor.line_mapping:
+                            print('Estimated qafny error line number', target_printer_visitor.line_mapping[line_number].qafny_line_number())
                         else:
-                            print("Could not find error line number.")
+                            print('Could not find qafny line number')
+                            print(error_message)
 
-            if not args.skip_verify:
+                    else:
+                        print("Could not find error line number.")
+
+                    print("\nVerifier Output:\n" + dafny_result.stdout)
+
                 show_step_status(filename, "Verify", dafny_result.returncode == 0)
-            print("") # newline break
+
+            print("")  # newline break
