@@ -1149,14 +1149,21 @@ class ProgramTransfer(ProgramVisitor):
 
         return loc1, loc1qty, loc1num, complete_range
 
+    #given a locus, we generate type cast predicate and expression
+    #to cast a state predicate for a locus with a certain type to another type
+    #with the ability of merging loci together.
+    #every Dafny variable is the quantum array variable's name + a counter number
+    #when needed to generate new variable, we increment the counter and output var+number.
     def mergeLocus(self, ran: list[QXQRange]):
         fqty = None
         locus_list = []
         cut_list = []
         res = []
-        no_en = True
-        newNum = self.counter
+        no_en = True #check if the type is en or not
+        newNum = self.counter #generate new variables
         self.counter += 1
+
+
         for i in ran:
             loc, qty, num, cr = self.findRangeLocus(i)
             if not cr:
@@ -1169,7 +1176,7 @@ class ProgramTransfer(ProgramVisitor):
                     insert = False
                     break
             if insert:
-                locus_list.append((loc, qty, num))
+                locus_list.append((loc, qty, num)) #loc, its type and the variable flag
     
         for i in ran:
             loc, qty, num, cr = self.findRangeLocus(i)
@@ -1219,8 +1226,12 @@ class ProgramTransfer(ProgramVisitor):
                 norloc = locus_list[1]
                 hadloc = locus_list[0]
             self.libFuns.add('hadNorEn')
-            res += [DXAssign([DXBind('amp', None, newNum, qafny_line_number=self.current_qafny_line_number), DXBind(hadloc[0][0].location(), None, newNum, qafny_line_number=self.current_qafny_line_number), DXBind(norloc[0][0].location(), None, newNum, qafny_line_number=self.current_qafny_line_number)],
-                            DXCall('hadNorEn', [DXBind(hadloc[0][0].location(), None, hadloc[2], qafny_line_number=self.current_qafny_line_number), DXBind(norloc[0][0].location(), None, norloc[2], qafny_line_number=self.current_qafny_line_number)], qafny_line_number=self.current_qafny_line_number), True, qafny_line_number=self.current_qafny_line_number)]                    
+            res += [DXAssign([DXBind('amp', None, newNum, qafny_line_number=self.current_qafny_line_number),
+                              DXBind(hadloc[0][0].location(), None, newNum, qafny_line_number=self.current_qafny_line_number),
+                              DXBind(norloc[0][0].location(), None, newNum, qafny_line_number=self.current_qafny_line_number)],
+                            DXCall('hadNorEn', [DXBind(hadloc[0][0].location(), None, hadloc[2], qafny_line_number=self.current_qafny_line_number),
+                                                DXBind(norloc[0][0].location(), None, norloc[2], qafny_line_number=self.current_qafny_line_number)],
+                                   qafny_line_number=self.current_qafny_line_number), True, qafny_line_number=self.current_qafny_line_number)]
             self.removeLocus(hadloc[2])
             self.removeLocus(norloc[2])
             self.varnums += [(hadloc[0] + norloc[0], fqty, newNum)]
@@ -1231,11 +1242,15 @@ class ProgramTransfer(ProgramVisitor):
                 loc, qty, num, match_loc, match_qty, match_num = item
                 if isinstance(qty, TyHad):
                     self.libFuns.add('cutHad')
-                    res += [DXAssign([DXBind(loc[0].location(), None, newNum)], DXCall('cutHad', [DXBind(loc[0].location(), None, num)]), True, qafny_line_number=self.current_qafny_line_number)]
+                    res += [DXAssign([DXBind(loc[0].location(), None, newNum)],
+                                     DXCall('cutHad', [DXBind(loc[0].location(), None, num)]),
+                                     True, qafny_line_number=self.current_qafny_line_number)]
                     self.removeLocus(num)
-                    self.varnums += [([QXQRange(loc[0].location(), crange =  QXCRange(QXBin('+',loc[0].crange().left(), QXNum(1)), loc[0].crange().right()))], qty, newNum)]
+                    self.varnums += [([QXQRange(loc[0].location(),
+                                                crange =  QXCRange(QXBin('+',loc[0].crange().left(), QXNum(1)), loc[0].crange().right()))], qty, newNum)]
                     self.counter += 1
-                    res += [DXAssign([DXBind(loc[0].location(), None, self.counter)], DXIndex(DXBind(loc[0].location(), None, num), DXNum(0)), True, qafny_line_number=self.current_qafny_line_number)]
+                    res += [DXAssign([DXBind(loc[0].location(), None, self.counter)],
+                                     DXIndex(DXBind(loc[0].location(), None, num), DXNum(0)), True, qafny_line_number=self.current_qafny_line_number)]
                     cutnum = self.counter
                     self.counter += 1
 
@@ -1245,21 +1260,34 @@ class ProgramTransfer(ProgramVisitor):
                         if isinstance(match_qty, TyEn) and match_qty.flag().num() == 1:
                             self.libFuns.add('mergeBitEn')
                             self.libFuns.add('duplicateMergeBitEn')
-                            res += [DXAssign([DXBind(loc[0].location(), None, self.counter)], DXCall('mergeBitEn', [DXBind(loc[0].location(), None, match_num), DXBind(loc[0].crange().left().ID())]), True, qafny_line_number=self.current_qafny_line_number)]
+                            res += [DXAssign([DXBind(loc[0].location(), None, self.counter)],
+                                             DXCall('mergeBitEn',
+                                                    [DXBind(loc[0].location(), None, match_num), DXBind(loc[0].crange().left().ID())]),
+                                             True, qafny_line_number=self.current_qafny_line_number)]
                             for l in match_loc:
                                 if l.location() != loc[0].location():
-                                    res += [DXAssign([DXBind(l.location(), None, self.counter)], DXCall('duplicateMergeBitEn', [DXBind(l.location(), None, match_num)]), True, qafny_line_number=self.current_qafny_line_number)]
+                                    res += [DXAssign([DXBind(l.location(), None, self.counter)],
+                                                     DXCall('duplicateMergeBitEn', [DXBind(l.location(), None, match_num)]),
+                                                     True, qafny_line_number=self.current_qafny_line_number)]
                             self.libFuns.add('mergeAmpEn')
-                            res += [DXAssign([DXBind('amp', None, self.counter)], DXCall('mergeAmpEn', [DXBind('amp', None, match_num), DXBind(loc[0].location(), None, cutnum)]), True, qafny_line_number=self.current_qafny_line_number)]
+                            res += [DXAssign([DXBind('amp', None, self.counter)],
+                                             DXCall('mergeAmpEn', [DXBind('amp', None, match_num), DXBind(loc[0].location(), None, cutnum)]),
+                                             True, qafny_line_number=self.current_qafny_line_number)]
                             self.libFuns.add('omega0')
                             res += [DXCall('omega0', [], True, qafny_line_number=self.current_qafny_line_number)]
                             self.libFuns.add('mergeBitTrigger')
-                            res += [DXCall('mergeBitTrigger', [DXBind(loc[0].location(), None, match_num), DXBind(loc[0].location(), None, self.counter), DXLength(DXIndex(DXBind(loc[0].location(), None, match_num), DXNum(0)))], True, qafny_line_number=self.current_qafny_line_number)]
+                            res += [DXCall('mergeBitTrigger', [DXBind(loc[0].location(), None, match_num),
+                                                               DXBind(loc[0].location(), None, self.counter),
+                                                               DXLength(DXIndex(DXBind(loc[0].location(), None, match_num), DXNum(0)))],
+                                           True, qafny_line_number=self.current_qafny_line_number)]
                             self.libFuns.add('triggerSqrtMul')
                             res += [DXCall('triggerSqrtMul', [], True, qafny_line_number=self.current_qafny_line_number)]
 
                             self.removeLocus(match_num)
-                            tmp = [([x for x in match_loc if x.location() != loc[0].location()] + [QXQRange(loc[0].location(),  crange = QXCRange(matchRange.crange().left(), QXBin('+',matchRange.crange().right(), QXNum(1))))], match_qty, self.counter)]
+                            tmp = [([x for x in match_loc if x.location() != loc[0].location()]
+                                    + [QXQRange(loc[0].location(),
+                                                crange = QXCRange(matchRange.crange().left(), QXBin('+',matchRange.crange().right(), QXNum(1))))],
+                                    match_qty, self.counter)]
                             self.varnums += tmp
                             self.counter += 1
                             return res, tmp[0][0], tmp[0][1], tmp[0][2]
@@ -1272,12 +1300,18 @@ class ProgramTransfer(ProgramVisitor):
                 if isinstance(qty, TyNor) and isinstance(fqty, TyEn):
                     self.libFuns.add('norEn' + str(fqty.flag().num()))
                     for ran in loc:
-                        res += [DXAssign([DXBind(ran.location(), None, newNum)], DXCall('norEn' + str(fqty.flag().num()), [DXBind(ran.location(), None, num), DXBind(target_locus[0][0].location(), None, target_locus[2])]), True, qafny_line_number=self.current_qafny_line_number)]
+                        res += [DXAssign([DXBind(ran.location(), None, newNum)],
+                                         DXCall('norEn' + str(fqty.flag().num()),
+                                                [DXBind(ran.location(), None, num), DXBind(target_locus[0][0].location(), None, target_locus[2])]),
+                                         True, qafny_line_number=self.current_qafny_line_number)]
                         self.removeLocus(num)
                     self.removeLocus(target_locus[2]) 
             else:   
-                res += [DXAssign([DXBind(x.location(), None, newNum)], DXBind(x.location(), None, target_locus[2]), True, qafny_line_number=self.current_qafny_line_number) for x in target_locus[0]]
-                res += [DXAssign([DXBind('amp', None, newNum)], DXBind('amp', None, target_locus[2]), True, qafny_line_number=self.current_qafny_line_number)]
+                res += [DXAssign([DXBind(x.location(), None, newNum)],
+                                 DXBind(x.location(), None, target_locus[2]),
+                                 True, qafny_line_number=self.current_qafny_line_number) for x in target_locus[0]]
+                res += [DXAssign([DXBind('amp', None, newNum)],
+                                 DXBind('amp', None, target_locus[2]), True, qafny_line_number=self.current_qafny_line_number)]
 
             final_loc.extend(loc)
 
@@ -1301,6 +1335,8 @@ class ProgramTransfer(ProgramVisitor):
         return res
         
     def visitIf(self, ctx: Programmer.QXIf):
+
+        #deal with classical boolean expression
         if isinstance(ctx.bexp(), QXBool):
             bex = ctx.bexp().accept(self)
             terms = []
@@ -1313,7 +1349,8 @@ class ProgramTransfer(ProgramVisitor):
             self.counter = typeCheck.counter
 
             return DXIf(bex, terms, [], qafny_line_number=ctx.line_number())
-        
+
+        #deal with quantum conditional
         upgrade_en = False
         res = []
         nLoc, nqty, nnum = None, None, None
@@ -1323,6 +1360,11 @@ class ProgramTransfer(ProgramVisitor):
         is_qcomp = False
         bool_store_id = ''
 
+
+        #collect statements
+        #should use Locus Collector to infer the stmts correction first.
+        #do not understand the logic here.
+        #the bool_exp_id, bool_exp_index can be merged with the other two cases.
         self.current_qafny_line_number = ctx.line_number()
         if isinstance(ctx.bexp(), QXQIndex):
             lc = LocusCollector()
@@ -1350,7 +1392,8 @@ class ProgramTransfer(ProgramVisitor):
                 if isinstance(stmt, QXQAssign) and isinstance(stmt.exp(), QXSingle) and stmt.exp().op() == 'H':
                     upgrade_en = True
 
-            if isinstance(ctx.bexp().crange().left(), QXBind) and isinstance(ctx.bexp().crange().right(), QXBin) and isinstance(ctx.bexp().crange().right().right(), QXNum) and ctx.bexp().crange().right().right().num() == 1:
+            if (isinstance(ctx.bexp().crange().left(), QXBind) and isinstance(ctx.bexp().crange().right(), QXBin)
+                    and isinstance(ctx.bexp().crange().right().right(), QXNum) and ctx.bexp().crange().right().right().num() == 1):
                 bool_exp_index = DXBind(ctx.bexp().crange().left().ID(), qafny_line_number=ctx.line_number())
             elif (isinstance(ctx.bexp().crange().right(), QXNum) and (isinstance(bexp_locus_length, QXBind))  or  
                   (isinstance(bexp_locus_length, QXBind) and bexp_locus_length.ID() !=  lc.renv[0].crange().right().ID())):
