@@ -1283,7 +1283,15 @@ class ProgramTransfer(ProgramVisitor):
         self.conStack += [ifbexp]
 
         #after the index has placed into stack, we loop to ctx.exp().accept(self) for next level
+        result = []
+        for stmt in ctx.stmts():
+            tmp = stmt.accept(self)
+            if tmp is None:
+                return None
+            else:
+                result += [tmp]
 
+        return result
 
 """
         elif isinstance(ctx.bexp(), QXQComp):
