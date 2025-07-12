@@ -1245,13 +1245,6 @@ class ProgramTransfer(ProgramVisitor):
                 is_qrange = True
             tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
 
-        if is_qrange:
-            ifbexp = DXComp('==', DXCall('castBVInt', [loop_oldVars[bool_exp_id]]), DXNum(1),
-                            qafny_line_number=self.current_qafny_line_number)
-        else:
-            ifbexp = DXComp('==', DXIndex(loop_oldVars[bool_exp_id], bool_exp_index), DXNum(1),
-                            qafny_line_number=self.current_qafny_line_number)
-
 
         res += tres
         fNum = self.counter
@@ -1280,10 +1273,31 @@ class ProgramTransfer(ProgramVisitor):
         loop_newVars = {x.ID(): x for x in newVars}
         nLoc_dict = {x.location(): x for x in nLoc}
 
+        result = []
+        if isinstance(ctx.bexp(), QXQRange):
+            ifbexp = DXComp('==', DXCall('castBVInt', [loop_oldVars[bool_exp_id]]), DXNum(1),
+                            qafny_line_number=self.current_qafny_line_number)
+        elif isinstance(ctx.bexp(), QXQIndex):
+            ifbexp = DXComp('==', DXIndex(loop_oldVars[bool_exp_id], bool_exp_index), DXNum(1),
+                            qafny_line_number=self.current_qafny_line_number)
+        else:
+            if isinstance(ctx.bexp().left(), QXQRange):
+                ifbexp = DXComp(ctx.bexp().op(), DXCall('castBVInt', [loop_oldVars[ctx.bexp().left().ID()]]),
+                                ctx.bexp().right().accept(self), qafny_line_number=self.current_qafny_line_number)
+            elif isinstance(ctx.bexp().right(), QXQRange):
+                ifbexp = DXComp(ctx.bexp().op(), ctx.bexp().left().accept(self),
+                                DXCall('castBVInt', [loop_oldVars[ctx.bexp().right().ID()]]),
+                                qafny_line_number=self.current_qafny_line_number)
+            self.libFuns.add('bool2BV1')
+            result += [DXAssign([DXBind('res')], DXCall('bool2BV1', [ifbexp]), True,
+                               qafny_line_number=self.current_qafny_line_number)]
+
+
+
         self.conStack += [ifbexp]
 
         #after the index has placed into stack, we loop to ctx.exp().accept(self) for next level
-        result = []
+
         for stmt in ctx.stmts():
             tmp = stmt.accept(self)
             if tmp is None:
