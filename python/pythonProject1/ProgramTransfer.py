@@ -134,6 +134,7 @@ class ProgramTransfer(ProgramVisitor):
         #There is an additional field for each pair (like now it is not a pair, but triple)
         #The third field iin a triple is a generated identifier (a number) to identify the specific locus
         self.varnums = None
+        self.currLocus = None
         #outvarnums is the locus-list at the ouput position
         self.outvarnums = None
         #The sizemap is for used inside a function
@@ -937,181 +938,9 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitQAssign(self, ctx: Programmer.QXQAssign):
-        v = subLocus(ctx.locus(), self.varnums)
-        if v is not None:
-            loc,qty,num = v
+        self.currLocus = ctx.locus()
 
-            if isinstance(qty, TyNor) and isinstance(ctx.exp(),QXSingle) and ctx.exp().op() == "H":
-                vs = compareLocus(ctx.locus(), loc)
-                if not vs:
-                    #self.replaceType(num,TyHad())
-                    self.removeLocus(num)
-                    self.varnums += [(ctx.locus(), TyHad(), self.counter)]
-                else:
-                    self.removeLocus(num)
-                    self.counter += 1
-                    self.varnums = [(ctx.locus(),TyHad(),self.counter),(vs,TyNor(),num)] + self.varnums
-                newvars = makeVars(ctx.locus(),TyHad(),self.counter)
-                result = [DXInit(x, qafny_line_number=ctx.line_number()) for x in newvars]
-                result += [DXAssign(newvars,DXCall("hadNorHad", makeVars(ctx.locus(),TyNor(),num), qafny_line_number=ctx.line_number()), qafny_line_number=ctx.line_number())]
-                self.libFuns.add('hadNorHad')
-                self.counter += 1
-                return result
-
-            if isinstance(qty, TyEn) and isinstance(ctx.exp(),QXSingle) and ctx.exp().op() == "H":
-                flagNum = qty.flag().num()
-                #vs = compareLocus(ctx.locus(), loc)
-                self.replaceType(num, TyEn(QXNum(flagNum + 1)))
-                tmr = []
-                '''for rem in vs:
-                    tmr += [DXAssign(makeVars([rem], TyEn(QXNum(flagNum + 1)), self.counter),
-                                     DXCall("castBaseEn", makeVars([rem], qty, num)))]
-                    self.libFuns.add('castBaseEn')
-                    self.counter += 1'''
-                result = tmr + [DXAssign(makeVars(loc,TyEn(QXNum(flagNum + 1)),self.counter),
-                                         DXCall("En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)) , makeVars(loc,qty,num), qafny_line_number=ctx.line_number()), True, qafny_line_number=ctx.line_number())]
-                
-                self.libFuns.add("En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)))
-                result += [DXCall('triggerSqrtMul', [], True, qafny_line_number=ctx.line_number())]
-                result += [DXCall('ampeqtrigger', [], True, qafny_line_number=ctx.line_number())]
-                result += [DXCall('pow2mul', [], True, qafny_line_number=ctx.line_number())]
-                result += [DXCall('pow2sqrt', [], True, qafny_line_number=ctx.line_number())]
-
-                self.libFuns.add('triggerSqrtMul')                   
-                self.libFuns.add('ampeqtrigger')   
-                self.libFuns.add('pow2mul')   
-                self.libFuns.add('pow2sqrt')   
-
-                #self.removeLocus(num)
-                self.counter += 1
-                #self.varnums = [(loc,TyEn(QXNum(flagNum + 1)),self.counter)] + self.varnums
-                return result
-                
-            if isinstance(qty, TyEn) and isinstance(ctx.exp(),QXSingle) and ctx.exp().op() == "QFT":
-                flagNum = qty.flag().num()
-                #vs = compareLocus(ctx.locus(), loc)
-                self.replaceType(num, TyEn(QXNum(flagNum + 1)))
-                tmr = []
-
-                newvars = makeVars(loc,TyEn(QXNum(flagNum + 1)),self.counter)
-                applicationids = []
-                if isinstance(ctx.locus(), list):
-                    for _loc in ctx.locus():
-                        if isinstance(_loc, QXQRange):
-                            applicationids.append(_loc.location())
-                        elif isinstance(_loc, str):
-                            applicationids.append(_loc)
-                elif isinstance(ctx.locus(), QXQRange):
-                    applicationids.append(ctx.locus().location())
-                elif isinstance(ctx.locus(), str):
-                    applicationids.append(ctx.locus())
-                application_newvars = [x for x in newvars if x.ID() in applicationids]
-                other_newvars = [x for x in newvars if x.ID() not in applicationids and x.ID() != 'amp']
-                amp_newvar = [x for x in newvars if x.ID() == 'amp']
-                oldvars = makeVars(loc,qty,num)
-                application_oldvars = [x for x in oldvars if x.ID() in applicationids]
-                other_oldvars = [x for x in oldvars if x.ID() not in applicationids and x.ID() != 'amp']
-                amp_oldvar = [x for x in oldvars if x.ID() == 'amp']
-                result = tmr + [DXAssign(other_newvars + application_newvars + amp_newvar,
-                                         DXCall("QFT_En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)) , other_oldvars + application_oldvars + amp_oldvar, qafny_line_number=ctx.line_number()), True, qafny_line_number=ctx.line_number())]
-                
-                self.libFuns.add("QFT_En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)))
-                result += [DXCall('triggerSqrtMul', [], True, qafny_line_number=ctx.line_number())]
-                result += [DXCall('ampeqtrigger', [], True, qafny_line_number=ctx.line_number())]
-                result += [DXCall('pow2mul', [], True, qafny_line_number=ctx.line_number())]
-                result += [DXCall('pow2sqrt', [], True, qafny_line_number=ctx.line_number())]
-
-                self.libFuns.add('triggerSqrtMul')                   
-                self.libFuns.add('ampeqtrigger')   
-                self.libFuns.add('pow2mul')   
-                self.libFuns.add('pow2sqrt')   
-
-                #self.removeLocus(num)
-                self.counter += 1
-                #self.varnums = [(loc,TyEn(QXNum(flagNum + 1)),self.counter)] + self.varnums
-                return result
-
-            if isinstance(ctx.exp(),QXOracle):
-                result = []
-
-                if isinstance(qty, TyHad):
-                    tmpStmt = QXCast(TyEn(QXNum(1)), loc).accept(self)
-                    if isinstance(tmpStmt, list):
-                        result.extend(tmpStmt)
-                    else:
-                        result.append(tmpStmt)
-                    qty = TyEn(QXNum(1))
-                    num += 1 
-
-                unchanged_range = []
-                for i in loc:
-                    if compareLocus([i], ctx.locus()) is None:
-                        unchanged_range.append(i)
-
-                name = "newFun" + str(self.counter)
-                self.counter += 1
-
-                newNum = self.counter
-                self.counter += 1
-                vars = makeVars(loc, qty, num)
-                newVars = makeVars(loc, qty, newNum)
-
-                rpreds = []
-                preds = []
-                for vec in ctx.exp().vectors():
-                    vec_d = vec.vector().accept(self)
-                    ids = [x.ID() if isinstance(x, QXBind) else x for x in ctx.exp().bindings()]
-
-                    def lambda_check(lself, x):
-                        if isinstance(x, DXBin) and (x.op() == '/' or x.op() == '%') and isinstance(x.right(), DXBind) and x.right().ID() not in ids:
-                            lself.outputs.append(x.right())
-                        
-                    lamb_subst = SubstLambda(lambda_check)
-                    lamb_subst.visit(vec_d)
-                    for b in lamb_subst.outputs: 
-                        rpreds += [DXRequires(DXComp('>', b, DXNum(0), qafny_line_number=ctx.line_number()), qafny_line_number=ctx.line_number())]
-
-
-                preds += self.genPreds(loc, qty, num, newNum, ids, ctx.exp().vectors(), ctx.exp().amp(), unchanged_range)
-                newConds = rpreds
-                for pred in preds:
-                    newConds += [DXEnsures(pred, qafny_line_number=ctx.line_number())]
-
-                varids = []
-                def lambda_check(lself, x):
-                    if isinstance(x, DXBind):
-                        lself.outputs.append(x)
-
-                for i in ctx.exp().vectors():
-                    tmp = i.vector().accept(self)
-                    lamb_subst = SubstLambda(lambda_check)
-                    lamb_subst.visit(tmp)
-                    varids += [DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self), qafny_line_number=ctx.line_number()) for t in lamb_subst.outputs if t.ID() not in ids]
-                            
-                lamb_subst = SubstLambda(lambda_check)
-                lamb_subst.visit(ctx.exp().amp().accept(self))  
-                varids += [DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self), qafny_line_number=ctx.line_number()) for t in lamb_subst.outputs if t.ID() not in ids]
-
-                cvars = vars + varids
-
-                self.addFuns += [DXMethod(name, True, cvars, newVars, newConds, [], qafny_line_number=ctx.line_number())]
-
-                for i in newVars:
-                    result.append(DXInit(i, qafny_line_number=ctx.line_number()))
-
-                result.append(DXAssign(newVars,DXCall(name, cvars, qafny_line_number=ctx.line_number()), qafny_line_number=ctx.line_number()))
-
-                result.append(DXCall('omega0', [], True, qafny_line_number=ctx.line_number()))
-                
-                self.varnums = [(loc,qty,newNum)] + self.varnums
-                self.libFuns.add('pow2')
-                self.libFuns.add('omega')
-                self.libFuns.add('sqrt')
-                self.libFuns.add('omega0')
-                return result
-
-        return None
-
+        return ctx.exp().accept(self)
 
     def visitMeasure(self, ctx: Programmer.QXMeasure):
         return super().visitMeasure(ctx)
@@ -2656,10 +2485,209 @@ class ProgramTransfer(ProgramVisitor):
         return DXUni(ctx.op(), ctx.next().accept(self), qafny_line_number=ctx.line_number())
 
     def visitSingle(self, ctx: Programmer.QXSingle):
-        return super().visitSingle(ctx)
+        v = subLocus(self.currLocus, self.varnums)
+        if v is not None:
+            loc,qty,num = v
+
+            if isinstance(qty, TyNor) and ctx.op() == "H":
+                vs = compareLocus(self.currLocus, loc)
+                if not vs:
+                    # self.replaceType(num,TyHad())
+                    self.removeLocus(num)
+                    self.varnums += [(self.currLocus, TyHad(), self.counter)]
+                else:
+                    self.removeLocus(num)
+                    self.counter += 1
+                    self.varnums = [(self.currLocus, TyHad(), self.counter), (vs, TyNor(), num)] + self.varnums
+                newvars = makeVars(self.currLocus, TyHad(), self.counter)
+                result = [DXInit(x, qafny_line_number=ctx.line_number()) for x in newvars]
+                result += [DXAssign(newvars, DXCall("hadNorHad", makeVars(self.currLocus, TyNor(), num),
+                                                    qafny_line_number=ctx.line_number()),
+                                    qafny_line_number=ctx.line_number())]
+                self.libFuns.add('hadNorHad')
+                self.counter += 1
+                return result
+
+            #this part might need to change, and look from the code for sushen
+            if isinstance(qty, TyEn)  and ctx.op() == "H":
+                flagNum = qty.flag().num()
+                # vs = compareLocus(ctx.locus(), loc)
+                self.replaceType(num, TyEn(QXNum(flagNum + 1)))
+                tmr = []
+                '''for rem in vs:
+                    tmr += [DXAssign(makeVars([rem], TyEn(QXNum(flagNum + 1)), self.counter),
+                                     DXCall("castBaseEn", makeVars([rem], qty, num)))]
+                    self.libFuns.add('castBaseEn')
+                    self.counter += 1'''
+                result = tmr + [DXAssign(makeVars(loc, TyEn(QXNum(flagNum + 1)), self.counter),
+                                         DXCall(
+                                             "En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)),
+                                             makeVars(loc, qty, num), qafny_line_number=ctx.line_number()), True,
+                                         qafny_line_number=ctx.line_number())]
+
+                self.libFuns.add("En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)))
+                result += [DXCall('triggerSqrtMul', [], True, qafny_line_number=ctx.line_number())]
+                result += [DXCall('ampeqtrigger', [], True, qafny_line_number=ctx.line_number())]
+                result += [DXCall('pow2mul', [], True, qafny_line_number=ctx.line_number())]
+                result += [DXCall('pow2sqrt', [], True, qafny_line_number=ctx.line_number())]
+
+                self.libFuns.add('triggerSqrtMul')
+                self.libFuns.add('ampeqtrigger')
+                self.libFuns.add('pow2mul')
+                self.libFuns.add('pow2sqrt')
+
+                # self.removeLocus(num)
+                self.counter += 1
+                # self.varnums = [(loc,TyEn(QXNum(flagNum + 1)),self.counter)] + self.varnums
+                return result
+
+            if isinstance(qty, TyEn) and ctx.op() == "QFT":
+                flagNum = qty.flag().num()
+                # vs = compareLocus(ctx.locus(), loc)
+                self.replaceType(num, TyEn(QXNum(flagNum + 1)))
+                tmr = []
+
+                newvars = makeVars(loc, TyEn(QXNum(flagNum + 1)), self.counter)
+                applicationids = []
+                if isinstance(self.currLocus, list):
+                    for _loc in self.currLocus:
+                        if isinstance(_loc, QXQRange):
+                            applicationids.append(_loc.location())
+                        elif isinstance(_loc, str):
+                            applicationids.append(_loc)
+                elif isinstance(self.currLocus, QXQRange):
+                    applicationids.append(self.currLocus.location())
+                elif isinstance(self.currLocus, str):
+                    applicationids.append(self.currLocus)
+                application_newvars = [x for x in newvars if x.ID() in applicationids]
+                other_newvars = [x for x in newvars if x.ID() not in applicationids and x.ID() != 'amp']
+                amp_newvar = [x for x in newvars if x.ID() == 'amp']
+                oldvars = makeVars(loc, qty, num)
+                application_oldvars = [x for x in oldvars if x.ID() in applicationids]
+                other_oldvars = [x for x in oldvars if x.ID() not in applicationids and x.ID() != 'amp']
+                amp_oldvar = [x for x in oldvars if x.ID() == 'amp']
+                result = tmr + [DXAssign(other_newvars + application_newvars + amp_newvar,
+                                         DXCall(
+                                             "QFT_En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(
+                                                 len(loc)),
+                                             other_oldvars + application_oldvars + amp_oldvar,
+                                             qafny_line_number=ctx.line_number()), True,
+                                         qafny_line_number=ctx.line_number())]
+
+                self.libFuns.add("QFT_En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)))
+                result += [DXCall('triggerSqrtMul', [], True, qafny_line_number=ctx.line_number())]
+                result += [DXCall('ampeqtrigger', [], True, qafny_line_number=ctx.line_number())]
+                result += [DXCall('pow2mul', [], True, qafny_line_number=ctx.line_number())]
+                result += [DXCall('pow2sqrt', [], True, qafny_line_number=ctx.line_number())]
+
+                self.libFuns.add('triggerSqrtMul')
+                self.libFuns.add('ampeqtrigger')
+                self.libFuns.add('pow2mul')
+                self.libFuns.add('pow2sqrt')
+
+                # self.removeLocus(num)
+                self.counter += 1
+                # self.varnums = [(loc,TyEn(QXNum(flagNum + 1)),self.counter)] + self.varnums
+                return result
+
+        return None
 
     def visitOracle(self, ctx: Programmer.QXOracle):
-        super().visitOracle(ctx)
+
+        v = subLocus(self.currLocus, self.varnums)
+        if v is not None:
+            loc, qty, num = v
+
+            result = []
+
+            if isinstance(qty, TyHad):
+                tmpStmt = QXCast(TyEn(QXNum(1)), loc).accept(self)
+                if isinstance(tmpStmt, list):
+                    result.extend(tmpStmt)
+                else:
+                    result.append(tmpStmt)
+                qty = TyEn(QXNum(1))
+                num += 1
+
+            unchanged_range = []
+            for i in loc:
+                if compareLocus([i], self.currLocus) is None:
+                    unchanged_range.append(i)
+
+            name = "newFun" + str(self.counter)
+            self.counter += 1
+
+            newNum = self.counter
+            self.counter += 1
+            vars = makeVars(loc, qty, num)
+            newVars = makeVars(loc, qty, newNum)
+
+            rpreds = []
+            preds = []
+            for vec in ctx.vectors():
+                vec_d = vec.vector().accept(self)
+                ids = [x.ID() if isinstance(x, QXBind) else x for x in ctx.bindings()]
+
+                def lambda_check(lself, x):
+                    if isinstance(x, DXBin) and (x.op() == '/' or x.op() == '%') and isinstance(x.right(),
+                                                                                                DXBind) and x.right().ID() not in ids:
+                        lself.outputs.append(x.right())
+
+                lamb_subst = SubstLambda(lambda_check)
+                lamb_subst.visit(vec_d)
+                for b in lamb_subst.outputs:
+                    rpreds += [DXRequires(DXComp('>', b, DXNum(0), qafny_line_number=ctx.line_number()),
+                                          qafny_line_number=ctx.line_number())]
+
+            preds += self.genPreds(loc, qty, num, newNum, ids, ctx.vectors(), ctx.amp(), unchanged_range)
+            newConds = rpreds
+            for pred in preds:
+                newConds += [DXEnsures(pred, qafny_line_number=ctx.line_number())]
+
+            varids = []
+
+            def lambda_check(lself, x):
+                if isinstance(x, DXBind):
+                    lself.outputs.append(x)
+
+            for i in ctx.vectors():
+                tmp = i.vector().accept(self)
+                lamb_subst = SubstLambda(lambda_check)
+                lamb_subst.visit(tmp)
+                varids += [
+                    DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self),
+                           qafny_line_number=ctx.line_number())
+                    for t in lamb_subst.outputs if t.ID() not in ids]
+
+            lamb_subst = SubstLambda(lambda_check)
+            lamb_subst.visit(ctx.amp().accept(self))
+            varids += [
+                DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self), qafny_line_number=ctx.line_number())
+                for t in lamb_subst.outputs if t.ID() not in ids]
+
+            cvars = vars + varids
+
+            self.addFuns += [
+                DXMethod(name, True, cvars, newVars, newConds, [], qafny_line_number=ctx.line_number())]
+
+            for i in newVars:
+                result.append(DXInit(i, qafny_line_number=ctx.line_number()))
+
+            result.append(DXAssign(newVars, DXCall(name, cvars, qafny_line_number=ctx.line_number()),
+                                   qafny_line_number=ctx.line_number()))
+
+            result.append(DXCall('omega0', [], True, qafny_line_number=ctx.line_number()))
+
+            self.varnums = [(loc, qty, newNum)] + self.varnums
+            self.libFuns.add('pow2')
+            self.libFuns.add('omega')
+            self.libFuns.add('sqrt')
+            self.libFuns.add('omega0')
+            return result
+
+        return None
+
+
 
     def visitNum(self, ctx: Programmer.QXNum):
         return DXNum(ctx.num())
