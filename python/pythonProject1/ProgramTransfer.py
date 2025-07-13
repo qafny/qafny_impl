@@ -102,6 +102,16 @@ def updateInd(lexp:[DXAExp], ind: DXAExp):
         tmp += [DXIndex(elem,ind)]
     return tmp
 
+class StackFactor:
+    pass
+
+class EnFactor(StackFactor):
+    def __init__(self, condition: DXComp):
+        self._condition = condition
+
+    def condition(self):
+        return self._condition
+
 
 # In the transfer below. transferring a stmt/exp results in a list of resulting stmts in Dafny
 # but transferring logic specification results in one specification
@@ -1181,14 +1191,14 @@ class ProgramTransfer(ProgramVisitor):
             return DXIf(bex, terms, [], qafny_line_number=ctx.line_number())
 
         #deal with quantum conditional
-        upgrade_en = False
-        res = []
-        nLoc, nqty, nnum = None, None, None
-        bool_exp_id = None
-        bool_exp_index = None
-        is_qrange = False
-        is_qcomp = False
-        bool_store_id = ''
+        #upgrade_en = False
+        #res = []
+        #nLoc, nqty, nnum = None, None, None
+        #bool_exp_id = None
+        #bool_exp_index = None
+        #is_qrange = False
+        #is_qcomp = False
+        #bool_store_id = ''
 
 
         #algorithm for hanlding Qif case, the above is classical if
@@ -1204,6 +1214,72 @@ class ProgramTransfer(ProgramVisitor):
         # do not understand the logic here.
         # the bool_exp_id, bool_exp_index can be merged with the other two cases.
         self.current_qafny_line_number = ctx.line_number()
+
+        lc = LocusCollector()
+        lc.visit(ctx.bexp())
+        for stmt in ctx.stmts():
+            lc.visit(stmt)
+
+        tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
+        self.currLocus = tres, nLoc, nqty, nnum
+
+        if isinstance(ctx.bexp(), QXQComp):
+            ifexp = [ctx.bexp().accept(self)]
+        else:
+            ifexp = []
+
+        oldVars = makeVars(nLoc, nqty, nnum)
+        loop_oldVars = {x.ID(): x for x in oldVars}
+        newVars = makeVars(nLoc, nqty, self.counter)
+        self.counter += 1
+        loop_newVars = {x.ID(): x for x in newVars}
+        nLoc_dict = {x.location(): x for x in nLoc}
+
+
+        if isinstance(ctx.bexp(), QXQComp):
+            bool_exp_id = ctx.bexp().index().ID()
+        elif isinstance(ctx.bexp(), QXQRange):
+            bool_exp_id = ctx.bexp().location()
+        else:
+            bool_exp_id = ctx.bexp().ID()
+
+        self.conStack += [EnFactor(DXComp('==', DXCall('castBVInt', [loop_oldVars[bool_exp_id]]), DXNum(1),
+                                qafny_line_number=self.current_qafny_line_number))]
+
+
+        result = ifexp
+
+        for stmt in ctx.stmts():
+            tmp = stmt.accept(self)
+            if tmp is None:
+                return None
+            else:
+                result += [tmp]
+
+        return result
+
+"""
+
+        if isinstance(ctx.bexp(), QXQComp):
+
+            if isinstance(ctx.bexp(), QXQRange):
+                ifbexp = DXComp('==', DXCall('castBVInt', [loop_oldVars[bool_exp_id]]), DXNum(1),
+                                qafny_line_number=self.current_qafny_line_number)
+            elif isinstance(ctx.bexp(), QXQIndex):
+                ifbexp = DXComp('==', DXIndex(loop_oldVars[bool_exp_id], bool_exp_index), DXNum(1),
+                                qafny_line_number=self.current_qafny_line_number)
+            else:
+                if isinstance(ctx.bexp().left(), QXQRange):
+                    ifbexp = DXComp(ctx.bexp().op(), DXCall('castBVInt', [loop_oldVars[ctx.bexp().left().ID()]]),
+                                    ctx.bexp().right().accept(self), qafny_line_number=self.current_qafny_line_number)
+                elif isinstance(ctx.bexp().right(), QXQRange):
+                    ifbexp = DXComp(ctx.bexp().op(), ctx.bexp().left().accept(self),
+                                    DXCall('castBVInt', [loop_oldVars[ctx.bexp().right().ID()]]),
+                                    qafny_line_number=self.current_qafny_line_number)
+                self.libFuns.add('bool2BV1')
+                result += [DXAssign([DXBind('res')], DXCall('bool2BV1', [ifbexp]), True,
+                                    qafny_line_number=self.current_qafny_line_number)]
+
         if isinstance(ctx.bexp(), QXQIndex):
             lc = LocusCollector()
             lc.visit(ctx.bexp())
@@ -1245,6 +1321,20 @@ class ProgramTransfer(ProgramVisitor):
                 is_qrange = True
             tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
 
+        elif isinstance(ctx.bexp(), QXQComp):
+            is_qcomp = True
+            lc = LocusCollector()
+            lc.visit(ctx.bexp())
+            bool_exp_id = ctx.bexp().left().location() if isinstance(ctx.bexp().left(), QXQRange) else ctx.bexp().right().ID()
+            bool_store_id = ctx.bexp().index().ID()
+            for stmt in ctx.stmts():
+                lc.visit(stmt)
+
+                if isinstance(stmt, QXQAssign) and isinstance(stmt.exp(), QXSingle) and stmt.exp().op() == 'H':
+                    upgrade_en = True
+
+            tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
+
 
         res += tres
         fNum = self.counter
@@ -1274,23 +1364,7 @@ class ProgramTransfer(ProgramVisitor):
         nLoc_dict = {x.location(): x for x in nLoc}
 
         result = []
-        if isinstance(ctx.bexp(), QXQRange):
-            ifbexp = DXComp('==', DXCall('castBVInt', [loop_oldVars[bool_exp_id]]), DXNum(1),
-                            qafny_line_number=self.current_qafny_line_number)
-        elif isinstance(ctx.bexp(), QXQIndex):
-            ifbexp = DXComp('==', DXIndex(loop_oldVars[bool_exp_id], bool_exp_index), DXNum(1),
-                            qafny_line_number=self.current_qafny_line_number)
-        else:
-            if isinstance(ctx.bexp().left(), QXQRange):
-                ifbexp = DXComp(ctx.bexp().op(), DXCall('castBVInt', [loop_oldVars[ctx.bexp().left().ID()]]),
-                                ctx.bexp().right().accept(self), qafny_line_number=self.current_qafny_line_number)
-            elif isinstance(ctx.bexp().right(), QXQRange):
-                ifbexp = DXComp(ctx.bexp().op(), ctx.bexp().left().accept(self),
-                                DXCall('castBVInt', [loop_oldVars[ctx.bexp().right().ID()]]),
-                                qafny_line_number=self.current_qafny_line_number)
-            self.libFuns.add('bool2BV1')
-            result += [DXAssign([DXBind('res')], DXCall('bool2BV1', [ifbexp]), True,
-                               qafny_line_number=self.current_qafny_line_number)]
+
 
 
 
@@ -1298,16 +1372,9 @@ class ProgramTransfer(ProgramVisitor):
 
         #after the index has placed into stack, we loop to ctx.exp().accept(self) for next level
 
-        for stmt in ctx.stmts():
-            tmp = stmt.accept(self)
-            if tmp is None:
-                return None
-            else:
-                result += [tmp]
 
-        return result
 
-"""
+
         elif isinstance(ctx.bexp(), QXQComp):
             is_qcomp = True
             lc = LocusCollector()
@@ -2530,13 +2597,102 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitQComp(self, ctx: Programmer.QXQComp):
-        n = 0
+
+        v1 = ctx.left().accept(self)
+        v2 = ctx.right().accept(self)
+
+        #this is not an index, need a way to refer to the gen id
+        result = [DXAssign(DXIndex(ctx.index().ID(), ctx.index().index()),
+                           DXComp(ctx.op(), DXCall('castBVInt', v1, v2, qafny_line_number=self.current_qafny_line_number)))]
+        return result
+
+
+"""
         for loc, qty, num in self.varnums:
             for l in loc:
                 if l.location() == ctx.index().ID():
                     n = num
         return (DXComp(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), qafny_line_number=ctx.line_number()),
                 DXIndex(DXBind(ctx.index().ID(), num = n),ctx.index().accept(self), qafny_line_number=ctx.line_number()))
+
+
+if isinstance(ctx.bexp(), QXQComp):
+
+    if isinstance(ctx.bexp(), QXQRange):
+        ifbexp = DXComp('==', DXCall('castBVInt', [loop_oldVars[bool_exp_id]]), DXNum(1),
+                        qafny_line_number=self.current_qafny_line_number)
+    elif isinstance(ctx.bexp(), QXQIndex):
+        ifbexp = DXComp('==', DXIndex(loop_oldVars[bool_exp_id], bool_exp_index), DXNum(1),
+                        qafny_line_number=self.current_qafny_line_number)
+    else:
+        if isinstance(ctx.bexp().left(), QXQRange):
+            ifbexp = DXComp(ctx.bexp().op(), DXCall('castBVInt', [loop_oldVars[ctx.bexp().left().ID()]]),
+                            ctx.bexp().right().accept(self), qafny_line_number=self.current_qafny_line_number)
+        elif isinstance(ctx.bexp().right(), QXQRange):
+            ifbexp = DXComp(ctx.bexp().op(), ctx.bexp().left().accept(self),
+                            DXCall('castBVInt', [loop_oldVars[ctx.bexp().right().ID()]]),
+                            qafny_line_number=self.current_qafny_line_number)
+        self.libFuns.add('bool2BV1')
+        result += [DXAssign([DXBind('res')], DXCall('bool2BV1', [ifbexp]), True,
+                            qafny_line_number=self.current_qafny_line_number)]
+
+if isinstance(ctx.bexp(), QXQIndex):
+    lc = LocusCollector()
+    lc.visit(ctx.bexp())
+    bool_exp_id = lc.renv[0].location()
+    bool_exp_index = ctx.bexp().index().accept(self)
+    for stmt in ctx.stmts():
+        lc.visit(stmt)
+        if isinstance(stmt, QXQAssign) and isinstance(stmt.exp(), QXSingle) and stmt.exp().op() == 'H':
+            upgrade_en = True
+
+    tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
+
+elif isinstance(ctx.bexp(), QXQRange):
+    lc = LocusCollector()
+    lc.visit(ctx.bexp())
+    bexp_locus_length = None
+    for loc, qty, num in self.varnums:
+        for l in loc:
+            if l.location() == ctx.bexp().location():
+                bexp_locus_length = l.crange().right()
+    bool_exp_id = lc.renv[0].location()
+    for stmt in ctx.stmts():
+        lc.visit(stmt)
+        if isinstance(stmt, QXQAssign) and isinstance(stmt.exp(), QXSingle) and stmt.exp().op() == 'H':
+            upgrade_en = True
+
+    if (isinstance(ctx.bexp().crange().left(), QXBind) and isinstance(ctx.bexp().crange().right(), QXBin)
+            and isinstance(ctx.bexp().crange().right().right(),
+                           QXNum) and ctx.bexp().crange().right().right().num() == 1):
+        bool_exp_index = DXBind(ctx.bexp().crange().left().ID(), qafny_line_number=ctx.line_number())
+    elif (isinstance(ctx.bexp().crange().right(), QXNum) and (isinstance(bexp_locus_length, QXBind)) or
+          (isinstance(bexp_locus_length, QXBind) and bexp_locus_length.ID() != lc.renv[
+              0].crange().right().ID())):
+        if isinstance(ctx.bexp().crange().left(), QXNum):
+            bool_exp_index = DXBind(ctx.bexp().crange().left().num(), qafny_line_number=ctx.line_number())
+        else:
+            bool_exp_index = DXBind(ctx.bexp().crange().left().ID(), qafny_line_number=ctx.line_number())
+    else:
+        is_qrange = True
+    tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
+
+elif isinstance(ctx.bexp(), QXQComp):
+    is_qcomp = True
+    lc = LocusCollector()
+    lc.visit(ctx.bexp())
+    bool_exp_id = ctx.bexp().left().location() if isinstance(ctx.bexp().left(), QXQRange) else ctx.bexp().right().ID()
+    bool_store_id = ctx.bexp().index().ID()
+    for stmt in ctx.stmts():
+        lc.visit(stmt)
+
+        if isinstance(stmt, QXQAssign) and isinstance(stmt.exp(), QXSingle) and stmt.exp().op() == 'H':
+            upgrade_en = True
+
+    tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
+
+"""
+
 
     def visitQNot(self, ctx: Programmer.QXQNot):
         pred, index = ctx.next().accept(self)
