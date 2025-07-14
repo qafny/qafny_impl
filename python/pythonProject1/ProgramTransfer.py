@@ -14,15 +14,20 @@ from EqualityVisitor import EqualityVisitor
 
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
-    return (str(q1.location()) == str(q2.location())
-            and compareAExp(q1.crange().left(),q2.crange().left())
-            and compareAExp(q1.crange().right(),q2.crange().right()))
+    return str(q1.location()) == str(q2.location()) and compareAExp(q1.crange().left(),q2.crange().left())
 
 def compareRangeLocus(q1: QXQRange, qs: [QXQRange]):
     vs = []
     for i in range(len(qs)):
         if compareQRange(q1,qs[i]):
-            return (vs + (qs[i+1:len(qs)]))
+            if compareAExp(q1.crange().right(), qs[i].crange().right()):
+                return (vs + (qs[i+1:len(qs)]))
+            else:
+                return (vs + [QXQRange(q1.location(), qs[i].index(),
+                                       QXCRange(qs[i].crange().left(),
+                                                QXBin("+",q1.crange().right(), QXNum(1)),
+                                                qs[i].crange().line_number()), qs[i].line_numer())]
+                        + (qs[i+1:len(qs)]))
         vs = vs + [qs[i]]
     return None
 
@@ -32,10 +37,9 @@ def compareLocus(q1: [QXQRange], q2: [QXQRange]):
         vs = compareRangeLocus(elem, vs)
         if vs is None:
             return None
-
     return vs
 
-def subLocus(q2: [QXQRange], qs: [([QXQRange], QXQTy, int)]):
+def subLocus(q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
     vs = q2
     qsf = []
     for locus,qty,num in qs:
@@ -215,7 +219,11 @@ class ProgramTransfer(ProgramVisitor):
     def genVarNumMap(self, tenv: [([QXQRange], QXQTy)]):
         tmp = []
         for locus, qty in tenv:
-            tmp = tmp + [(locus, qty, self.counter)]
+            tdis = dict()
+            for r in locus:
+                tdis.update({r.location: self.counter})
+                self.counter += 1
+            tmp = tmp + [(locus, qty, tdis)]
             self.counter += 1
         return tmp
 
@@ -970,8 +978,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitQAssign(self, ctx: Programmer.QXQAssign):
-        ctx.locus()
-
+        self.currLocus = ctx.locus()
         return ctx.exp().accept(self)
 
     def visitMeasure(self, ctx: Programmer.QXMeasure):
