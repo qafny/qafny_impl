@@ -50,23 +50,32 @@ def genType(n:int, t:DXType):
     return t
 
 def makeVars(locus:[QXQRange], t:QXQTy, n:int):
-    tmp = []
+    tmp = dict()
     if isinstance(t, TyNor):
         for elem in locus:
-            tmp += [DXBind(elem.location(), SeqType(SType("bv1")),n)]
+            tmp.update({elem.location: DXBind(elem.location(), SeqType(SType("bv1")),n)})
 
     elif isinstance(t, TyEn):
         num = t.flag().num()
         for elem in locus:
-            tmp += [DXBind(elem.location(), genType(num, SeqType(SType("bv1"))),n)]
+            tmp.update({elem.location(): DXBind(elem.location(), genType(num, SeqType(SType("bv1"))),n)})
         # amplitude comes after the value in hadEn, that should be the precedent
         tmp += [DXBind("amp", genType(num, SType("real")), n)]
     
     elif isinstance(t, TyHad):
         for elem in locus:
-            tmp += [DXBind(elem.location(), SeqType(SType("real")), n)]
+            tmp.update({elem.location(), DXBind(elem.location(), SeqType(SType("real")), n)})
 
     return tmp
+
+
+def upVars(v:dict, counter: int):
+    tmp = dict()
+    for key in v.keys():
+        tmp.update({key:v.get(key).newBind(counter)})
+        counter = counter + 1
+
+    return tmp,counter
 
 def makeMap(ids: [str], locus: [QXQRange]):
     tmp = dict()
@@ -111,6 +120,18 @@ class EnFactor(StackFactor):
 
     def condition(self):
         return self._condition
+
+class AAFactor(StackFactor):
+    def __init__(self, left: DXComp, right: DXComp):
+        self._left = left
+        self._right = right
+
+    def left(self):
+        return self._left
+
+    def right(self):
+        return self._right
+
 
 
 # In the transfer below. transferring a stmt/exp results in a list of resulting stmts in Dafny
@@ -949,7 +970,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitQAssign(self, ctx: Programmer.QXQAssign):
-        self.currLocus = ctx.locus()
+        ctx.locus()
 
         return ctx.exp().accept(self)
 
@@ -1228,11 +1249,10 @@ class ProgramTransfer(ProgramVisitor):
         else:
             ifexp = []
 
-        oldVars = makeVars(nLoc, nqty, nnum)
-        loop_oldVars = {x.ID(): x for x in oldVars}
-        newVars = makeVars(nLoc, nqty, self.counter)
-        self.counter += 1
-        loop_newVars = {x.ID(): x for x in newVars}
+        loop_oldVars = makeVars(nLoc, nqty, nnum)
+        #loop_oldVars = {x.ID(): x for x in oldVars}
+        loop_newVars, self.counter = upVars(loop_oldVars, self.counter)
+        #loop_newVars = {x.ID(): x for x in newVars}
         nLoc_dict = {x.location(): x for x in nLoc}
 
 
