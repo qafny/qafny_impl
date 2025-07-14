@@ -1263,7 +1263,10 @@ class ProgramTransfer(ProgramVisitor):
         else:
             bool_exp_id = ctx.bexp().ID()
 
-        self.conStack += [EnFactor(DXComp('==', DXCall('castBVInt', [loop_oldVars[bool_exp_id]]), DXNum(1),
+        newBind = loop_oldVars.get(bool_exp_id).newBind(self.counter)
+        self.counter += 1
+
+        self.conStack += [EnFactor(DXComp('==', DXCall('castBVInt', [newBind]), DXNum(1),
                                 qafny_line_number=self.current_qafny_line_number))]
 
 
