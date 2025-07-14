@@ -1,73 +1,97 @@
 import AbstractTargetVisitor
 
+import Programmer
+
+from typing import (Tuple, Union)
+
 
 # Dafny's AST
 
 class DXTop:
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def __init__(self, transformed_from_node: Union[QXTop, DXTop, None]):
+        '''Base initializer for all Dafny nodes. transformed_from_node is the Qafny or Dafny node that this node was transformed from. This is used for copying line, column, and range information.'''
+        self._qafny_node = transformed_from_node if isinstance(transformed_from_node, QXTop) else transformed_from_node._qafny_node
+
+    def accept(self, visitor: AbstractTargetVisitor):
         pass
+
+    def qafny_line() -> int:
+        return self._qafny_node.line()
+
+    def qafny_col() -> int:
+        return self._qafny_node.col()
+
+    def qafny_range() -> Tuple[int, int]:
+        return self._qafny_node.range()
 
     def __repr__(self):
         return f'DXTop()'
 
+
 class DXType(DXTop):
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         pass
 
     def __repr__(self):
         return f'DXType()'
 
+
 class DXSpec(DXTop):
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         pass
 
     def __repr__(self):
         return f'DXSpec()'
 
+
 class DXStmt(DXTop):
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         pass
 
     def __repr__(self):
         return f'DXStmt()'
 
+
 class DXAExp(DXTop):
     '''Parent class of all arithmetic operations representable in Dafny'''
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         pass
 
     def __repr__(self):
         return f'DXAExp()'
 
+
 class DXConds(DXTop):
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         pass 
 
     def __repr__(self):
         return f'DXConds()'
 
+
 class DXBool(DXSpec, DXType):
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         pass 
 
     def __repr__(self):
         return f'DXBool()'
 
+
 # SType could be bv1, real, nat,
 class SType(DXType):
 
-    def __init__(self, name: str, qafny_line_number: int = None):
+    def __init__(self, name: str, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._name = name
-        self._qafny_line_number = qafny_line_number
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitSType(self)
 
     def type(self):
@@ -75,17 +99,15 @@ class SType(DXType):
 
     def __repr__(self):
         return f'SType(name={self._name})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class SeqType(DXType):
 
-    def __init__(self, ty: DXType, qafny_line_number: int = None):
+    def __init__(self, ty: DXType, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._ty = ty
-        self._qafny_line_number = qafny_line_number
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitSeqType(self)
 
     def type(self):
@@ -93,16 +115,14 @@ class SeqType(DXType):
 
     def __repr__(self):
         return f'SeqType(ty={self._ty})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class FunType(DXType):
 
-    def __init__(self, left: DXType, right:DXType, qafny_line_number: int = None):
+    def __init__(self, left: DXType, right: DXType, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._left = left
         self._right = right
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitSeqType(self)
@@ -115,17 +135,15 @@ class FunType(DXType):
 
     def __repr__(self):
         return f'FunType(left={self._left}, right={self._right})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXBin(DXAExp):
 
-    def __init__(self, op: str, left:DXAExp, right: DXAExp, qafny_line_number: int = None):
+    def __init__(self, op: str, left: DXAExp, right: DXAExp, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._op = op
         self._left = left
         self._right = right
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitBin(self)
@@ -141,19 +159,17 @@ class DXBin(DXAExp):
 
     def __repr__(self):
         return f'DXBin(op={self._op}, left={self._left}, right={self._right})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXIfExp(DXAExp):
 
-    def __init__(self, bexp: DXBool, left:DXAExp, right: DXAExp, qafny_line_number: int = None):
+    def __init__(self, bexp: DXBool, left: DXAExp, right: DXAExp, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._bexp = bexp
         self._left = left
         self._right = right
-        self._qafny_line_number = qafny_line_number
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitIfExp(self)
 
     def bexp(self):
@@ -167,19 +183,17 @@ class DXIfExp(DXAExp):
 
     def __repr__(self):
         return f'DXIfExp(bexp={self._bexp}, left={self._left}, right={self._right})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXLogic(DXBool):
 
-    def __init__(self, op: str, left: DXBool, right: DXBool, qafny_line_number: int = None):
+    def __init__(self, op: str, left: DXBool, right: DXBool, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._op = op
         self._left = left
         self._right = right
-        self._qafny_line_number = qafny_line_number
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitLogic(self)
 
     def op(self):
@@ -193,19 +207,17 @@ class DXLogic(DXBool):
 
     def __repr__(self):
         return f'DXLogic(op={self._op}, left={self._left}, right={self._right})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXComp(DXBool):
 
-    def __init__(self, op: str, left: DXAExp, right: DXAExp, qafny_line_number: int = None):
+    def __init__(self, op: str, left: DXAExp, right: DXAExp, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._op = op
         self._left = left
         self._right = right
-        self._qafny_line_number = qafny_line_number
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitComp(self)
 
     def op(self):
@@ -219,18 +231,16 @@ class DXComp(DXBool):
 
     def __repr__(self):
         return f'DXComp(op={self._op}, left={self._left}, right={self._right})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXUni(DXAExp):
 
-    def __init__(self, op: str, next:DXAExp, qafny_line_number: int = None):
+    def __init__(self, op: str, next: DXAExp, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._op = op
         self._next = next
-        self._qafny_line_number = qafny_line_number
 
-    def accept(self, visitor : AbstractTargetVisitor):
+    def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitUni(self)
 
     def op(self):
@@ -241,18 +251,17 @@ class DXUni(DXAExp):
 
     def __repr__(self):
         return f'DXUni(op={self._op}, next={self._next})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
+# START
 
 class DXCast(DXAExp):
     '''Represents a dafny cast, i.e. x as real'''
 
-    def __init__(self, aexp: DXAExp, type: DXType, qafny_line_number: int = None):
+    def __init__(self, aexp: DXAExp, type: DXType, transformed_from: Union[QXTop, DXTop, None] = None):
         # <aexp> as <type>
+        super().__init__(transformed_from)
         self._aexp = aexp
         self._type = type
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitCast(self)
@@ -265,16 +274,14 @@ class DXCast(DXAExp):
 
     def __repr__(self):
         return f'DXCast(aexp={self._aexp}, type={self._type})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXNum(DXType, DXAExp):
     '''Represents an integer literal value for Dafny syntax.'''
 
-    def __init__(self, num: int, qafny_line_number: int = None):
+    def __init__(self, num: int, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._num = num
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitNum(self)
@@ -287,16 +294,14 @@ class DXNum(DXType, DXAExp):
 
     def __repr__(self):
         return f'DXNum(num={self._num})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXReal(DXType, DXAExp):
     '''Represents a real literal value for Dafny syntax'''
 
-    def __init__(self, value: float, qafny_line_number: int = None):
+    def __init__(self, value: float, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._value = value
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitReal(self)
@@ -309,15 +314,13 @@ class DXReal(DXType, DXAExp):
 
     def __repr__(self):
         return f'DXReal(value={self._value})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXNot(DXBool):
 
-    def __init__(self, next: DXBool, qafny_line_number: int = None):
+    def __init__(self, next: DXBool, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._next = next
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitNot(self)
@@ -327,17 +330,15 @@ class DXNot(DXBool):
 
     def __repr__(self):
         return f'DXNot(next={self._next})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXBind(DXAExp):
 
-    def __init__(self, id: str, ty: DXType = None, num: int = None, qafny_line_number: int = None):
+    def __init__(self, id: str, ty: DXType = None, num: int = None, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._id = id
         self._type = ty
         self._num = num
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitBind(self)
@@ -356,16 +357,14 @@ class DXBind(DXAExp):
 
     def __repr__(self):
         return f'DXBind(id={self._id}, type={self._type}, num={self._num})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXVar(DXBind):
 
-    def __init__(self, id : str, ty: DXType = None, qafny_line_number: int = None):
+    def __init__(self, id : str, ty: DXType = None, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._id = id
         self._type = ty
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitVar(self)
@@ -378,15 +377,13 @@ class DXVar(DXBind):
 
     def __repr__(self):
         return f'DXVar(id={self._id}, type={self._type})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXList(DXAExp):
 
-    def __init__(self, exprs: [DXAExp] = [], qafny_line_number: int = None):
+    def __init__(self, exprs: [DXAExp] = [], transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._exprs = exprs
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitList(self)
@@ -396,15 +393,13 @@ class DXList(DXAExp):
 
     def __repr__(self):
         return f'DXList(exprs={self._exprs})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXLength(DXAExp):
 
-    def __init__(self, var : DXVar, qafny_line_number: int = None):
+    def __init__(self, var : DXVar, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._var = var
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitLength(self)
@@ -414,15 +409,13 @@ class DXLength(DXAExp):
 
     def __repr__(self):
         return f'DXLength(var={self._var})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXRequires(DXConds):
 
-    def __init__(self, spec: DXSpec, qafny_line_number: int = None):
+    def __init__(self, spec: DXSpec, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._spec = spec
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitRequires(self)
@@ -432,15 +425,13 @@ class DXRequires(DXConds):
 
     def __repr__(self):
         return f'DXRequires(spec={self._spec})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXEnsures(DXConds):
 
-    def __init__(self, spec: DXSpec, qafny_line_number: int = None):
+    def __init__(self, spec: DXSpec, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._spec = spec
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitEnsures(self)
@@ -450,17 +441,15 @@ class DXEnsures(DXConds):
 
     def __repr__(self):
         return f'DXEnsures(spec={self._spec})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXCall(DXStmt, DXAExp):
 
-    def __init__(self, id: str, exps: [DXAExp], end: bool = False, qafny_line_number: int = None):
+    def __init__(self, id: str, exps: [DXAExp], end: bool = False, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._id = id
         self._exps = exps
         self._end = end #variable to check if this is just a function call without assignment so that we can add a semi-colon at the end in PrinterVisitor
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitCall(self)
@@ -476,16 +465,14 @@ class DXCall(DXStmt, DXAExp):
 
     def __repr__(self):
         return f'DXCall(id={self._id}, exps={self._exps}, end={self._end})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXInit(DXStmt):
 
-    def __init__(self, binding: DXBind, exp: DXAExp = None, qafny_line_number: int = None):
+    def __init__(self, binding: DXBind, exp: DXAExp = None, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._binding = binding
         self._exp = exp
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitInit(self)
@@ -498,16 +485,14 @@ class DXInit(DXStmt):
 
     def __repr__(self):
         return f'DXInit(binding={self._binding}, exp={self._exp})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXIndex(DXAExp):
 
-    def __init__(self, id: DXAExp, index: DXAExp, qafny_line_number: int = None):
+    def __init__(self, id: DXAExp, index: DXAExp, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._id = id
         self._index = index
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitIndex(self)
@@ -520,16 +505,14 @@ class DXIndex(DXAExp):
 
     def __repr__(self):
         return f'DXIndex(id={self._id}, index={self._index})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXCast(DXAExp):
 
-    def __init__(self, type: SType, next: DXAExp, qafny_line_number: int = None):
+    def __init__(self, type: SType, next: DXAExp, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._type = type
         self._next = next
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitCast(self)
@@ -542,17 +525,15 @@ class DXCast(DXAExp):
 
     def __repr__(self):
         return f'DXCast(type={self._type}, next={self._next})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXInRange(DXBool):
 
-    def __init__(self, x: DXBind, left: DXAExp, right: DXAExp, qafny_line_number: int = None):
+    def __init__(self, x: DXBind, left: DXAExp, right: DXAExp, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._id = x
         self._left = left
         self._right = right
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitInRange(self)
@@ -568,16 +549,14 @@ class DXInRange(DXBool):
 
     def __repr__(self):
         return f'DXInRange(id={self._id}, left={self._left}, right={self._right})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXAll(DXBool, DXSpec):
 
-    def __init__(self, bind: DXBind, next: DXSpec, qafny_line_number: int = None):
+    def __init__(self, bind: DXBind, next: DXSpec, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._bind = bind
         self._next = next
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitAll(self)
@@ -590,17 +569,15 @@ class DXAll(DXBool, DXSpec):
 
     def __repr__(self):
         return f'DXAll(bind={self._bind}, next={self._next})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXWhile(DXStmt):
 
-    def __init__(self, cond: DXBool, stmts: [DXStmt], inv: [DXSpec] = None, qafny_line_number: int = None):
+    def __init__(self, cond: DXBool, stmts: [DXStmt], inv: [DXSpec] = None, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._cond = cond
         self._stmts = stmts
         self._inv = inv
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitWhile(self)
@@ -616,17 +593,15 @@ class DXWhile(DXStmt):
 
     def __repr__(self):
         return f'DXWhile(cond={self._cond}, stmts={self._stmts}, inv={self._inv})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXIf(DXStmt):
 
-    def __init__(self, cond: DXBool, left: [DXStmt], right:[DXStmt], qafny_line_number: int = None):
+    def __init__(self, cond: DXBool, left: [DXStmt], right:[DXStmt], transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._cond = cond
         self._left = left
         self._right = right
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitIf(self)
@@ -642,15 +617,13 @@ class DXIf(DXStmt):
 
     def __repr__(self):
         return f'DXIf(cond={self._cond}, left={self._left}, right={self._right})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXAssert(DXStmt):
 
-    def __init__(self, spec: DXSpec, qafny_line_number: int = None):
+    def __init__(self, spec: DXSpec, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._spec = spec
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitAssert(self)
@@ -660,17 +633,15 @@ class DXAssert(DXStmt):
 
     def __repr__(self):
         return f'DXAssert(spec={self._spec})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXAssign(DXStmt):
 
-    def __init__(self, ids: [DXAExp], exp : DXAExp, init: bool = None, qafny_line_number: int = None):
+    def __init__(self, ids: [DXAExp], exp : DXAExp, init: bool = None, transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._ids = ids
         self._exp = exp
         self._init = init
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitAssign(self)
@@ -686,20 +657,18 @@ class DXAssign(DXStmt):
 
     def __repr__(self):
         return f'DXAssign(ids={self._ids}, exp={self._exp}, init={self._init})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXMethod(DXTop):
 
-    def __init__(self, id: str, axiom: bool, bindings: [DXBind], returns : [DXBind], conds: [DXConds], stmts: [DXStmt], qafny_line_number: int = None):
+    def __init__(self, id: str, axiom: bool, bindings: [DXBind], returns : [DXBind], conds: [DXConds], stmts: [DXStmt], transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._id = id
         self._axiom = axiom
         self._bindings = bindings
         self._returns = returns
         self._conds = conds
         self._stmts = stmts
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitMethod(self)
@@ -724,15 +693,13 @@ class DXMethod(DXTop):
 
     def __repr__(self):
         return f'DXMethod(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, returns={self._returns}, conds={self._conds}, stmts={self._stmts})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number
+
 
 class DXProgram(DXTop):
 
-    def __init__(self, exps: [DXMethod], qafny_line_number: int = None):
+    def __init__(self, exps: [DXMethod], transformed_from: Union[QXTop, DXTop, None] = None):
+        super().__init__(transformed_from)
         self._exps = exps
-        self._qafny_line_number = qafny_line_number
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitProgram(self)
@@ -742,6 +709,3 @@ class DXProgram(DXTop):
 
     def __repr__(self):
         return f'DXProgram(exps={self._exps})'
-    
-    def qafny_line_number(self):
-        return self._qafny_line_number

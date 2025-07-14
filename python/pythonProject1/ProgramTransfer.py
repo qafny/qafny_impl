@@ -12,6 +12,9 @@ from TargetToString import TargetToString
 from TypeChecker import TypeChecker, subLocusGen, compareType
 from EqualityVisitor import EqualityVisitor
 
+# Implementation Notes:
+# - I've tried to make it clear when a qafny node is passed through to populate line and column information in the dafny target tree by using named arguments (transformed_from).
+#   Unfortunately, this isn't the best API, but it is needed to maintain a link between the two trees. Maybe a setter method should be used instead?
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
     return str(q1.location()) == str(q2.location()) and compareAExp(q1.crange().left(),q2.crange().left())
@@ -50,7 +53,7 @@ def subLocus(q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
 
 def genType(n:int, t:DXType):
     for i in range(n):
-        t = SeqType(t)
+        t = SeqType(t, t)
     return t
 
 def makeVars(locus:[QXQRange], t:QXQTy, n:int):
@@ -64,7 +67,7 @@ def makeVars(locus:[QXQRange], t:QXQTy, n:int):
         for elem in locus:
             tmp.update({elem.location(): DXBind(elem.location(), genType(num, SeqType(SType("bv1"))),n)})
         # amplitude comes after the value in hadEn, that should be the precedent
-        tmp += [DXBind("amp", genType(num, SType("real")), n)]
+        tmp += [DXBind("amp", genType(num, SType("real", transformed_from=num)), n, transformed_from=elem)]
     
     elif isinstance(t, TyHad):
         for elem in locus:
@@ -90,7 +93,7 @@ def makeMap(ids: [str], locus: [QXQRange]):
 def makeIndex(id : DXBind, sums: [QXCon]):
     tmp = id
     for elem in sums:
-        tmp = DXIndex(tmp, DXBind(elem.ID(),SType("nat")))
+        tmp = DXIndex(tmp, DXBind(elem.ID(), SType("nat", transformed_from=elem), transformed_from=elem), transformed_from=elem)
     return tmp
 
 def locateAExp(locus: [QXQRange], r:QXQRange, lexp:[DXAExp]):
@@ -112,7 +115,7 @@ def replaceAExp(locus: [QXQRange], r:QXQRange, lexp:[DXAExp], rep: DXAExp):
 def updateInd(lexp:[DXAExp], ind: DXAExp):
     tmp = []
     for elem in lexp:
-        tmp += [DXIndex(elem,ind)]
+        tmp += [DXIndex(elem, ind, transformed_from=elem)]
     return tmp
 
 class StackFactor:
@@ -213,7 +216,7 @@ class ProgramTransfer(ProgramVisitor):
         #dictionary to store all initial locus data like length and values
         self.initial_locus_data = {}
 
-        #qafny line number to input into Dafny AST
+        # qafny line number to input into Dafny AST
         self.current_qafny_line_number = None
 
     def genVarNumMap(self, tenv: [([QXQRange], QXQTy)]):
@@ -236,7 +239,7 @@ class ProgramTransfer(ProgramVisitor):
         '''Converts a QXCRange to a QXAExpr that represents the length of the q-bit array.'''
         if isinstance(v.left(), QXNum) and v.left().num() == 0:
             return v.right()
-        return QXBin("-", v.right(), v.left())
+        return QXBin("-", v.right(), v.left(), v)
 
     def genSizeMap(self):
         self.sizemap = dict()
@@ -250,16 +253,16 @@ class ProgramTransfer(ProgramVisitor):
         for locus, qty, num in self.varnums:
             if isinstance(qty, TyNor):
                 for elem in locus:
-                    binds += [DXBind(elem.location(), SeqType(SType("bv1")), num)]
+                    binds += [DXBind(elem.location(), SeqType(SType("bv1", transformed_from=qty), transformed_from=qty), num, transformed_from=qty)]
             if isinstance(qty, TyHad):
                 for elem in locus:
-                    binds += [DXBind(elem.location(), SeqType(SType("real")), num)]
+                    binds += [DXBind(elem.location(), SeqType(SType("real", transformed_from=qty), transformed_from=qty), num, transformed_from=qty)]
             if isinstance(qty, TyEn):
                 if isinstance(qty.flag(), QXNum):
                     tyv = qty.flag().num()
-                    binds += [DXBind("amp", genType(tyv, SType("real")), num)]
+                    binds += [DXBind("amp", genType(tyv, SType("real", transformed_from=qty)), num, transformed_from=qty)]
                     for elem in locus:
-                        binds += [DXBind(elem.location(), genType(tyv, SeqType(SType("bv1"))), num)]
+                        binds += [DXBind(elem.location(), genType(tyv, SeqType(SType("bv1", transformed_from=qty), transformed_from=qty)), num, transformed_from=qty)]
                 else:
                     return None
 
@@ -270,68 +273,69 @@ class ProgramTransfer(ProgramVisitor):
 
         def generate_pow2_expr(node):
             if isinstance(node, QXBind):
-                return DXCall('pow2', [DXVar(node.ID())])
-            return DXCall('pow2', [str(node.num())])
-        def generateENRequiresForLocus(locus, qty, curr_bind, lcounter):
+                return DXCall('pow2', [DXVar(node.ID(), transformed_from=node)], transformed_from=node)
+            return DXCall('pow2', [str(node.num())], transformed_from=node)
+
+        def generateENRequiresForLocus(locus:: [QXQRange], qty: TyQ, curr_bind: DXBind, lcounter):
             res = []
             for i in range(qty.flag().num()+1):
                 if i == 0:
-                    tr = DXCall('pow2', [DXVar(locus[i].crange().right().ID() if isinstance(locus[i].crange().right(), QXBind) else str(locus[i].crange().right().num()))], qafny_line_number=self.current_qafny_line_number)
-                    tmp = DXComp('==', DXLength(curr_bind), tr, qafny_line_number=self.current_qafny_line_number)
-                    res.append(DXRequires(tmp, qafny_line_number=self.current_qafny_line_number))
+                    tr = DXCall('pow2', [DXVar(locus[i].crange().right().ID() if isinstance(locus[i].crange().right(), QXBind) else str(locus[i].crange().right().num()), transformed_from=locus[i].crange().right())], transformed_from=locus[i].crange().right())
+                    tmp = DXComp('==', DXLength(curr_bind, transformed_from=curr_bind), tr, transformed_from=qty.flag.num())
+                    res.append(DXRequires(tmp, transformed_from=qty.flag().num()))
                 else:
-                    allvar = DXBind('tmp', SType('nat'), lcounter)
+                    allvar = DXBind('tmp', SType('nat', transformed_from=locus[i-1]), lcounter, transformed_from=locus[i-1])
                     lcounter += 1
-                    pow2_in_var = DXCall('pow2',[DXVar(locus[i-1].crange().right().ID())], qafny_line_number=self.current_qafny_line_number) if isinstance(locus[i-1].crange().right(), QXBind) else DXCall('pow2',[DXVar(str(locus[i-1].crange().right().num()))], qafny_line_number=self.current_qafny_line_number)
-                    pow2_var = DXCall('pow2',[DXVar(locus[i].crange().right().ID() if isinstance(locus[i].crange().right(), QXBind) else str(locus[i].crange().right().num()))]) if i < len(locus) else DXVar(locus[i-1].crange().right().ID() if isinstance(locus[i-1].crange().right(), QXBind) else str(locus[i-1].crange().right().num()))
+                    pow2_in_var = DXCall('pow2',[DXVar(locus[i-1].crange().right().ID(), transformed_from=locus[i-1].crange().right())], transformed_from=locus[i-1].crange()) if isinstance(locus[i-1].crange().right(), QXBind) else DXCall('pow2',[DXVar(str(locus[i-1].crange().right().num(), transformed_from=locus[i-1].crange().right().num()))], transformed_from=locus[i-1].crange().right())
+                    pow2_var = DXCall('pow2',[DXVar(locus[i].crange().right().ID() if isinstance(locus[i].crange().right(), QXBind) else str(locus[i].crange().right().num()), transformed_from=locus[i].crange().right())]) if i < len(locus) else DXVar(locus[i-1].crange().right().ID() if isinstance(locus[i-1].crange().right(), QXBind) else str(locus[i-1].crange().right().num()), transformed_from=locus[i-1].crange().right())
                     pow2_in_var = generate_pow2_expr(locus[i-1].crange().right())
                     pow2_var = (generate_pow2_expr(locus[i].crange().right()) 
                        if i < len(locus) else 
-                       DXVar(locus[i-1].crange().right().ID()))
+                       DXVar(locus[i-1].crange().right().ID(), transformed_from=locus[i-1].crange().right()))
                     #if isinstance(pow2_var.exps()[0], DXNum) or isinstance(pow2_var.exps()[0], DXVar):
                         #pow2_var = DXNum(2**int(pow2_var.exps()[0].ID()))
                     if i == qty.flag().num() and curr_bind.ID() == 'amp':
                         continue
                     elif i == qty.flag().num() and curr_bind.ID() != 'amp':
                         currloc = [x for x in locus if x.location() == curr_bind.ID()]
-                        pow2_var = DXVar(currloc[0].crange().right().ID() if isinstance(currloc[0].crange().right(), QXBind) else str(currloc[0].crange().right().num()))
+                        pow2_var = DXVar(currloc[0].crange().right().ID() if isinstance(currloc[0].crange().right(), QXBind) else str(currloc[0].crange().right().num()), transformed_from=currloc[0].crange().right())
                         if i == 1:
-                            left = DXLength(DXIndex(curr_bind, allvar), qafny_line_number=self.current_qafny_line_number)
-                            comp = DXComp('==', left , pow2_var, qafny_line_number=self.current_qafny_line_number)
-                            tmp = DXAll(allvar, DXLogic('==>', DXInRange(allvar, DXNum(0), pow2_in_var), comp), qafny_line_number=self.current_qafny_line_number)
-                            res.append(DXRequires(tmp, qafny_line_number=self.current_qafny_line_number))
+                            left = DXLength(DXIndex(curr_bind, allvar, transformed_from=curr_bind), transformed_from=curr_bind)
+                            comp = DXComp('==', left , pow2_var, transformed_from=curr_bind)
+                            tmp = DXAll(allvar, DXLogic('==>', DXInRange(allvar, DXNum(0), pow2_in_var), comp), transformed_from=allvar)
+                            res.append(DXRequires(tmp, transformed_from=allvar))
                             comp = tmp
                         else:
-                            left = DXLength(DXIndex(left.var(), allvar), qafny_line_number=self.current_qafny_line_number)
+                            left = DXLength(DXIndex(left.var(), allvar), transformed_from=allvar)
                             if isinstance(comp, DXAll):
                                 prevall = comp.next().left()
                                 pr = comp.next().right()
 
                             while isinstance(pr, DXAll):
-                                prevall = DXLogic("==>", prevall, DXAll(pr.bind(), pr.next().left()), qafny_line_number=self.current_qafny_line_number)
+                                prevall = DXLogic("==>", prevall, DXAll(pr.bind(), pr.next().left()), transformed_from=pr)
                                 pr = pr.next().right()
                             
-                            comp = DXAll(comp.bind(), DXLogic('==>', prevall, DXAll(allvar, DXLogic("==>", DXInRange(allvar, DXNum(0), pow2_in_var), DXComp("==", left, pow2_var)))), qafny_line_number=self.current_qafny_line_number)
-                            res.append(DXRequires(comp, qafny_line_number=self.current_qafny_line_number))
+                            comp = DXAll(comp.bind(), DXLogic('==>', prevall, DXAll(allvar, DXLogic("==>", DXInRange(allvar, DXNum(0), pow2_in_var), DXComp("==", left, pow2_var)))), transformed_from=prevall)
+                            res.append(DXRequires(comp, transformed_from=comp))
 
                     elif i == 1:
-                        left = DXLength(DXIndex(curr_bind, allvar), qafny_line_number=self.current_qafny_line_number)
-                        comp = DXComp('==', left , pow2_var, qafny_line_number=self.current_qafny_line_number)
-                        tmp = DXAll(allvar, DXLogic('==>', DXInRange(allvar, DXNum(0), pow2_in_var), comp), qafny_line_number=self.current_qafny_line_number)
-                        res.append(DXRequires(tmp, qafny_line_number=self.current_qafny_line_number))
+                        left = DXLength(DXIndex(curr_bind, allvar), transformed_from=curr_bind)
+                        comp = DXComp('==', left, pow2_var, transformed_from=left)
+                        tmp = DXAll(allvar, DXLogic('==>', DXInRange(allvar, DXNum(0), pow2_in_var), comp), transformed_from=allvar)
+                        res.append(DXRequires(tmp, transformed_from=tmp))
                         comp = tmp
                     else:
-                        left = DXLength(DXIndex(left.var(), allvar), qafny_line_number=self.current_qafny_line_number)
+                        left = DXLength(DXIndex(left.var(), allvar), transformed_from=left.var())
                         if isinstance(comp, DXAll):
                             prevall = comp.next().left()
                             pr = comp.next().right()
 
                         while isinstance(pr, DXAll):
-                            prevall = DXLogic("==>", prevall, DXAll(pr.bind(), pr.next().left()), qafny_line_number=self.current_qafny_line_number)
+                            prevall = DXLogic("==>", prevall, DXAll(pr.bind(), pr.next().left()), transformed_from=pr)
                             pr = pr.next().right()
                         
-                        comp = DXAll(comp.bind(), DXLogic('==>', prevall, DXAll(allvar, DXLogic("==>", DXInRange(allvar, DXNum(0), pow2_in_var), DXComp("==", left, pow2_var)))), qafny_line_number=self.current_qafny_line_number)
-                        res.append(DXRequires(comp, qafny_line_number=self.current_qafny_line_number))
+                        comp = DXAll(comp.bind(), DXLogic('==>', prevall, DXAll(allvar, DXLogic("==>", DXInRange(allvar, DXNum(0), pow2_in_var), DXComp("==", left, pow2_var)))), transformed_from=prevall)
+                        res.append(DXRequires(comp, transformed_from=comp))
 
             return res
 
@@ -342,7 +346,7 @@ class ProgramTransfer(ProgramVisitor):
                 for elem in locus:
                     curr_bind = DXBind(elem.location(), num=num)
                     if isinstance(elem.crange().right(), QXBind):
-                        conditions.append(DXRequires(DXComp('>', elem.crange().right().accept(self), DXNum(0)), qafny_line_number=self.current_qafny_line_number))
+                        conditions.append(DXRequires(DXComp('>', elem.crange().right().accept(self), DXNum(0)), transformed_from=elem.crange().right()))
                     conditions.extend(generateENRequiresForLocus(locus, qty, curr_bind, lcounter))
 
                 amp_bind = DXBind('amp', num=num)
@@ -352,11 +356,11 @@ class ProgramTransfer(ProgramVisitor):
                     right = DXVar(elem.crange().right().ID() if isinstance(elem.crange().right(), QXBind) else str(elem.crange().right().num()))
                     left = elem.crange().left()
                     if isinstance(elem.crange().right(), QXBind):
-                        conditions.append(DXRequires(DXComp('>', elem.crange().right().accept(self), DXNum(0)), qafny_line_number=self.current_qafny_line_number))
+                        conditions.append(DXRequires(DXComp('>', elem.crange().right().accept(self), DXNum(0)), transformed_from=elem.crange().right()))
                     if isinstance(left, QXNum) and left.num() == 0:
-                        conditions.append(DXRequires(DXComp('==', DXLength(DXBind(elem.location(), num=num)), right), qafny_line_number=self.current_qafny_line_number))
+                        conditions.append(DXRequires(DXComp('==', DXLength(DXBind(elem.location(), num=num)), right), transformed_from=elem.location()))
                     else:
-                        conditions.append(DXRequires(DXComp('==', DXLength(DXBind(elem.location(), num=num)), DXBin('-',right, left.accept(self))), qafny_line_number=self.current_qafny_line_number))
+                        conditions.append(DXRequires(DXComp('==', DXLength(DXBind(elem.location(), num=num)), DXBin('-',right, left.accept(self))), transformed_from=elem.location()))
 
         return conditions
     
@@ -410,7 +414,7 @@ class ProgramTransfer(ProgramVisitor):
                 
                 val = DXComp('==', DXLength(cb), rval)
                 
-                res += [DXEnsures(val, qafny_line_number=self.current_qafny_line_number)] if i == 0 else [DXEnsures(self.genAllSpec_Simple(DXBind('tmp', SType('nat'), lcounter), curr_bind, ttype, val), qafny_line_number=self.current_qafny_line_number)]
+                res += [DXEnsures(val, transformed_from=qty.flag().num())] if i == 0 else [DXEnsures(self.genAllSpec_Simple(DXBind('tmp', SType('nat'), lcounter), curr_bind, ttype, val), transformed_from=qty.flag().num())]
                 ttype = SeqType(ttype)
 
             return res
@@ -431,9 +435,9 @@ class ProgramTransfer(ProgramVisitor):
                     right = DXVar(elem.crange().right().ID() if isinstance(elem.crange().right(), QXBind) else str(elem.crange().right().num()))
                     left = elem.crange().left()
                     if isinstance(left, QXNum) and left.num() == 0:
-                        conditions.append(DXEnsures(DXComp('==', DXLength(DXBind(elem.location(), num=num)), right), qafny_line_number=self.current_qafny_line_number))
+                        conditions.append(DXEnsures(DXComp('==', DXLength(DXBind(elem.location(), num=num)), right), transformed_from=elem))
                     else:
-                        conditions.append(DXEnsures(DXComp('==', DXLength(DXBind(elem.location(), num=num)), DXBin('-',right, left.accept(self))), qafny_line_number=self.current_qafny_line_number))
+                        conditions.append(DXEnsures(DXComp('==', DXLength(DXBind(elem.location(), num=num)), DXBin('-',right, left.accept(self))), transformed_from=elem))
 
         return conditions
 
@@ -485,7 +489,7 @@ class ProgramTransfer(ProgramVisitor):
         self.outvarnums = self.genVarNumMap(self.ftenvr)
         self.genSizeMap()
 
-        self.current_qafny_line_number = ctx.line_number()
+        self.current_qafny_line_number = ctx.line()
         tmpbind = []
         for bindelem in ctx.bindings(): #collect classical binds
             tmpv = bindelem.accept(self)
@@ -538,7 +542,7 @@ class ProgramTransfer(ProgramVisitor):
             loc,qty, num = self.outvarnums[i]
             newvars = makeVars(loc, qty, self.counter)
             oldvars = makeVars(loc, qty, num)
-            tmpstmt.append(DXAssign(newvars, oldvars, qafny_line_number=self.current_qafny_line_number))
+            tmpstmt.append(DXAssign(newvars, oldvars, transformed_from=ctx))
             self.outvarnums[i] = (loc, qty, self.counter)
             self.counter += 1
 
@@ -564,20 +568,20 @@ class ProgramTransfer(ProgramVisitor):
         tmpreturn = self.genOutArgs(tmpreturn)
         self.libFuns.add('abs')
         self.libFuns.add('powN')
-        return DXMethod(str(self.fvar), axiom, tmpbind, tmpreturn, tmpcond, tmpstmt, qafny_line_number=ctx.line_number())
+        return DXMethod(str(self.fvar), axiom, tmpbind, tmpreturn, tmpcond, tmpstmt, transformed_from=ctx)
 
 
     def visitProgram(self, ctx: Programmer.QXProgram):
         tmp = []
         for elem in ctx.topLevelStmts():
             tmp.append(elem.accept(self))
-        return DXProgram(tmp, qafny_line_number=ctx.line_number())
+        return DXProgram(tmp, transformed_from=ctx)
 
 
     def visitBind(self, ctx: Programmer.QXBind):
         if isinstance(ctx.type(), TySingle):
             ty = ctx.type().accept(self)
-            return DXBind(ctx.ID(), ty, None, qafny_line_number=ctx.line_number())
+            return DXBind(ctx.ID(), ty, None, transformed_from=ctx)
         if ctx.ID() and not ctx.type():
             return DXBind(ctx.ID(), None, qafny_line_number=ctx.line_number())
         return None
