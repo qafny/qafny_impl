@@ -351,11 +351,8 @@ class DXBind(DXAExp):
     def num(self):
         return self._num
 
-    def newBind(self):
-        if self._num is None:
-            return DXBind(self._id, self._type, 0)
-        else:
-            return DXBind(self._id, self._type, self._num + 1)
+    def newBind(self, n:int):
+        return DXBind(self._id, self._type, n, self._qafny_line_number)
 
     def __repr__(self):
         return f'DXBind(id={self._id}, type={self._type}, num={self._num})'

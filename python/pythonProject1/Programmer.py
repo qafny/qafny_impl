@@ -771,7 +771,7 @@ class QXBin(QXAExp):
 @qafny.auto.equality
 class QXCRange(QXTop):
 
-    def __init__(self, left: Optional[QXAExp], right: Optional[QXAExp], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
+    def __init__(self, left: QXAExp, right: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
         super().__init__(parser_context=parser_context)
         self._left = left
         self._right = right
