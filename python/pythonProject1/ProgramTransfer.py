@@ -219,13 +219,16 @@ class ProgramTransfer(ProgramVisitor):
         return tmp
 
     #create new DXBind with TyNor and TyHad type Only
+    #and for TyEnv, we increment the type to 1
     def upVarsType(self, v: dict, t: QXQTy):
         tmp = dict()
         for key in v.keys():
             if isinstance(t, TyNor):
                 tmp.update({key: v.get(key).newBindType(SeqType(SType("bv1")), self.counter)})
-            else:
+            elif isinstance(t, TyHad):
                 tmp.update({key: v.get(key).newBindType(SeqType(SType("real")), self.counter)})
+            else:
+                tmp.update({key: v.get(key).newBindType(SeqType(v.get(key).type()), self.counter)})
             self.counter += 1
 
         return tmp
@@ -2768,7 +2771,7 @@ elif isinstance(ctx.bexp(), QXQComp):
     def visitSingle(self, ctx: Programmer.QXSingle):
         v = subLocus(self.currLocus, self.varnums)
         if v is not None:
-            loc,qty,num = v
+            loc,qty,num = v #num is the old dict for DxBinds
 
             if isinstance(qty, TyNor) and ctx.op() == "H":
                 vs = compareLocus(self.currLocus, loc)
@@ -2785,7 +2788,7 @@ elif isinstance(ctx.bexp(), QXQComp):
                     newvars = self.upVarsType(TyHad(), num)
                     self.varnums = [(self.currLocus, TyHad(),newvars), (vs, TyNor(), num)] + self.varnums
                 result = [DXInit(x, qafny_line_number=ctx.line_number()) for x in newvars]
-                result += [DXAssign(newvars, DXCall("hadNorHad", makeVars(self.currLocus, TyNor(), num),
+                result += [DXAssign(newvars.values(), DXCall("hadNorHad", num.values(),
                                                     qafny_line_number=ctx.line_number()),
                                     qafny_line_number=ctx.line_number())]
                 self.libFuns.add('hadNorHad')
@@ -2794,20 +2797,23 @@ elif isinstance(ctx.bexp(), QXQComp):
 
             #this part might need to change, and look from the code for sushen
             if isinstance(qty, TyEn)  and ctx.op() == "H":
+                newvars = self.upVarsType(qty, num)
                 flagNum = qty.flag().num()
+                #newTy = TyEn(QXNum(flagNum + 1))
                 # vs = compareLocus(ctx.locus(), loc)
-                self.replaceType(num, TyEn(QXNum(flagNum + 1)))
+                #self.replaceType(num, TyEn(QXNum(flagNum + 1)))
                 tmr = []
                 '''for rem in vs:
                     tmr += [DXAssign(makeVars([rem], TyEn(QXNum(flagNum + 1)), self.counter),
                                      DXCall("castBaseEn", makeVars([rem], qty, num)))]
                     self.libFuns.add('castBaseEn')
                     self.counter += 1'''
-                result = tmr + [DXAssign(makeVars(loc, TyEn(QXNum(flagNum + 1)), self.counter),
+                result = tmr + [DXAssign(newvars.values(),
                                          DXCall(
                                              "En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)),
-                                             makeVars(loc, qty, num), qafny_line_number=ctx.line_number()), True,
+                                             num.values(), qafny_line_number=ctx.line_number()), True,
                                          qafny_line_number=ctx.line_number())]
+                #TODO: the above only contain code for update type casting, how about the code to apply Had on a place and get phases?
 
                 self.libFuns.add("En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)))
                 result += [DXCall('triggerSqrtMul', [], True, qafny_line_number=ctx.line_number())]
@@ -2826,12 +2832,14 @@ elif isinstance(ctx.bexp(), QXQComp):
                 return result
 
             if isinstance(qty, TyEn) and ctx.op() == "QFT":
+                newvars = self.upVarsType(qty, num)
                 flagNum = qty.flag().num()
                 # vs = compareLocus(ctx.locus(), loc)
-                self.replaceType(num, TyEn(QXNum(flagNum + 1)))
+                #self.replaceType(num, TyEn(QXNum(flagNum + 1)))
                 tmr = []
 
-                newvars = makeVars(loc, TyEn(QXNum(flagNum + 1)), self.counter)
+                #newvars = makeVars(loc, TyEn(QXNum(flagNum + 1)), self.counter)
+                #modify the following to make it look like Had
                 applicationids = []
                 if isinstance(self.currLocus, list):
                     for _loc in self.currLocus:
@@ -2857,6 +2865,7 @@ elif isinstance(ctx.bexp(), QXQComp):
                                              other_oldvars + application_oldvars + amp_oldvar,
                                              qafny_line_number=ctx.line_number()), True,
                                          qafny_line_number=ctx.line_number())]
+                #modify the above
 
                 self.libFuns.add("QFT_En" + str(flagNum) + 'to' + "En" + str(flagNum + 1) + '_' + str(len(loc)))
                 result += [DXCall('triggerSqrtMul', [], True, qafny_line_number=ctx.line_number())]
