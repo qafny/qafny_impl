@@ -364,24 +364,19 @@ class DXBind(DXAExp):
     def qafny_line_number(self):
         return self._qafny_line_number
 
-class DXVar(DXBind):
+class DXBoolValue(DXBool):
 
-    def __init__(self, id : str, ty: DXType = None, qafny_line_number: int = None):
-        self._id = id
-        self._type = ty
-        self._qafny_line_number = qafny_line_number
+    def __init__(self, v:bool, qafny_line_number: int = None):
+        self._bool = v
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitVar(self)
 
-    def ID(self):
-        return self._id
-
-    def type(self):
-        return self._type
+    def value(self):
+        return self._bool
 
     def __repr__(self):
-        return f'DXVar(id={self._id}, type={self._type})'
+        return f'DXBoolValue(value={self._bool})'
     
     def qafny_line_number(self):
         return self._qafny_line_number

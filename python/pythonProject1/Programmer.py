@@ -919,7 +919,7 @@ class QXNum(QXAExp):
 
 @qafny.auto.rich_repr
 @qafny.auto.equality
-class QXBoolLiteral(QXAExp):
+class QXBoolLiteral(QXBool):
 
     def __init__(self, value: bool, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
         super().__init__(parser_context=parser_context)
@@ -1537,7 +1537,7 @@ class QXMeasureAbort(QXStmt):
 @qafny.auto.equality
 class QXIf(QXStmt):
 
-    def __init__(self, bexp: QXBExp | QXBoolLiteral, stmts: [QXStmt], else_branch: [QXStmt], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
+    def __init__(self, bexp: QXBExp, stmts: [QXStmt], else_branch: [QXStmt], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
         super().__init__(parser_context=parser_context)
         self._bexp = bexp
         self._stmts = stmts

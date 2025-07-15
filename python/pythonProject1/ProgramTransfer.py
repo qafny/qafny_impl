@@ -680,7 +680,7 @@ class ProgramTransfer(ProgramVisitor):
             loc,qty,num = v
             vs = compareLocus(ctx.locus(), loc)
             if not vs and isinstance(qty, TyHad) and isinstance(ctx.qty(), TyEn):
-                newvars = upVarsType(num,qty)
+                newvars = self.upVarsType(num,qty)
                 result = [DXInit(x, qafny_line_number=ctx.line_number()) for x in newvars.values()]
                 newampvar = [x for x in newvars.values() if x.ID() == 'amp']
                 othervars = [x for x in newvars.values() if x.ID() != 'amp']
@@ -1315,16 +1315,23 @@ class ProgramTransfer(ProgramVisitor):
         #deal with classical boolean expression
         if isinstance(ctx.bexp(), QXBool):
             bex = ctx.bexp().accept(self)
+
+            tmpMap = deepcopy(self.varnums)
             terms = []
             for elem in ctx.stmts():
                 terms += elem.accept(self)
-            typeCheck = TypeChecker(self.fkenv, self.tenv, self.varnums, self.counter)
-            typeCheck.visit(ctx)
-            self.fkenv = typeCheck.kenv()
-            self.varnums = typeCheck.renv()
-            self.counter = typeCheck.counter
 
-            return DXIf(bex, terms, [], qafny_line_number=ctx.line_number())
+            self.varnums = tmpMap
+            elses = []
+            for elem in ctx.else_stmts():
+                elses += elem.accept(self)
+            #typeCheck = TypeChecker(self.fkenv, self.tenv, self.varnums, self.counter)
+            #typeCheck.visit(ctx)
+            #self.fkenv = typeCheck.kenv()
+            #self.varnums = typeCheck.renv()
+            #self.counter = typeCheck.counter
+
+            return DXIf(bex, terms, elses, qafny_line_number=ctx.line_number())
 
         #deal with quantum conditional
         #upgrade_en = False
@@ -2719,6 +2726,8 @@ class ProgramTransfer(ProgramVisitor):
         right = ctx.right().accept(self)
         return DXComp(ctx.op(), left, right, qafny_line_number=ctx.line_number())
 
+    def visitBoolLiteral(self, ctx: Programmer.QXBoolLiteral):
+        return DXBoolValue(ctx.value())
 
     def visitQIndex(self, ctx: Programmer.QXQIndex):
         n = 0
