@@ -669,7 +669,6 @@ class ProgramTransfer(ProgramVisitor):
         x = [DXEnsures(i, qafny_line_number=ctx.line_number()) for i in v]
         return x
 
-
     def visitCRange(self, ctx: Programmer.QXCRange):
         super().visitCRange(ctx)
 
@@ -2545,7 +2544,9 @@ class ProgramTransfer(ProgramVisitor):
         rbound = ctx.crange().right().accept(self)
         vx = DXBind(x, SType("nat"))
         self.current_qafny_line_number = tmp_current_qafny_line_number
-        return [DXInit(vx, lbound, qafny_line_number=self.current_qafny_line_number), DXWhile(DXComp("<", vx, rbound, qafny_line_number=self.current_qafny_line_number), tmpstmts, tmpinvs, qafny_line_number=self.current_qafny_line_number)]
+        return [DXInit(vx, lbound, qafny_line_number=self.current_qafny_line_number),
+                DXWhile(DXComp("<", vx, rbound, qafny_line_number=self.current_qafny_line_number),
+                        tmpstmts, tmpinvs, qafny_line_number=self.current_qafny_line_number)]
 
 
     #This might be oversimplified. We might need to cast
