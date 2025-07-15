@@ -641,16 +641,18 @@ class ProgramTransfer(ProgramVisitor):
             loc,qty,num = v
             vs = compareLocus(ctx.locus(), loc)
             if not vs and isinstance(qty, TyHad) and isinstance(ctx.qty(), TyEn):
-                newvars = makeVars(ctx.locus(),ctx.qty(),self.counter)
-                result = [DXInit(x, qafny_line_number=ctx.line_number()) for x in newvars]
-                newampvar = [x for x in newvars if x.ID() == 'amp']
-                othervars = [x for x in newvars if x.ID() != 'amp']
-                result += [DXAssign(newampvar + othervars,DXCall("hadEn", makeVars(ctx.locus(),TyHad(),num), qafny_line_number=ctx.line_number()), qafny_line_number=ctx.line_number())]
+                newvars = upVarsType(num,qty)
+                result = [DXInit(x, qafny_line_number=ctx.line_number()) for x in newvars.values()]
+                newampvar = [x for x in newvars.values() if x.ID() == 'amp']
+                othervars = [x for x in newvars.values() if x.ID() != 'amp']
+                result += [DXAssign(newampvar + othervars,DXCall("hadEn", makeVars(ctx.locus(),TyHad(),num),
+                                                                 qafny_line_number=ctx.line_number()), qafny_line_number=ctx.line_number())]
                 self.libFuns.add('hadEn')
-                self.removeLocus(num)
-                self.varnums = [(loc,ctx.qty(),self.counter)] + self.varnums
-                self.counter += 1
+                self.removeLocus(loc)
+                self.varnums = [(loc,ctx.qty(),newvars)] + self.varnums
+                #self.counter += 1
                 return result
+    """
         else:
             v = subLocusGen(ctx.locus(),self.varnums)
             if v is not None:
@@ -700,7 +702,7 @@ class ProgramTransfer(ProgramVisitor):
                     self.varnums = [(floc, ty, self.counter)] + self.varnums
                     self.counter += 1
                     return result
-                    
+                    """
 
 
                             
