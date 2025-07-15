@@ -355,29 +355,28 @@ class DXBind(DXAExp):
     def newBind(self, n:int):
         return DXBind(self._id, self._type, n, self._qafny_line_number)
 
+
+    def newBindType(self, t:DXType, n:int):
+        return DXBind(self._id, t, n, self._qafny_line_number)
+
     def __repr__(self):
         return f'DXBind(id={self._id}, type={self._type}, num={self._num})'
 
 
-class DXVar(DXBind):
+class DXBoolValue(DXBool):
 
-    def __init__(self, id : str, ty: DXType = None, transformed_from: Union[QXTop, DXTop, None] = None):
+    def __init__(self, v:bool, transformed_from: Union[QXTop, DXTop, None] = None):
         super().__init__(transformed_from)
-        self._id = id
-        self._type = ty
+        self._bool = v
 
     def accept(self, visitor: AbstractTargetVisitor):
         return visitor.visitVar(self)
 
-    def ID(self):
-        return self._id
-
-    def type(self):
-        return self._type
+    def value(self):
+        return self._bool
 
     def __repr__(self):
-        return f'DXVar(id={self._id}, type={self._type})'
-
+        return f'DXBoolValue(value={self._bool})'
 
 class DXList(DXAExp):
 
@@ -397,7 +396,7 @@ class DXList(DXAExp):
 
 class DXLength(DXAExp):
 
-    def __init__(self, var : DXVar, transformed_from: Union[QXTop, DXTop, None] = None):
+    def __init__(self, var : DXAExp, transformed_from: Union[QXTop, DXTop, None] = None):
         super().__init__(transformed_from)
         self._var = var
 
