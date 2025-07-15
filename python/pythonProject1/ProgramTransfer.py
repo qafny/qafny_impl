@@ -31,6 +31,7 @@ def compareRangeLocus(q1: QXQRange, qs: [QXQRange]):
         vs = vs + [qs[i]]
     return None
 
+#compareLocus and return the reminder locus
 def compareLocus(q1: [QXQRange], q2: [QXQRange]):
     vs = q2
     for elem in q1:
@@ -39,6 +40,7 @@ def compareLocus(q1: [QXQRange], q2: [QXQRange]):
             return None
     return vs
 
+#check if q2 is in the database, and then return locus,qty,num, where q2 is part of locus
 def subLocus(q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
     vs = q2
     qsf = []
@@ -71,15 +73,6 @@ def makeVars(locus:[QXQRange], t:QXQTy, n:int):
             tmp.update({elem.location(), DXBind(elem.location(), SeqType(SType("real")), n)})
 
     return tmp
-
-
-def upVars(v:dict, counter: int):
-    tmp = dict()
-    for key in v.keys():
-        tmp.update({key:v.get(key).newBind(counter)})
-        counter = counter + 1
-
-    return tmp,counter
 
 def makeMap(ids: [str], locus: [QXQRange]):
     tmp = dict()
@@ -215,6 +208,27 @@ class ProgramTransfer(ProgramVisitor):
 
         #qafny line number to input into Dafny AST
         self.current_qafny_line_number = None
+
+
+    def upVars(self, v: dict):
+        tmp = dict()
+        for key in v.keys():
+            tmp.update({key: v.get(key).newBind(self.counter)})
+            self.counter += 1
+
+        return tmp
+
+    #create new DXBind with TyNor and TyHad type Only
+    def upVarsType(self, v: dict, t: QXQTy):
+        tmp = dict()
+        for key in v.keys():
+            if isinstance(t, TyNor):
+                tmp.update({key: v.get(key).newBindType(SeqType(SType("bv1")), self.counter)})
+            else:
+                tmp.update({key: v.get(key).newBindType(SeqType(SType("real")), self.counter)})
+            self.counter += 1
+
+        return tmp
 
     def genVarNumMap(self, tenv: [([QXQRange], QXQTy)]):
         tmp = []
@@ -437,17 +451,17 @@ class ProgramTransfer(ProgramVisitor):
 
         return conditions
 
-    def removeLocus(self, n:int):
-        vs = []
+    def removeLocus(self, vs:[QXQRange]):
+        tmp = []
         for i in range(len(self.varnums)):
             locus,qty,num = self.varnums[i]
-            if n == num:
-                vs += self.varnums[i+1:len(self.varnums)]
+            if vs == locus:
+                tmp += self.varnums[i+1:len(self.varnums)]
                 break
             else:
-                vs += [(locus,qty,num)]
+                tmp += [(locus,qty,num)]
 
-        self.varnums = vs
+        self.varnums = tmp
 
 
     def replaceType(self, n:int, t:QXQTy):
@@ -1258,7 +1272,7 @@ class ProgramTransfer(ProgramVisitor):
 
         loop_oldVars = makeVars(nLoc, nqty, nnum)
         #loop_oldVars = {x.ID(): x for x in oldVars}
-        loop_newVars, self.counter = upVars(loop_oldVars, self.counter)
+        loop_newVars, self.counter = self.upVars(loop_oldVars, self.counter)
         #loop_newVars = {x.ID(): x for x in newVars}
         nLoc_dict = {x.location(): x for x in nLoc}
 
@@ -2760,13 +2774,16 @@ elif isinstance(ctx.bexp(), QXQComp):
                 vs = compareLocus(self.currLocus, loc)
                 if not vs:
                     # self.replaceType(num,TyHad())
-                    self.removeLocus(num)
-                    self.varnums += [(self.currLocus, TyHad(), self.counter)]
+                    self.removeLocus(loc)
+                    newvars = self.upVarsType(TyHad(), num)
+                    self.varnums += [(self.currLocus, TyHad(), newvars)]
+
+
                 else:
-                    self.removeLocus(num)
+                    self.removeLocus(loc)
                     self.counter += 1
-                    self.varnums = [(self.currLocus, TyHad(), self.counter), (vs, TyNor(), num)] + self.varnums
-                newvars = makeVars(self.currLocus, TyHad(), self.counter)
+                    newvars = self.upVarsType(TyHad(), num)
+                    self.varnums = [(self.currLocus, TyHad(),newvars), (vs, TyNor(), num)] + self.varnums
                 result = [DXInit(x, qafny_line_number=ctx.line_number()) for x in newvars]
                 result += [DXAssign(newvars, DXCall("hadNorHad", makeVars(self.currLocus, TyNor(), num),
                                                     qafny_line_number=ctx.line_number()),
