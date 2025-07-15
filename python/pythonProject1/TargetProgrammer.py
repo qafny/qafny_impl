@@ -406,7 +406,7 @@ class DXList(DXAExp):
 
 class DXLength(DXAExp):
 
-    def __init__(self, var : DXVar, qafny_line_number: int = None):
+    def __init__(self, var : DXAExp, qafny_line_number: int = None):
         self._var = var
         self._qafny_line_number = qafny_line_number
 
