@@ -12,16 +12,11 @@ from TargetToString import TargetToString
 from TypeChecker import TypeChecker, subLocusGen, compareType
 from EqualityVisitor import EqualityVisitor
 
-<<<<<<< HEAD
-# Implementation Notes:
-# - I've tried to make it clear when a qafny node is passed through to populate line and column information in the dafny target tree by using named arguments (transformed_from).
-#   Unfortunately, this isn't the best API, but it is needed to maintain a link between the two trees. Maybe a setter method should be used instead?
-=======
+
 def eqQRange(q1: QXQRange, q2: QXQRange):
     return (str(q1.location()) == str(q2.location()) and compareAExp(q1.crange().left(),q2.crange().left())
             and compareAExp(q1.crange().right(),q2.crange().right()))
 
->>>>>>> 917b0de9456ce828ced67525ac2bce176cf3438a
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
     return str(q1.location()) == str(q2.location()) and compareAExp(q1.crange().left(),q2.crange().left())
@@ -1150,11 +1145,7 @@ class ProgramTransfer(ProgramVisitor):
         return super().visitMeasure(ctx)
 
     def visitCAssign(self, ctx: Programmer.QXCAssign):
-<<<<<<< HEAD
-        return DXAssign([DXVar(ctx.ID())], ctx.aexp().accept(self), transformed_from=ctx)
-=======
-        return QXCAssign([DXBind(x) for x in ctx.ids()], ctx.aexp().accept(self), qafny_line_number=ctx.line_number())
->>>>>>> 917b0de9456ce828ced67525ac2bce176cf3438a
+        return QXCAssign([DXBind(x) for x in ctx.ids()], ctx.aexp().accept(self), transformed_from=ctx)
 
     def getMapIndex(self, bind):
         for loc, qty, n in self.varnums:
