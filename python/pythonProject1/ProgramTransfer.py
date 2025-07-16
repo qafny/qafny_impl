@@ -12,6 +12,10 @@ from TargetToString import TargetToString
 from TypeChecker import TypeChecker, subLocusGen, compareType
 from EqualityVisitor import EqualityVisitor
 
+def eqQRange(q1: QXQRange, q2: QXQRange):
+    return (str(q1.location()) == str(q2.location()) and compareAExp(q1.crange().left(),q2.crange().left())
+            and compareAExp(q1.crange().right(),q2.crange().right()))
+
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
     return str(q1.location()) == str(q2.location()) and compareAExp(q1.crange().left(),q2.crange().left())
@@ -209,6 +213,54 @@ class ProgramTransfer(ProgramVisitor):
         #qafny line number to input into Dafny AST
         self.current_qafny_line_number = None
 
+    #add DX functions to cast types
+    def joinBExpLocus(self, q: QXQRange, aLocus :[QXQRange], aTy: QXQTy, aVars: dict,
+                       bLocus: [QXQRange], bTy: QXQTy, bVars: dict):
+
+        #case when bTy is TyEn
+        if isinstance(bTy, TyEn):
+            if isinstance(aTy, TyNor):
+                if eqQRange(q, aLocus[0]):
+                    return [((bLocus + [q]), bTy,
+                           bVars.update({q.location(): DXBind(q.location(), bVars.values()[0].type(), aVars(q.location()).num())}))]
+                elif compareLocus(q, aLocus[0]):
+                    vs = [((bLocus + [q]), bTy, bVars.update({q.location(): DXBind(q.location(),
+                                                                                   bVars.values()[0].type(), self.counter)})),
+                          ([QXQRange(q.location(),
+                                     QXCRange(QXBin(q.crange().right(), QXNum(1)), aLocus[0].crange().right()),
+                                     q.line_number())], TyNor, aVars(q.location()).num())]
+                    self.counter += 1
+                    return vs
+            # we only allow one qubit had in bexp
+            if isinstance(aTy, TyHad):
+                if eqQRange(q, aLocus[0]):
+                    return [((bLocus + [q]), TyAA(bTy.flag(), q.crange()),
+                      bVars.update({q.location(): DXBind(q.location(), bVars.values()[0].type(), aVars(q.location()).num())}))]
+                elif compareLocus(q, aLocus[0]):
+                    vs = [((bLocus + [q]), TyAA(bTy.flag(), q.crange()), bVars.update({q.location(): DXBind(q.location(),
+                                                                                   bVars.values()[0].type(), self.counter)})),
+                          ([QXQRange(q.location(),
+                                     QXCRange(QXBin(q.crange().right(), QXNum(1)), aLocus[0].crange().right()),
+                                     q.line_number())], TyHad, aVars(q.location()).num())]
+                    self.counter += 1
+                    return vs
+
+
+    def includeBExpLocus(self, q2: [QXQRange]):
+        v = subLocus(q2, self.varnums)
+        if v is not None:
+            return v
+
+        vs = []
+        for i in range(len(q2)):
+            vs = q2[0:i] + q2[i + 1:]
+            v = subLocus(vs, self.varnums)
+            if v is not None:
+                loc2, ty2, vars2 = subLocus([q2[i]], self.varnums)
+                loc1, ty1, vars1 = v
+                self.varnums = self.joinBExpLocus(q2[i], loc2, ty2, vars2, loc1, ty1, vars1) + self.varnums.removeLocus(loc1).removeLocus(loc2)
+                v3 = subLocus(vs, self.varnums)
+                return v3
 
     def upVars(self, v: dict):
         tmp = dict()
@@ -237,7 +289,7 @@ class ProgramTransfer(ProgramVisitor):
                 tmp.update({key: v.get(key).newBindType(SeqType(SType("bv1")), self.counter)})
             elif isinstance(t, TyHad):
                 tmp.update({key: v.get(key).newBindType(SeqType(SType("real")), self.counter)})
-            else:
+            elif isinstance(t, TyEn):
                 tmp.update({key: v.get(key).newBindType(SeqType(v.get(key).type()), self.counter)})
             self.counter += 1
 
@@ -1312,6 +1364,7 @@ class ProgramTransfer(ProgramVisitor):
 
     def visitIf(self, ctx: Programmer.QXIf):
 
+        self.current_qafny_line_number = ctx.line_number()
         #deal with classical boolean expression
         if isinstance(ctx.bexp(), QXBool):
             bex = ctx.bexp().accept(self)
@@ -1356,35 +1409,37 @@ class ProgramTransfer(ProgramVisitor):
         # should use Locus Collector to infer the stmts correction first.
         # do not understand the logic here.
         # the bool_exp_id, bool_exp_index can be merged with the other two cases.
-        self.current_qafny_line_number = ctx.line_number()
 
         lc = LocusCollector()
         lc.visit(ctx.bexp())
         for stmt in ctx.stmts():
             lc.visit(stmt)
 
+        #mergeLocus provides a final locus, type, and num, as well as the result lib function call in Dafny in tres
         tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
-        self.currLocus = tres, nLoc, nqty, nnum
+        self.currLocus = nLoc, nqty, nnum
 
         if isinstance(ctx.bexp(), QXQComp):
             ifexp = [ctx.bexp().accept(self)]
         else:
             ifexp = []
 
-        loop_oldVars = makeVars(nLoc, nqty, nnum)
+        #loop_oldVars = makeVars(nLoc, nqty, nnum)
         #loop_oldVars = {x.ID(): x for x in oldVars}
-        loop_newVars, self.counter = self.upVars(loop_oldVars, self.counter)
+        loop_oldVars = nnum
+        #loop_newVars, self.counter = self.upVars(loop_oldVars, self.counter)
         #loop_newVars = {x.ID(): x for x in newVars}
-        nLoc_dict = {x.location(): x for x in nLoc}
+        #nLoc_dict = {x.location(): x for x in nLoc}
 
 
-        if isinstance(ctx.bexp(), QXQComp):
-            bool_exp_id = ctx.bexp().index().ID()
-        elif isinstance(ctx.bexp(), QXQRange):
-            bool_exp_id = ctx.bexp().location()
-        else:
-            bool_exp_id = ctx.bexp().ID()
+        #if isinstance(ctx.bexp(), QXQComp):
+        #    bool_exp_id = ctx.bexp().index().ID()
+        #elif isinstance(ctx.bexp(), QXQRange):
+        #    bool_exp_id = ctx.bexp().location()
+        #else:
+        #    bool_exp_id = ctx.bexp().ID()
 
+        bool_exp_id = ctx.bexp().ID()
         newBind = loop_oldVars.get(bool_exp_id).newBind(self.counter)
         self.counter += 1
 

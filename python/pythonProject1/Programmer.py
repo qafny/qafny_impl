@@ -481,10 +481,14 @@ class TyEn(QXQTy):
 @qafny.auto.equality
 class TyAA(QXQTy):
 
-    def __init__(self, qrange = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
+    def __init__(self, flag: QXAExp, qrange = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
         super().__init__(parser_context=parser_context)
+        self._flag = flag
         self._qrange = qrange
         self._line_number = line_number
+
+    def flag(self):
+        return self._flag
 
     def qrange(self):
         return self._qrange
