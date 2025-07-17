@@ -54,6 +54,7 @@ def subLocus(q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
             return locus,qty, num
     return None
 
+
 def genType(n:int, t:DXType):
     for i in range(n):
         t = SeqType(t)
@@ -77,6 +78,36 @@ def makeVars(locus:[QXQRange], t:QXQTy, n:int):
             tmp.update({elem.location(), DXBind(elem.location(), SeqType(SType("real")), n)})
 
     return tmp
+
+def meetType(t1: QXQTy, t2: QXQTy):
+    if isinstance(t1, TyNor) and not isinstance(t2, TyHad):
+        return t2
+    if isinstance(t2, TyNor) and not isinstance(t1, TyHad):
+        return t1
+    if isinstance(t1, TyHad) and not isinstance(t2, TyNor):
+        return t2
+    if isinstance(t2, TyHad) and not isinstance(t1, TyNor):
+        return t1
+    if isinstance(t1, TyEn) and isinstance(t2, TyEn):
+        if t1.flag() < t2.flag():
+            return t2
+        else:
+            return t1
+    if isinstance(t1, TyEn) and isinstance(t2, TyAA):
+        if t1.flag() < t2.flag():
+            return t2
+        else:
+            return TyAA(t1.flag(), t2.qrange(), t2.line_number())
+    if isinstance(t1, TyAA) and isinstance(t2, TyEn):
+        if t1.flag() < t2.flag():
+            return TyAA(t2.flag(), t1.qrange(), t1.line_number())
+        else:
+            return t1
+    else:
+        if t1.flag() < t2.flag():
+            return t2
+        else:
+            return t1
 
 def makeMap(ids: [str], locus: [QXQRange]):
     tmp = dict()
@@ -111,6 +142,29 @@ def updateInd(lexp:[DXAExp], ind: DXAExp):
     for elem in lexp:
         tmp += [DXIndex(elem,ind)]
     return tmp
+
+def findHadRange(q2 : QXQRange, qs: [([QXQRange], QXQTy, dict)]):
+
+    vs = []
+    for i in len(qs):
+        loc, qty, vars = qs[i]
+        if isinstance(qty, TyHad):
+            v = compareRangeLocus(q2, loc)
+            if not v:
+                vs += [(v, qty, vars)]+qs[i+1:]
+                return q2, vars, vs
+            else:
+                return None
+        vs += [qs[i]]
+    return None
+
+def findHadLocus(self, q2 : [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
+
+    for i in len(q2):
+        v = findHadRange(q2[i], qs)
+        if v is not None:
+            return v
+
 
 class StackFactor:
     pass
@@ -214,14 +268,14 @@ class ProgramTransfer(ProgramVisitor):
         self.current_qafny_line_number = None
 
     #add DX functions to cast types
-    def joinBExpLocus(self, q: QXQRange, aLocus :[QXQRange], aTy: QXQTy, aVars: dict,
+    def joinIfLocus(self, q: QXQRange, aLocus :[QXQRange], aTy: QXQTy, aVars: dict,
                        bLocus: [QXQRange], bTy: QXQTy, bVars: dict):
 
         #case when bTy is TyEn
         if isinstance(bTy, TyEn):
             if isinstance(aTy, TyNor):
                 if eqQRange(q, aLocus[0]):
-                    return [((bLocus + [q]), bTy,
+                    return [], [((bLocus + [q]), bTy,
                            bVars.update({q.location(): DXBind(q.location(), bVars.values()[0].type(), aVars(q.location()).num())}))]
                 elif compareLocus(q, aLocus[0]):
                     vs = [((bLocus + [q]), bTy, bVars.update({q.location(): DXBind(q.location(),
@@ -244,23 +298,156 @@ class ProgramTransfer(ProgramVisitor):
                                      q.line_number())], TyHad, aVars(q.location()).num())]
                     self.counter += 1
                     return vs
+        return None
+
+    def genHadEnCastPred(self, vars: dict, qty: QXQTy, line_number: int):
+        newvars = self.upVarsType(vars, qty)
+        result = [DXInit(x, qafny_line_number=line_number) for x in newvars.values()]
+        newampvar = [x for x in newvars.values() if x.ID() == 'amp']
+        othervars = [x for x in newvars.values() if x.ID() != 'amp']
+        result += [DXAssign(newampvar + othervars, DXCall("hadEn", vars.values(), qafny_line_number=line_number),
+                            qafny_line_number=line_number)]
+        self.libFuns.add('hadEn')
+        return result
+
+    def genEnNorExtendPred(self, x:DXBind, y:DXBind, qty:QXQTy, line_number: int):
+        self.libFuns.add('mergeBitEn')
+        v = DXAssign([y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
+                         DXCall('mergeBitEn',
+                                [DXLength(x), y]),True, qafny_line_number=line_number)
+        self.counter += 1
+        return v
+
+    #TODO: need to modify the meaning of duplicateMergeBitEn to be a AA type choice,
+    #the number of elements in seq will not change, but we will have case for y == 0 and y == 1
+    def genEnHadAASeqPred(self, vars: dict, y:DXBind, qty:QXQTy, line_number: int):
+        x = vars.values()[0]
+        res = []
+
+        yleft = y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)
+        res += DXAssign([y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
+                         DXNum(0),True, qafny_line_number=line_number)
+        self.counter += 1
+
+        yright = y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)
+        res += DXAssign([y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
+                         DXNum(1),True, qafny_line_number=line_number)
+        self.counter += 1
+
+        self.libFuns.add('duplicateMergeBitEn')
+        self.libFuns.add('mergeAmpEn')
+        self.libFuns.add('omega')
+        half = DXBin('/', QXNum(1), DXUni('sqrt', 2))
+        omega = DXCall('omega', [DXNum(1),DXNum(2)], True, qafny_line_number=self.current_qafny_line_number)
+        for elem in vars.values():
+            if elem.ID() != 'amp':
+                #the duplicateMergeBitEn will simply copy the same result from the old elem to be a new one
+                #and perform y == 0 ==> duplicate as well as y == 1 ==> duplicate
+                res += [DXAssign([DXBind(elem.ID(), genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
+                     DXCall('duplicateMergeBitEn',  [yleft, DXNum(0), DXLength(x), elem]),
+                     True, qafny_line_number=line_number)]
+                self.counter += 1
+                res += [DXAssign([DXBind(elem.ID(), genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
+                     DXCall('duplicateMergeBitEn',  [yright, DXNum(1), DXLength(x), elem]),
+                     True, qafny_line_number=line_number)]
+                self.counter += 1
+            else:
+                res += [DXAssign([DXBind('amp', genType(qty.flag(), (SType("real"))), self.counter)],
+                     DXCall('mergeAmpEn', [yleft, DXNum(0), DXLength(x), elem, half]),
+                     True, qafny_line_number=line_number)]
+                self.counter += 1
+                res += [DXAssign([DXBind('amp', genType(qty.flag(), (SType("real"))), self.counter)],
+                     DXCall('mergeAmpEn', [yleft, DXNum(0), DXLength(x), elem,
+                                           DXBin('*', half, DXBin('*', omega, y))]),
+                     True, qafny_line_number=line_number)]
+                self.counter += 1
 
 
-    def includeBExpLocus(self, q2: [QXQRange]):
+    def superLocus(self, q2: [QXQRange], ty:QXQTy):
+        vs = []
+        for i in len(self.varnums):
+            loc, qty, vars = self.varnums[i]
+            if ty == qty:
+                remind = compareLocus(loc, q2)
+                if remind is not None:
+                    return remind, loc, qty, vars, (vs + self.varnums[i+1:])
+            vs += [self.varnums[i]]
+        return None
+
+    def computeType(self, q2: [QXQRange]):
+        tmp = None
+        for elem in q2:
+            loc, qty, vars = subLocus([elem], self.varnums)
+            if tmp is None:
+                tmp = qty
+            else:
+                tmp = meetType(tmp, qty)
+        return tmp
+
+    def includeIfLocus(self, q2: [QXQRange]):
         v = subLocus(q2, self.varnums)
         if v is not None:
             return v
 
+        ty = self.computeType(q2)
+        rt = self.superLocus(q2, ty)
+
+        if rt is not None:
+            remind, loc, qty, vars, tmpVarNums = rt
+            if isinstance(ty, TyHad):
+                pred = self.genHadEnCastPred(vars, qty, loc[0].line_number())
+                qty = TyEn(QXNum(1), qty.line_number())
+                norRe, norVars, tmpVarNumsa = self.collectNorLocus(remind, tmpVarNums)
+                loc = loc + norRe
+                for v in norVars.values():
+                    pred += [self.genEnNorExtendPred(vars.values()[0], v, qty, loc[0].line_number())]
+                vars.update({k:v for k,v in norVars.items()})
+                self.varnums = ([(loc, qty, vars)]) + tmpVarNumsa
+                return pred, loc, qty, vars
+
+            if isinstance(ty, TyEn):
+                norRe, norVars, tmpVarNumsa = self.collectNorLocus(remind, tmpVarNums)
+                loc = loc + norRe
+                pred = []
+                for v in norVars.values():
+                    pred += [self.genEnNorExtendPred(vars.values()[0], v, qty, loc[0].line_number())]
+                vars.update({k:v for k,v in norVars.items()})
+                vb = findHadLocus(remind, tmpVarNumsa)
+                if vb is not None:
+                    qa, oldVars, tmpVarNumsb = vb
+                    pred += self.genEnHadAASeqPred(vars, oldVars.values()[0], ty, loc[0].line_number())
+                    qty = TyAA(qty.flag(), qa, loc[0].line_number())
+                self.varnums = ([(loc, qty, vars)]) + tmpVarNumsa
+                return pred, loc, qty, vars
+
+
+    def collectNorLocus(self, q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
+        qv = []
         vs = []
-        for i in range(len(q2)):
-            vs = q2[0:i] + q2[i + 1:]
-            v = subLocus(vs, self.varnums)
-            if v is not None:
-                loc2, ty2, vars2 = subLocus([q2[i]], self.varnums)
-                loc1, ty1, vars1 = v
-                self.varnums = self.joinBExpLocus(q2[i], loc2, ty2, vars2, loc1, ty1, vars1) + self.varnums.removeLocus(loc1).removeLocus(loc2)
-                v3 = subLocus(vs, self.varnums)
-                return v3
+        for elem in q2:
+            for i in len(qs):
+                loc, qty, vars = qs[i]
+                if isinstance(qty, TyNor):
+                    if eqQRange(elem, loc[0]):
+                        vs += [(loc, qty, vars)]
+                    else:
+                        reLoc = compareRangeLocus(elem, loc)
+                        qv += [(reLoc, qty, vars)]
+
+                        vs += [(elem, TyNor, self.upVars(vars))]
+                else:
+                    qv += [(loc, qty, vars)]
+
+        newVars = dict()
+        va = []
+        for loc, qty, vars in vs:
+            va += loc
+            newVars.update({k:v for k,v in vars.items()})
+
+        return va, newVars, qv
+                #vs = compareLocus(loc, [elem]):
+
+
 
     def upVars(self, v: dict):
         tmp = dict()
@@ -1415,8 +1602,8 @@ class ProgramTransfer(ProgramVisitor):
         for stmt in ctx.stmts():
             lc.visit(stmt)
 
-        #mergeLocus provides a final locus, type, and num, as well as the result lib function call in Dafny in tres
-        tres, nLoc, nqty, nnum = self.mergeLocus(lc.renv)
+        #includeIfLocus provides a final locus, type, and num, as well as the result lib function call in Dafny in tres
+        tres, nLoc, nqty, nnum = self.includeIfLocus(lc.renv)
         self.currLocus = nLoc, nqty, nnum
 
         if isinstance(ctx.bexp(), QXQComp):

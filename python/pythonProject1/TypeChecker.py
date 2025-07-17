@@ -32,7 +32,7 @@ def compareSubLocus(q1: [QXQRange], q2: [([QXQRange], QXQTy, int)]):
     vs = []
     for i in q1:
         for loc, qty, num in q2:
-            tmpres = compareLocus([i], loc)
+            tmpres = compareLocus(q1[i], loc)
             if tmpres == [] or tmpres:
                 vs.append((loc, qty, num))
                 break
