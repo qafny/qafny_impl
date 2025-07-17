@@ -1607,7 +1607,7 @@ class ProgramTransfer(ProgramVisitor):
         self.currLocus = nLoc, nqty, nnum
 
         if isinstance(ctx.bexp(), QXQComp):
-            ifexp = [ctx.bexp().accept(self)]
+            ifexp = ctx.bexp().accept(self)
         else:
             ifexp = []
 
@@ -1840,33 +1840,50 @@ class ProgramTransfer(ProgramVisitor):
         return DXBoolValue(ctx.value())
 
     def visitQIndex(self, ctx: Programmer.QXQIndex):
-        n = 0
-        for loc, qty, num in self.varnums:
-            for l in loc:
-                if l.location() == ctx.ID():
-                    n = num
-
-        if self.t_ensures:
-            return DXIndex(DXBind(ctx.ID(), None, n),ctx.index().accept(self), qafny_line_number=ctx.line_number())
-        return (None, DXIndex(DXBind(ctx.ID(), None, n),ctx.index().accept(self), qafny_line_number=ctx.line_number()))
-
+        loc, qty, vars = self.currLocus
+        v = ctx.index().accept(self)
+        return DXIndex(vars(ctx.ID()), v)
+            #return DXIndex(DXBind(ctx.ID(), None, n),ctx.index().accept(self), qafny_line_number=ctx.line_number())
+        #return (None, DXIndex(DXBind(ctx.ID(), None, n),ctx.index().accept(self), qafny_line_number=ctx.line_number()))
 
     def visitCon(self, ctx: Programmer.QXCon):
         return super().visitCon(ctx)
 
+    def buildWhileBExp(self, op: str, left: DXAExp, right: DXAExp, x: DXBind, ind: DXIndex):
+
+        looping_var = DXBind('tmp', SType('nat'), self.counter)
+        self.counter += 1
+        invariants = []
+        invariants += [DXLogic('<=', DXLogic('<=', DXNum(0), looping_var), DXLength(x),
+                               qafny_line_number=left.qafny_line_number())]
+        boundVar = DXBind('tmp', SType('nat'), self.counter)
+        self.counter += 1
+        invariants += [DXAll(boundVar, DXLogic('==>',DXComp('<=', DXNum(0), DXComp('<',boundVar,DXLength(looping_var))),
+                                               DXComp('==',DXBin(op, DXIndex(left, boundVar), DXIndex(right, boundVar)),DXIndex(ind, boundVar)))
+                             ,qafny_line_number=left.qafny_line_number())]
+
+        return DXWhile(DXComp('<',looping_var,DXLength(x)),
+                DXAssign([DXIndex(ind,looping_var)], DXBin(op, DXIndex(left, boundVar), DXIndex(right, boundVar))),
+                       invariants, qafny_line_number=left.qafny_line_number())
 
     def visitQComp(self, ctx: Programmer.QXQComp):
 
         v1 = ctx.left().accept(self)
         v2 = ctx.right().accept(self)
+        ind = ctx.index().accept(self)
 
+        loc, qty, vars = self.currLocus
+        result = [self.buildWhileBExp(ctx.op(), v1, v2, vars.values()[0], ind)]
         #this is not an index, need a way to refer to the gen id
-        result = [DXAssign(DXIndex(ctx.index().ID(), ctx.index().index()),
-                           DXComp(ctx.op(), DXCall('castBVInt', v1, v2, qafny_line_number=self.current_qafny_line_number)))]
+        #result = [DXAssign(DXIndex(ctx.index().ID(), ctx.index().index()),
+        #                   DXComp(ctx.op(), DXCall('castBVInt', v1, v2, qafny_line_number=self.current_qafny_line_number)))]
         return result
 
 
     def visitQNot(self, ctx: Programmer.QXQNot):
+        if isinstance(ctx.next(), QXQNot):
+            return ctx.next().next().accept(self)
+
         pred, index = ctx.next().accept(self)
         return (DXNot(pred, qafny_line_number=ctx.line_number()), index)
 
