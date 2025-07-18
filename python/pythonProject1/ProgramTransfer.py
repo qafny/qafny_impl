@@ -1849,10 +1849,76 @@ class ProgramTransfer(ProgramVisitor):
     def visitCon(self, ctx: Programmer.QXCon):
         return super().visitCon(ctx)
 
-    def buildWhileBExp(self, op: str, left: DXAExp, right: DXAExp, x: DXBind, ind: DXIndex):
+    def buildLenEqAux(self, vs: dict):
+        res = None
+        if len(list(vs.values())) <= 1:
+            return res
+        left = vs.values()[0]
+        for i in range(1,len(list(vs.values()))):
+            right = vs.values()[i]
+            if res is None:
+                res = DXComp('==', DXLength(left), DXLength(right))
+            else:
+                res = DXLogic('&&',res,DXComp('==', DXLength(left), DXLength(right)))
+            left = right
+        return res
 
+    def buildLenEqAuxAux(self, res: DXBool, x:DXAExp, vars: [DXBind]):
+        if not vars:
+            return res
+        else:
+            return DXAll(vars[0], DXLogic('==>',
+                                   DXLogic('&&', DXComp('<=', DXNum(0), vars[0]),
+                                           DXComp('<', vars[0], DXLength(x))),
+                                   self.buildLenEqAuxAux(res, DXIndex(x,vars[0]), vars[1:])))
+
+    def constructIndex(self, v:DXAExp, vars: [DXBind]):
+        for elem in vars:
+            v = DXIndex(v, elem)
+        return v
+
+    #n is the flag from en type
+    def buildLenEq(self, vs:dict, tmpVars: [DXBind]):
+        if not tmpVars:
+            return self.buildLenEqAux(vs)
+        else:
+            newVars = dict()
+            for key,value in vs.items():
+                newVars.update({key:self.constructIndex(value, tmpVars)})
+            res = self.buildLenEqAux(newVars)
+
+            return self.buildLenEqAuxAux(res,list(vs.values())[0], tmpVars)
+
+
+    def buildLoopCount(self, x:DXBind, y:DXAExp):
+        return DXLogic('&&', DXComp('<=', DXNum(0), x), DXComp('<=', x, y))
+
+    def buildBExpPred(self, op:str, left: DXAExp, right: DXAExp, ind:DXIndex,
+                      vars:dict, loopVars: [DXBind], tmpVars: [DXBind]):
+        if not tmpVars:
+            return DXComp('==',DXBin(op, left, right), ind)
+        else:
+            return DXAll(tmpVars[0], DXLogic('==>',
+                                      DXLogic('&&', DXComp('<=', DXNum(0), tmpVars[0]), DXComp('<', tmpVars[0], loopVars[0])),
+                                      self.buildBExpPred(op, DXIndex(left, tmpVars[0]),
+                                                         DXIndex(right, tmpVars[0]), DXIndex(ind, tmpVars[0]), vars, loopVars[1:], tmpVars[1:]))
+                   , qafny_line_number=left.qafny_line_number())
+
+    def buildWhileBExp(self, left: DXAExp, right: DXAExp, ind:DXIndex, vars:dict,
+                       n:int, loopVars: [DXBind], tmpVars: [DXBind]):
+
+        loopCount = self.constructIndex(list(vars.values())[0], loopVars)
         looping_var = DXBind('tmp', SType('nat'), self.counter)
         self.counter += 1
+
+        invariants = [self.buildLoopCount(looping_var, loopCount)]
+
+        invariants += [self.buildLenEq(vars, tmpVars)]
+
+        loopVars += [looping_var]
+        tmpVars += [DXBind('tmp', SType('nat'), self.counter)]
+        self.counter += 1
+
         invariants = []
         invariants += [DXLogic('<=', DXLogic('<=', DXNum(0), looping_var), DXLength(x),
                                qafny_line_number=left.qafny_line_number())]
@@ -1868,12 +1934,19 @@ class ProgramTransfer(ProgramVisitor):
 
     def visitQComp(self, ctx: Programmer.QXQComp):
 
+
+
+        lc = LocusCollector()
+        lc.visit(ctx)
+        loc, qty, vars = self.currLocus
+        newVars = dict()
+        newVars.update({x.location(): vars(x.location()) for x in lc.renv()})
+
         v1 = ctx.left().accept(self)
         v2 = ctx.right().accept(self)
         ind = ctx.index().accept(self)
 
-        loc, qty, vars = self.currLocus
-        result = [self.buildWhileBExp(ctx.op(), v1, v2, vars.values()[0], ind)]
+        result = [self.buildWhileBExp(ctx.op(), v1, v2, newVars, ind)]
         #this is not an index, need a way to refer to the gen id
         #result = [DXAssign(DXIndex(ctx.index().ID(), ctx.index().index()),
         #                   DXComp(ctx.op(), DXCall('castBVInt', v1, v2, qafny_line_number=self.current_qafny_line_number)))]
