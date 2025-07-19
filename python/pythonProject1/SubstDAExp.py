@@ -1,9 +1,10 @@
+from TargetProgramVisitor import TargetProgramVisitor
 from TargetProgrammer import *
 from AbstractTargetVisitor import AbstractTargetVisitor
 from TypeChecker import *
 
 
-class SubstDAExp(AbstractTargetVisitor):
+class SubstDAExp(TargetProgramVisitor):
 
     def __init__(self, id: str, e : DXAExp):
         # need st --> state we are deling with

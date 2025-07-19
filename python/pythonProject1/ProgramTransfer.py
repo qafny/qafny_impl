@@ -11,6 +11,8 @@ from CollectKind import *
 from TargetToString import TargetToString
 from TypeChecker import TypeChecker, subLocusGen, compareType
 from EqualityVisitor import EqualityVisitor
+from UpdateVars import UpdateVars
+
 
 def eqQRange(q1: QXQRange, q2: QXQRange):
     return (str(q1.location()) == str(q2.location()) and compareAExp(q1.crange().left(),q2.crange().left())
@@ -387,7 +389,7 @@ class ProgramTransfer(ProgramVisitor):
     def includeIfLocus(self, q2: [QXQRange]):
         v = subLocus(q2, self.varnums)
         if v is not None:
-            return v
+            return [], v
 
         ty = self.computeType(q2)
         rt = self.superLocus(q2, ty)
@@ -419,6 +421,7 @@ class ProgramTransfer(ProgramVisitor):
                     qty = TyAA(qty.flag(), qa, loc[0].line_number())
                 self.varnums = ([(loc, qty, vars)]) + tmpVarNumsa
                 return pred, loc, qty, vars
+        return None
 
 
     def collectNorLocus(self, q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
@@ -880,6 +883,11 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitBind(self, ctx: Programmer.QXBind):
+        vs = self.currLocus
+        if vs is not None:
+            loc, qty, vars = vs
+            return vars(ctx.ID())
+
         if isinstance(ctx.type(), TySingle):
             ty = ctx.type().accept(self)
             return DXBind(ctx.ID(), ty, None, qafny_line_number=ctx.line_number())
@@ -1324,8 +1332,22 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitQAssign(self, ctx: Programmer.QXQAssign):
-        self.currLocus = ctx.locus()
-        return ctx.exp().accept(self)
+        if self.currLocus is None:
+            loca, qtya, varsa = self.currLocus
+            cs = compareLocus(ctx.locus(), loca)
+            if cs is None:
+                vs = self.includeIfLocus(ctx.locus())
+                if vs is not None:
+                    pred, loc, qty, vars = vs
+                    self.currLocus = loc, qty, vars
+                    v = ctx.exp().accept(self)
+                    if v is not None:
+                        return (pred + ctx.exp().accept(self))
+            else:
+                self.originLocus = cs, varsa
+                return ctx.exp().accept(self)
+
+        return None
 
     def visitMeasure(self, ctx: Programmer.QXMeasure):
         return super().visitMeasure(ctx)
@@ -1571,7 +1593,7 @@ class ProgramTransfer(ProgramVisitor):
             #self.varnums = typeCheck.renv()
             #self.counter = typeCheck.counter
 
-            return DXIf(bex, terms, elses, qafny_line_number=ctx.line_number())
+            return [DXIf(bex, terms, elses, qafny_line_number=ctx.line_number())]
 
         #deal with quantum conditional
         #upgrade_en = False
@@ -1607,7 +1629,12 @@ class ProgramTransfer(ProgramVisitor):
         self.currLocus = nLoc, nqty, nnum
 
         if isinstance(ctx.bexp(), QXQIndex):
-            ctx.bexp().accept(self)
+            bres = ctx.bexp().accept(self)
+            changeVar = UpdateVars(nnum, self.counter)
+            changeVar.visit(bres)
+            self.currLocus = nLoc, nqty, changeVar.vars()
+            self.currLocus = changeVar.counter()
+            self.conStack += [EnFactor(('==', bres, DXNum(1)))]
             ifexp = []
         else:
             ifexp = ctx.bexp().accept(self)
@@ -1842,7 +1869,7 @@ class ProgramTransfer(ProgramVisitor):
     def visitQIndex(self, ctx: Programmer.QXQIndex):
         loc, qty, vars = self.currLocus
         v = ctx.index().accept(self)
-        self.conStack += [EnFactor(('==', DXIndex(vars(ctx.ID()), v), DXNum(1)))]
+        #self.conStack += [EnFactor(('==', DXIndex(vars(ctx.ID()), v), DXNum(1)))]
         return DXIndex(vars(ctx.ID()), v)
             #return DXIndex(DXBind(ctx.ID(), None, n),ctx.index().accept(self), qafny_line_number=ctx.line_number())
         #return (None, DXIndex(DXBind(ctx.ID(), None, n),ctx.index().accept(self), qafny_line_number=ctx.line_number()))
@@ -1967,9 +1994,17 @@ class ProgramTransfer(ProgramVisitor):
         newVars = dict()
         newVars.update({x.location(): vars(x.location()) for x in lc.renv()})
 
+        changeVar = UpdateVars(self.counter, vars)
+
         v1 = ctx.left().accept(self)
+        changeVar.visit(v1)
         v2 = ctx.right().accept(self)
+        changeVar.visit(v2)
         ind = ctx.index().accept(self)
+        changeVar.visit(ind)
+
+        self.currLocus = loc, qty, changeVar.vars()
+        self.counter = changeVar.counter()
 
         loopVars = []
         tmpVars = []
@@ -2004,8 +2039,8 @@ class ProgramTransfer(ProgramVisitor):
             return DXCall('pow2',[ctx.right().accept(self)], qafny_line_number=ctx.line_number())
 
 
-        if ctx.op() == '/' and isinstance(right, DXUni) and right.op() == 'sqrt' and isinstance(left, DXNum) and left.num() == 1:
-            return DXBin(ctx.op(), DXNum(1.0), DXCall('sqrt',[DXCast(SType('real'), right.exps()[0] if isinstance(right, DXCall) else right.next())]), qafny_line_number=ctx.line_number())
+        if ctx.op() == '/' and isinstance(left, DXNum) and left.num() == 1:
+            return DXBin(ctx.op(), DXNum(1.0), right, qafny_line_number=ctx.line_number())
         
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), qafny_line_number=ctx.line_number())
 
@@ -2013,6 +2048,9 @@ class ProgramTransfer(ProgramVisitor):
         return DXIfExp(ctx.bexp().accept(self), ctx.left().accept(self), ctx.right().accept(self), qafny_line_number=ctx.line_number())
 
     def visitUni(self, ctx: Programmer.QXUni):
+
+        if ctx.op() == 'sqrt':
+            return DXCall('sqrt', [DXCast(SType('real'), ctx.next(), ctx.line_number())])
         return DXUni(ctx.op(), ctx.next().accept(self), qafny_line_number=ctx.line_number())
 
     def visitSingle(self, ctx: Programmer.QXSingle):
@@ -2235,7 +2273,11 @@ class ProgramTransfer(ProgramVisitor):
             return DXCall("omega", [DXNum(1), DXNum(2)], qafny_line_number=ctx.line_number())
 
     def visitQRange(self, ctx: Programmer.QXQRange):
-        return super().visitQRange(ctx)
+        if ctx.range().right() == DXBin('+', ctx.range().left(), QXNum(1)):
+            return QXQIndex(ctx.location(), ctx.range().left(), qafny_line_number=ctx.line_number()).accept(self)
+
+        v = QXBind(ctx.location(), qafny_line_number=ctx.line_number()).accept(self)
+        return v
     
     def visitVarState(self, ctx):
         pass
