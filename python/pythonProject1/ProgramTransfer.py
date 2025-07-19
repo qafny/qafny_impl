@@ -170,7 +170,7 @@ class StackFactor:
     pass
 
 class EnFactor(StackFactor):
-    def __init__(self, condition: DXComp):
+    def __init__(self, condition: (str, DXAExp, DXAExp)):
         self._condition = condition
 
     def condition(self):
@@ -1606,14 +1606,15 @@ class ProgramTransfer(ProgramVisitor):
         tres, nLoc, nqty, nnum = self.includeIfLocus(lc.renv)
         self.currLocus = nLoc, nqty, nnum
 
-        if isinstance(ctx.bexp(), QXQComp):
-            ifexp = ctx.bexp().accept(self)
-        else:
+        if isinstance(ctx.bexp(), QXQIndex):
+            ctx.bexp().accept(self)
             ifexp = []
+        else:
+            ifexp = ctx.bexp().accept(self)
 
         #loop_oldVars = makeVars(nLoc, nqty, nnum)
         #loop_oldVars = {x.ID(): x for x in oldVars}
-        loop_oldVars = nnum
+        #loop_oldVars = nnum
         #loop_newVars, self.counter = self.upVars(loop_oldVars, self.counter)
         #loop_newVars = {x.ID(): x for x in newVars}
         #nLoc_dict = {x.location(): x for x in nLoc}
@@ -1626,13 +1627,12 @@ class ProgramTransfer(ProgramVisitor):
         #else:
         #    bool_exp_id = ctx.bexp().ID()
 
-        bool_exp_id = ctx.bexp().ID()
-        newBind = loop_oldVars.get(bool_exp_id).newBind(self.counter)
-        self.counter += 1
+        #bool_exp_id = ctx.bexp().ID()
+        #newBind = loop_oldVars.get(bool_exp_id).newBind(self.counter)
+        #self.counter += 1
 
-        self.conStack += [EnFactor(DXComp('==', DXCall('castBVInt', [newBind]), DXNum(1),
-                                qafny_line_number=self.current_qafny_line_number))]
-
+        #self.conStack += [EnFactor(DXComp('==', DXCall('castBVInt', [newBind]), DXNum(1),
+        #                        qafny_line_number=self.current_qafny_line_number))]
 
         result = ifexp
 
@@ -1842,6 +1842,7 @@ class ProgramTransfer(ProgramVisitor):
     def visitQIndex(self, ctx: Programmer.QXQIndex):
         loc, qty, vars = self.currLocus
         v = ctx.index().accept(self)
+        self.conStack += [EnFactor(('==', DXIndex(vars(ctx.ID()), v), DXNum(1)))]
         return DXIndex(vars(ctx.ID()), v)
             #return DXIndex(DXBind(ctx.ID(), None, n),ctx.index().accept(self), qafny_line_number=ctx.line_number())
         #return (None, DXIndex(DXBind(ctx.ID(), None, n),ctx.index().accept(self), qafny_line_number=ctx.line_number()))
@@ -1939,7 +1940,7 @@ class ProgramTransfer(ProgramVisitor):
         x = list(vars.values())[0]
 
         invariants = [self.buildLoopCount(loopVars[m-1], self.constructIndex(x, tmpVars[0:m-1]))]
-        invariants += self.buildLenEq(vars, n, m, loopVars, tmpVars)
+        invariants += [self.buildLenEq(vars, n, m, loopVars, tmpVars)]
         invariants += [self.buildBExpPredA(op, left, right, ind, m, x, loopVars, tmpVars, tmpVars)]
 
         #loopCount = self.constructIndex(list(vars.values())[0], loopVars)
@@ -1955,7 +1956,7 @@ class ProgramTransfer(ProgramVisitor):
         #self.counter += 1
 
         return DXWhile(DXComp('<',loopVars[m-1],DXLength(self.constructIndex(x, tmpVars[0:m-1]))),
-                buildWhileBExp(op, left, right, ind, vars, n, m+1, loopVars, tmpVars),
+                [self.buildWhileBExp(op, left, right, ind, vars, n, m+1, loopVars, tmpVars)],
                        invariants, qafny_line_number=left.qafny_line_number())
 
     def visitQComp(self, ctx: Programmer.QXQComp):
@@ -1978,6 +1979,7 @@ class ProgramTransfer(ProgramVisitor):
             tmpVars += [DXBind('step', SType('nat'), self.counter)]
             self.counter += 1
 
+        self.conStack += [EnFactor(('==', ind, DXNum(1)))]
         return [self.buildWhileBExp(ctx.op(), v1, v2, ind, newVars, qty.flag(), 1, loopVars, tmpVars)]
         #this is not an index, need a way to refer to the gen id
         #result = [DXAssign(DXIndex(ctx.index().ID(), ctx.index().index()),
