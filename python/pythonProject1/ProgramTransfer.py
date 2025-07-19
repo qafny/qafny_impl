@@ -1863,14 +1863,26 @@ class ProgramTransfer(ProgramVisitor):
             left = right
         return res
 
-    def buildLenEqAuxAux(self, res: DXBool, x:DXAExp, vars: [DXBind]):
-        if not vars:
+    def buildLenEqAuxB(self, res: DXBool, x:DXAExp, m:int, countVars:[DXBind], tmpVars: [DXBind]):
+        if not countVars:
             return res
         else:
-            return DXAll(vars[0], DXLogic('==>',
-                                   DXLogic('&&', DXComp('<=', DXNum(0), vars[0]),
-                                           DXComp('<', vars[0], DXLength(x))),
-                                   self.buildLenEqAuxAux(res, DXIndex(x,vars[0]), vars[1:])))
+            return DXAll(countVars[0], DXLogic('==>',
+                                   DXLogic('&&', DXComp('<=', DXNum(0), countVars[0]),
+                                           DXComp('<', countVars[0], DXLength(self.constructIndex(x,tmpVars[0:m])))),
+                                               self.buildLenEqAuxB(res, x, m+1, countVars[1:],tmpVars)))
+
+
+    def buildLenEqAuxA(self, res: DXBool, x:DXAExp, m:int, loopVars: [DXBind], countVars:[DXBind], tmpVars: [DXBind]):
+        if not countVars:
+            return res
+        else:
+            if m <= 1:
+                return self.buildLenEqAuxB(res, x, 0, countVars, tmpVars)
+            return DXAll(countVars[0], DXLogic('==>',
+                                   DXLogic('&&', DXComp('<=', DXNum(0), countVars[0]),
+                                           DXComp('<', countVars[0], (loopVars[0]))),
+                                   self.buildLenEqAuxA(res,x,m-1,loopVars[1:], countVars[1:],tmpVars)))
 
     def constructIndex(self, v:DXAExp, vars: [DXBind]):
         for elem in vars:
@@ -1878,63 +1890,75 @@ class ProgramTransfer(ProgramVisitor):
         return v
 
     #n is the flag from en type
-    def buildLenEq(self, vs:dict, tmpVars: [DXBind]):
-        if not tmpVars:
-            return self.buildLenEqAux(vs)
-        else:
-            newVars = dict()
-            for key,value in vs.items():
-                newVars.update({key:self.constructIndex(value, tmpVars)})
-            res = self.buildLenEqAux(newVars)
+    def buildLenEq(self, vs:dict, n:int, m:int, loopVars: [DXBind], tmpVars: [DXBind]):
+        newVars = tmpVars[0:n-1]
+        news = dict()
+        for key, value in vs.items():
+            news.update({key: self.constructIndex(value, newVars)})
 
-            return self.buildLenEqAuxAux(res,list(vs.values())[0], tmpVars)
+        res = self.buildLenEqAux(news)
+
+        return self.buildLenEqAuxA(res,list(vs.values())[0],m, loopVars, tmpVars[0:n-1], tmpVars)
 
 
     def buildLoopCount(self, x:DXBind, y:DXAExp):
-        return DXLogic('&&', DXComp('<=', DXNum(0), x), DXComp('<=', x, y))
+        return DXLogic('&&', DXComp('<=', DXNum(0), x), DXComp('<=', x, DXLength(y)))
 
-    def buildBExpPred(self, op:str, left: DXAExp, right: DXAExp, ind:DXIndex,
-                      vars:dict, loopVars: [DXBind], tmpVars: [DXBind]):
-        if not tmpVars:
+    def buildBExpPredB(self, op:str, left: DXAExp, right: DXAExp, ind:DXIndex,
+                      m:int, x:DXAExp, loopVars: [DXBind], tmpVars: [DXBind], countVars : [DXBind]):
+        if not loopVars:
             return DXComp('==',DXBin(op, left, right), ind)
         else:
-            return DXAll(tmpVars[0], DXLogic('==>',
-                                      DXLogic('&&', DXComp('<=', DXNum(0), tmpVars[0]), DXComp('<', tmpVars[0], loopVars[0])),
-                                      self.buildBExpPred(op, DXIndex(left, tmpVars[0]),
-                                                         DXIndex(right, tmpVars[0]), DXIndex(ind, tmpVars[0]), vars, loopVars[1:], tmpVars[1:]))
+            return DXAll(tmpVars[0], DXLogic('==>', DXLogic('&&', DXComp('<=', DXNum(0), tmpVars[0]),
+                                                            DXComp('<', tmpVars[0], DXLength(self.constructIndex(x,tmpVars[0:m])))),
+                                      self.buildBExpPredB(op, DXIndex(left, tmpVars[0]), DXIndex(right, tmpVars[0]),
+                                                          DXIndex(ind, tmpVars[0]), m+1, x, loopVars[1:], tmpVars[1:],countVars))
                    , qafny_line_number=left.qafny_line_number())
 
-    def buildWhileBExp(self, left: DXAExp, right: DXAExp, ind:DXIndex, vars:dict,
-                       n:int, loopVars: [DXBind], tmpVars: [DXBind]):
 
-        loopCount = self.constructIndex(list(vars.values())[0], loopVars)
-        looping_var = DXBind('tmp', SType('nat'), self.counter)
-        self.counter += 1
+    def buildBExpPredA(self, op:str, left: DXAExp, right: DXAExp, ind:DXIndex,
+                      m:int, x:DXAExp, loopVars: [DXBind], tmpVars: [DXBind], countVars : [DXBind]):
+        if not loopVars:
+            return DXComp('==',DXBin(op, left, right), ind)
+        else:
+            if m <= 1:
+                return self.buildBExpPredB(op, left, right, ind, 0, x, loopVars, tmpVars, countVars)
+            return DXAll(tmpVars[0], DXLogic('==>',
+                                      DXLogic('&&', DXComp('<=', DXNum(0), tmpVars[0]), DXComp('<', tmpVars[0], loopVars[0])),
+                                      self.buildBExpPredA(op, DXIndex(left, tmpVars[0]), DXIndex(right, tmpVars[0]),
+                                                          DXIndex(ind, tmpVars[0]), m-1,x, loopVars[1:], tmpVars[1:],countVars))
+                   , qafny_line_number=left.qafny_line_number())
 
-        invariants = [self.buildLoopCount(looping_var, loopCount)]
+    def buildWhileBExp(self, op:str, left: DXAExp, right: DXAExp, ind:DXIndex,
+                       vars:dict, n:int,m:int, loopVars: [DXBind], tmpVars: [DXBind]):
 
-        invariants += [self.buildLenEq(vars, tmpVars)]
+        if n == m:
+            return DXAssign([self.constructIndex(ind,tmpVars)],
+                            DXBin(op, self.constructIndex(left,tmpVars), self.constructIndex(ind,tmpVars)))
 
-        loopVars += [looping_var]
-        tmpVars += [DXBind('tmp', SType('nat'), self.counter)]
-        self.counter += 1
+        x = list(vars.values())[0]
 
-        invariants = []
-        invariants += [DXLogic('<=', DXLogic('<=', DXNum(0), looping_var), DXLength(x),
-                               qafny_line_number=left.qafny_line_number())]
-        boundVar = DXBind('tmp', SType('nat'), self.counter)
-        self.counter += 1
-        invariants += [DXAll(boundVar, DXLogic('==>',DXComp('<=', DXNum(0), DXComp('<',boundVar,DXLength(looping_var))),
-                                               DXComp('==',DXBin(op, DXIndex(left, boundVar), DXIndex(right, boundVar)),DXIndex(ind, boundVar)))
-                             ,qafny_line_number=left.qafny_line_number())]
+        invariants = [self.buildLoopCount(loopVars[m-1], self.constructIndex(x, tmpVars[0:m-1]))]
+        invariants += self.buildLenEq(vars, n, m, loopVars, tmpVars)
+        invariants += [self.buildBExpPredA(op, left, right, ind, m, x, loopVars, tmpVars, tmpVars)]
 
-        return DXWhile(DXComp('<',looping_var,DXLength(x)),
-                DXAssign([DXIndex(ind,looping_var)], DXBin(op, DXIndex(left, boundVar), DXIndex(right, boundVar))),
+        #loopCount = self.constructIndex(list(vars.values())[0], loopVars)
+        #looping_var = DXBind('tmp', SType('nat'), self.counter)
+        #self.counter += 1
+
+        #invariants = [self.buildLoopCount(looping_var, loopCount)]
+
+        #invariants += [self.buildLenEq(vars, tmpVars)]
+
+        #loopVars += [looping_var]
+        #tmpVars += [DXBind('tmp', SType('nat'), self.counter)]
+        #self.counter += 1
+
+        return DXWhile(DXComp('<',loopVars[m-1],DXLength(self.constructIndex(x, tmpVars[0:m-1]))),
+                buildWhileBExp(op, left, right, ind, vars, n, m+1, loopVars, tmpVars),
                        invariants, qafny_line_number=left.qafny_line_number())
 
     def visitQComp(self, ctx: Programmer.QXQComp):
-
-
 
         lc = LocusCollector()
         lc.visit(ctx)
@@ -1946,12 +1970,18 @@ class ProgramTransfer(ProgramVisitor):
         v2 = ctx.right().accept(self)
         ind = ctx.index().accept(self)
 
-        result = [self.buildWhileBExp(ctx.op(), v1, v2, newVars, ind)]
+        loopVars = []
+        tmpVars = []
+        for i in range(qty.flag()):
+            loopVars += [DXBind('step', SType('nat'), self.counter)]
+            self.counter += 1
+            tmpVars += [DXBind('step', SType('nat'), self.counter)]
+            self.counter += 1
+
+        return [self.buildWhileBExp(ctx.op(), v1, v2, ind, newVars, qty.flag(), 1, loopVars, tmpVars)]
         #this is not an index, need a way to refer to the gen id
         #result = [DXAssign(DXIndex(ctx.index().ID(), ctx.index().index()),
         #                   DXComp(ctx.op(), DXCall('castBVInt', v1, v2, qafny_line_number=self.current_qafny_line_number)))]
-        return result
-
 
     def visitQNot(self, ctx: Programmer.QXQNot):
         if isinstance(ctx.next(), QXQNot):
