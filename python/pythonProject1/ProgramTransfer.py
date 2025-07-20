@@ -5,6 +5,7 @@ from Programmer import *
 from ProgramVisitor import ProgramVisitor
 from SubstAExp import SubstAExp
 from SubstDAExp import SubstDAExp
+from SubstIndex import SubstIndex
 from SubstLambda import SubstLambda
 from TargetProgrammer import *
 from CollectKind import *
@@ -223,6 +224,7 @@ class ProgramTransfer(ProgramVisitor):
         #The third field iin a triple is a generated identifier (a number) to identify the specific locus
         self.varnums = None
         self.currLocus = None
+        self.originLocus = None
         self.conStack = []
         #outvarnums is the locus-list at the ouput position
         self.outvarnums = None
@@ -1332,7 +1334,7 @@ class ProgramTransfer(ProgramVisitor):
 
 
     def visitQAssign(self, ctx: Programmer.QXQAssign):
-        if self.currLocus is None:
+        if self.currLocus is not None:
             loca, qtya, varsa = self.currLocus
             cs = compareLocus(ctx.locus(), loca)
             if cs is None:
@@ -1340,12 +1342,19 @@ class ProgramTransfer(ProgramVisitor):
                 if vs is not None:
                     pred, loc, qty, vars = vs
                     self.currLocus = loc, qty, vars
+                    news = dict()
+                    for elem in loc:
+                        va = vars.get(elem.location())
+                        news.update({elem.location(): SubstIndex(va, va)})
+                    self.originLocus = loc, news
                     v = ctx.exp().accept(self)
                     if v is not None:
                         return (pred + ctx.exp().accept(self))
             else:
-                self.originLocus = cs, varsa
+                loc, varsb = self.originLocus
+                self.originLocus = cs, varsb
                 return ctx.exp().accept(self)
+                #return res
 
         return None
 
@@ -1870,7 +1879,7 @@ class ProgramTransfer(ProgramVisitor):
         loc, qty, vars = self.currLocus
         v = ctx.index().accept(self)
         #self.conStack += [EnFactor(('==', DXIndex(vars(ctx.ID()), v), DXNum(1)))]
-        return DXIndex(vars(ctx.ID()), v)
+        return DXIndex(vars.get(ctx.ID()), v)
             #return DXIndex(DXBind(ctx.ID(), None, n),ctx.index().accept(self), qafny_line_number=ctx.line_number())
         #return (None, DXIndex(DXBind(ctx.ID(), None, n),ctx.index().accept(self), qafny_line_number=ctx.line_number()))
 
@@ -1961,8 +1970,8 @@ class ProgramTransfer(ProgramVisitor):
                        vars:dict, n:int,m:int, loopVars: [DXBind], tmpVars: [DXBind]):
 
         if n == m:
-            return DXAssign([self.constructIndex(ind,tmpVars)],
-                            DXBin(op, self.constructIndex(left,tmpVars), self.constructIndex(ind,tmpVars)))
+            return DXAssign([self.constructIndex(ind,loopVars)],
+                            DXBin(op, self.constructIndex(left,loopVars), self.constructIndex(ind,loopVars)))
 
         x = list(vars.values())[0]
 
@@ -1992,7 +2001,7 @@ class ProgramTransfer(ProgramVisitor):
         lc.visit(ctx)
         loc, qty, vars = self.currLocus
         newVars = dict()
-        newVars.update({x.location(): vars(x.location()) for x in lc.renv()})
+        newVars.update({x.location(): vars.get(x.location()) for x in lc.renv()})
 
         changeVar = UpdateVars(self.counter, vars)
 
@@ -2015,7 +2024,8 @@ class ProgramTransfer(ProgramVisitor):
             self.counter += 1
 
         self.conStack += [EnFactor(('==', ind, DXNum(1)))]
-        return [self.buildWhileBExp(ctx.op(), v1, v2, ind, newVars, qty.flag(), 1, loopVars, tmpVars)]
+        return ([DXInit(x, qafny_line_number=ctx.line_number()) for x in loopVars] +
+                [self.buildWhileBExp(ctx.op(), v1, v2, ind, newVars, qty.flag(), 1, loopVars, tmpVars)])
         #this is not an index, need a way to refer to the gen id
         #result = [DXAssign(DXIndex(ctx.index().ID(), ctx.index().index()),
         #                   DXComp(ctx.op(), DXCall('castBVInt', v1, v2, qafny_line_number=self.current_qafny_line_number)))]
@@ -2172,92 +2182,90 @@ class ProgramTransfer(ProgramVisitor):
 
     def visitOracle(self, ctx: Programmer.QXOracle):
 
-        v = subLocus(self.currLocus, self.varnums)
-        if v is not None:
-            loc, qty, num = v
+       loca, vars = self.originLocus
+       loc, qty, num = self.currLocus
+        #if v is not None:
+        #    loc, qty, num = v
+       result = []
 
-            result = []
+       if isinstance(qty, TyHad):
+           tmpStmt = QXCast(TyEn(QXNum(1)), self.currLocus).accept(self)
+           result.append(tmpStmt)
+           qty = TyEn(QXNum(1))
+           # num += 1
 
-            if isinstance(qty, TyHad):
-                tmpStmt = QXCast(TyEn(QXNum(1)), self.currLocus).accept(self)
-                result.append(tmpStmt)
-                qty = TyEn(QXNum(1))
-                #num += 1
+       unchanged_range = []
+       for i in loc:
+           unchanged_range.append(i.location())
 
-            unchanged_range = []
-            for i in self.currLocus:
-                unchanged_range.append(i.location())
+       name = "newFun" + str(self.counter)
+       self.counter += 1
 
-            name = "newFun" + str(self.counter)
-            self.counter += 1
+       newVars = self.upVarsSub(num)
 
-            newVars = self.upVarsSub(num)
+       rpreds = []
+       preds = []
+       ids = [x.ID() if isinstance(x, QXBind) else x for x in ctx.bindings()]
+       for vec in ctx.vectors():
+           vec_d = vec.vector().accept(self)
 
-            rpreds = []
-            preds = []
-            ids = [x.ID() if isinstance(x, QXBind) else x for x in ctx.bindings()]
-            for vec in ctx.vectors():
-                vec_d = vec.vector().accept(self)
+           def lambda_check(lself, x):
+               if isinstance(x, DXBin) and (x.op() == '/' or x.op() == '%') and isinstance(x.right(),
+                                                                                           DXBind) and x.right().ID() not in ids:
+                   lself.outputs.append(x.right())
 
-                def lambda_check(lself, x):
-                    if isinstance(x, DXBin) and (x.op() == '/' or x.op() == '%') and isinstance(x.right(),
-                                                                                                DXBind) and x.right().ID() not in ids:
-                        lself.outputs.append(x.right())
+           lamb_subst = SubstLambda(lambda_check)
+           lamb_subst.visit(vec_d)
+           for b in lamb_subst.outputs:
+               rpreds += [DXRequires(DXComp('>', b, DXNum(0), qafny_line_number=ctx.line_number()),
+                                     qafny_line_number=ctx.line_number())]
 
-                lamb_subst = SubstLambda(lambda_check)
-                lamb_subst.visit(vec_d)
-                for b in lamb_subst.outputs:
-                    rpreds += [DXRequires(DXComp('>', b, DXNum(0), qafny_line_number=ctx.line_number()),
-                                          qafny_line_number=ctx.line_number())]
+       preds += self.genPreds(loc, qty, num.values(), newVars.values(), ids, ctx.vectors(), ctx.amp(), unchanged_range)
+       newConds = rpreds
+       for pred in preds:
+           newConds += [DXEnsures(pred, qafny_line_number=ctx.line_number())]
 
-            preds += self.genPreds(loc, qty, num.values(), newVars.values(), ids, ctx.vectors(), ctx.amp(), unchanged_range)
-            newConds = rpreds
-            for pred in preds:
-                newConds += [DXEnsures(pred, qafny_line_number=ctx.line_number())]
+       varids = []
 
-            varids = []
+       def lambda_check(lself, x):
+           if isinstance(x, DXBind):
+               lself.outputs.append(x)
 
-            def lambda_check(lself, x):
-                if isinstance(x, DXBind):
-                    lself.outputs.append(x)
+       for i in ctx.vectors():
+           tmp = i.vector().accept(self)
+           lamb_subst = SubstLambda(lambda_check)
+           lamb_subst.visit(tmp)
+           varids += [
+               DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self),
+                      qafny_line_number=ctx.line_number())
+               for t in lamb_subst.outputs if t.ID() not in ids]
 
-            for i in ctx.vectors():
-                tmp = i.vector().accept(self)
-                lamb_subst = SubstLambda(lambda_check)
-                lamb_subst.visit(tmp)
-                varids += [
-                    DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self),
-                           qafny_line_number=ctx.line_number())
-                    for t in lamb_subst.outputs if t.ID() not in ids]
+       lamb_subst = SubstLambda(lambda_check)
+       lamb_subst.visit(ctx.amp().accept(self))
+       varids += [
+           DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self), qafny_line_number=ctx.line_number())
+           for t in lamb_subst.outputs if t.ID() not in ids]
 
-            lamb_subst = SubstLambda(lambda_check)
-            lamb_subst.visit(ctx.amp().accept(self))
-            varids += [
-                DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self), qafny_line_number=ctx.line_number())
-                for t in lamb_subst.outputs if t.ID() not in ids]
+       cvars = num.values() + varids
 
-            cvars = num.values() + varids
+       self.addFuns += [
+           DXMethod(name, True, cvars, newVars.values(), newConds, [], qafny_line_number=ctx.line_number())]
 
-            self.addFuns += [
-                DXMethod(name, True, cvars, newVars.values(), newConds, [], qafny_line_number=ctx.line_number())]
+       for i in newVars.values():
+           result.append(DXInit(i, qafny_line_number=ctx.line_number()))
 
-            for i in newVars.values():
-                result.append(DXInit(i, qafny_line_number=ctx.line_number()))
+       result.append(DXAssign(newVars.values(), DXCall(name, cvars, qafny_line_number=ctx.line_number()),
+                              qafny_line_number=ctx.line_number()))
 
-            result.append(DXAssign(newVars.values(), DXCall(name, cvars, qafny_line_number=ctx.line_number()),
-                                   qafny_line_number=ctx.line_number()))
+       result.append(DXCall('omega0', [], True, qafny_line_number=ctx.line_number()))
 
-            result.append(DXCall('omega0', [], True, qafny_line_number=ctx.line_number()))
-
-            self.removeLocus(loc)
-            self.varnums = [(loc, qty, newVars)] + self.varnums
-            self.libFuns.add('pow2')
-            self.libFuns.add('omega')
-            self.libFuns.add('sqrt')
-            self.libFuns.add('omega0')
-            return result
-
-        return None
+       self.removeLocus(loc)
+       self.varnums = [(loc, qty, newVars)] + self.varnums
+       self.libFuns.add('pow2')
+       self.libFuns.add('omega')
+       self.libFuns.add('sqrt')
+       self.libFuns.add('omega0')
+       return result
 
 
 
