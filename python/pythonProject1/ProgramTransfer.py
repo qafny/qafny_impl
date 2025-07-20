@@ -2211,7 +2211,8 @@ class ProgramTransfer(ProgramVisitor):
                                       self.buildOraclePredA(v, m-1,x, loopVars[1:], tmpVars[1:],countVars))
                    , qafny_line_number=v.qafny_line_number())
 
-    def buildWhileOracle(self, comps:[DXComp], st: [DXStmt], vars:[DXAExp], n:int,m:int, loopVars: [DXBind], tmpVars: [DXBind]):
+    def buildWhileOracle(self, oldComps:[DXComp], comps:[DXComp], st: [DXStmt], vars:[DXAExp],
+                         n:int,m:int, loopVars: [DXBind], tmpVars: [DXBind]):
 
         if n == m:
             return self.buildWhileCondition(loopVars, st, self.conStack)
@@ -2220,7 +2221,9 @@ class ProgramTransfer(ProgramVisitor):
 
         invariants = [self.buildLoopCount(loopVars[m-1], self.constructIndex(x, tmpVars[0:m-1]))]
         invariants += [self.buildLenEq(vars, n, m, loopVars, tmpVars)]
+        invariants += [self.buildOraclePredA(comp, m, x, loopVars, tmpVars, tmpVars) for comp in list(oldComps)]
         invariants += [self.buildOraclePredA(comp, m, x, loopVars, tmpVars, tmpVars) for comp in list(comps)]
+
 
         #loopCount = self.constructIndex(list(vars.values())[0], loopVars)
         #looping_var = DXBind('tmp', SType('nat'), self.counter)
@@ -2235,7 +2238,7 @@ class ProgramTransfer(ProgramVisitor):
         #self.counter += 1
 
         return DXWhile(DXComp('<',loopVars[m-1],DXLength(self.constructIndex(x, tmpVars[0:m-1]))),
-                [self.buildWhileOracle(comps, st, vars, n, m+1, loopVars, tmpVars)],
+                [self.buildWhileOracle(oldComps, comps, st, vars, n, m+1, loopVars, tmpVars)],
                        invariants, qafny_line_number=st[0].qafny_line_number())
 
     def visitOracle(self, ctx: Programmer.QXOracle):
