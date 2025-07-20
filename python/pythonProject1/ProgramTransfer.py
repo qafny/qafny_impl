@@ -146,6 +146,11 @@ def updateInd(lexp:[DXAExp], ind: DXAExp):
         tmp += [DXIndex(elem,ind)]
     return tmp
 
+def constructIndex(v:DXAExp, vs: [DXBind]):
+    for elem in vs:
+        v = DXIndex(v, elem)
+    return v
+
 def findHadRange(q2 : QXQRange, qs: [([QXQRange], QXQTy, dict)]):
 
     vs = []
@@ -1906,7 +1911,7 @@ class ProgramTransfer(ProgramVisitor):
         else:
             return DXAll(countVars[0], DXLogic('==>',
                                    DXLogic('&&', DXComp('<=', DXNum(0), countVars[0]),
-                                           DXComp('<', countVars[0], DXLength(self.constructIndex(x,tmpVars[0:m])))),
+                                           DXComp('<', countVars[0], DXLength(constructIndex(x,tmpVars[0:m])))),
                                                self.buildLenEqAuxB(res, x, m+1, countVars[1:],tmpVars)))
 
 
@@ -1921,17 +1926,12 @@ class ProgramTransfer(ProgramVisitor):
                                            DXComp('<', countVars[0], (loopVars[0]))),
                                    self.buildLenEqAuxA(res,x,m-1,loopVars[1:], countVars[1:],tmpVars)))
 
-    def constructIndex(self, v:DXAExp, vars: [DXBind]):
-        for elem in vars:
-            v = DXIndex(v, elem)
-        return v
-
     #n is the flag from en type
     def buildLenEq(self, vs:[DXAExp], n:int, m:int, loopVars: [DXBind], tmpVars: [DXBind]):
         newVars = tmpVars[0:n-1]
         news = []
         for value in vs:
-            news += [self.constructIndex(value, newVars)]
+            news += [constructIndex(value, newVars)]
 
         res = self.buildLenEqAux(news)
 
@@ -1947,7 +1947,7 @@ class ProgramTransfer(ProgramVisitor):
             return DXComp('==',DXBin(op, left, right), ind)
         else:
             return DXAll(tmpVars[0], DXLogic('==>', DXLogic('&&', DXComp('<=', DXNum(0), tmpVars[0]),
-                                                            DXComp('<', tmpVars[0], DXLength(self.constructIndex(x,countVars[0:m])))),
+                                                            DXComp('<', tmpVars[0], DXLength(constructIndex(x,countVars[0:m])))),
                                       self.buildBExpPredB(op, DXIndex(left, tmpVars[0]), DXIndex(right, tmpVars[0]),
                                                           DXIndex(ind, tmpVars[0]), m+1, x, loopVars[1:], tmpVars[1:],countVars))
                    , qafny_line_number=left.qafny_line_number())
@@ -1970,16 +1970,16 @@ class ProgramTransfer(ProgramVisitor):
                        vars:dict, n:int,m:int, loopVars: [DXBind], tmpVars: [DXBind]):
 
         if n == m:
-            return DXAssign([self.constructIndex(ind,loopVars)],
-                            DXBin(op, self.constructIndex(left,loopVars), self.constructIndex(ind,loopVars)))
+            return DXAssign([constructIndex(ind,loopVars)],
+                            DXBin(op, constructIndex(left,loopVars), constructIndex(ind,loopVars)))
 
         x = list(vars.values())[0]
 
-        invariants = [self.buildLoopCount(loopVars[m-1], self.constructIndex(x, tmpVars[0:m-1]))]
+        invariants = [self.buildLoopCount(loopVars[m-1], constructIndex(x, tmpVars[0:m-1]))]
         invariants += [self.buildLenEq(vars.values(), n, m, loopVars, tmpVars)]
         invariants += [self.buildBExpPredA(op, left, right, ind, m, x, loopVars, tmpVars, tmpVars)]
 
-        #loopCount = self.constructIndex(list(vars.values())[0], loopVars)
+        #loopCount = constructIndex(list(vars.values())[0], loopVars)
         #looping_var = DXBind('tmp', SType('nat'), self.counter)
         #self.counter += 1
 
@@ -1991,7 +1991,7 @@ class ProgramTransfer(ProgramVisitor):
         #tmpVars += [DXBind('tmp', SType('nat'), self.counter)]
         #self.counter += 1
 
-        return DXWhile(DXComp('<',loopVars[m-1],DXLength(self.constructIndex(x, tmpVars[0:m-1]))),
+        return DXWhile(DXComp('<',loopVars[m-1],DXLength(constructIndex(x, tmpVars[0:m-1]))),
                 [self.buildWhileBExp(op, left, right, ind, vars, n, m+1, loopVars, tmpVars)],
                        invariants, qafny_line_number=left.qafny_line_number())
 
@@ -2186,7 +2186,7 @@ class ProgramTransfer(ProgramVisitor):
 
         if isinstance(conditions[0], EnFactor):
             op, left, right = conditions[0].condition()
-            return [DXIf(DXComp(op, self.constructIndex(left, loopVars), right, left.qafny_line_number()),
+            return [DXIf(DXComp(op, constructIndex(left, loopVars), right, left.qafny_line_number()),
                          self.buildWhileCondition(loopVars, st, conditions[1:]), [])]
         return []
 
@@ -2195,7 +2195,7 @@ class ProgramTransfer(ProgramVisitor):
             return v
         else:
             return DXAll(tmpVars[0], DXLogic('==>', DXLogic('&&', DXComp('<=', DXNum(0), tmpVars[0]),
-                                                            DXComp('<', tmpVars[0], DXLength(self.constructIndex(x,countVars[0:m])))),
+                                                            DXComp('<', tmpVars[0], DXLength(constructIndex(x,countVars[0:m])))),
                                       self.buildOraclePredB(v, m+1, x, loopVars[1:], tmpVars[1:],countVars))
                    , qafny_line_number=v.qafny_line_number())
 
@@ -2219,13 +2219,13 @@ class ProgramTransfer(ProgramVisitor):
 
         x = vars[0]
 
-        invariants = [self.buildLoopCount(loopVars[m-1], self.constructIndex(x, tmpVars[0:m-1]))]
+        invariants = [self.buildLoopCount(loopVars[m-1], constructIndex(x, tmpVars[0:m-1]))]
         invariants += [self.buildLenEq(vars, n, m, loopVars, tmpVars)]
         invariants += [self.buildOraclePredA(comp, m, x, loopVars, tmpVars, tmpVars) for comp in list(oldComps)]
         invariants += [self.buildOraclePredA(comp, m, x, loopVars, tmpVars, tmpVars) for comp in list(comps)]
 
 
-        #loopCount = self.constructIndex(list(vars.values())[0], loopVars)
+        #loopCount = constructIndex(list(vars.values())[0], loopVars)
         #looping_var = DXBind('tmp', SType('nat'), self.counter)
         #self.counter += 1
 
@@ -2237,7 +2237,7 @@ class ProgramTransfer(ProgramVisitor):
         #tmpVars += [DXBind('tmp', SType('nat'), self.counter)]
         #self.counter += 1
 
-        return DXWhile(DXComp('<',loopVars[m-1],DXLength(self.constructIndex(x, tmpVars[0:m-1]))),
+        return DXWhile(DXComp('<',loopVars[m-1],DXLength(constructIndex(x, tmpVars[0:m-1]))),
                 [self.buildWhileOracle(oldComps, comps, st, vars, n, m+1, loopVars, tmpVars)],
                        invariants, qafny_line_number=st[0].qafny_line_number())
 
@@ -2263,7 +2263,7 @@ class ProgramTransfer(ProgramVisitor):
 
         substs = []
         for i in len(loca):
-            substs += [SubstDAExp(ctx.bindings()[i], self.constructIndex(loca[i],loopVars))]
+            substs += [SubstDAExp(ctx.bindings()[i], constructIndex(loca[i],loopVars))]
 
         newVars = dict()
         for elem in loca:
@@ -2276,15 +2276,36 @@ class ProgramTransfer(ProgramVisitor):
             thisStmt = ctx.vectors(i)
             for subst in substs:
                 thisStmt = subst.visit(thisStmt)
-            endStmts += [DXAssign(self.constructIndex(newVars.get(loca[i].location()), loopVars),
+            endStmts += [DXAssign([constructIndex(newVars.get(loca[i].location()), loopVars)],
                                   thisStmt, qafny_line_number=ctx.line_number())]
 
         thisStmt = ctx.amp()
         for subst in substs:
             thisStmt = subst.visit(thisStmt)
 
-        endStmts = ([DXAssign(self.constructIndex(newVars.get(loca[i].location()), loopVars),
+        endStmts = ([DXAssign([constructIndex(newVars.get(loca[i].location()), loopVars)],
                              thisStmt,qafny_line_number=ctx.line_number())] + endStmts)
+
+        oldSubsts = []
+        for i in len(loca):
+            oldSubsts += [SubstIndex(ctx.bindings()[i], tmpVars)]
+
+        startPreds = []
+
+        for i in len(loc):
+            thisPred = vars.get(loc[i].location())
+            for subst in oldSubsts:
+                thisPred = subst.visit(thisStmt)
+            startPreds += [DXComp('==',[constructIndex(num.get(loc[i].location()), tmpVars)],
+                                  thisPred, qafny_line_number=ctx.line_number())]
+
+        thisPred = vars.get('amp')
+        for subst in oldSubsts:
+            thisPred = subst.visit(thisPred)
+
+        startPreds = ([DXComp('==',constructIndex(num.get('amp'), tmpVars),
+                              thisPred, qafny_line_number=ctx.line_number())] + startPreds)
+
 
         endPreds = []
 
@@ -2292,14 +2313,14 @@ class ProgramTransfer(ProgramVisitor):
             thisPred = ctx.vectors(i)
             for subst in substs:
                 thisPred = subst.visit(thisPred)
-            endPreds += [DXComp('==',self.constructIndex(newVars.get(loca[i].location()), tmpVars),
+            endPreds += [DXComp('==',constructIndex(newVars.get(loca[i].location()), tmpVars),
                                   thisPred, qafny_line_number=ctx.line_number())]
 
         thisPred = ctx.amp()
         for subst in substs:
             thisPred = subst.visit(thisPred)
 
-        endPreds = ([DXComp('==',self.constructIndex(newVars.get(loca[i].location()), tmpVars),
+        endPreds = ([DXComp('==',constructIndex(newVars.get(loca[i].location()), tmpVars),
                               thisPred, qafny_line_number=ctx.line_number())] + endPreds)
 
         values = []
@@ -2312,7 +2333,7 @@ class ProgramTransfer(ProgramVisitor):
         self.libFuns.add('omega0')
 
         return ([DXInit(x, qafny_line_number=ctx.line_number()) for x in loopVars] +
-                [self.buildWhileOracle(endPreds, endStmts, values, qty.flag(), 1, loopVars, tmpVars)])
+                [self.buildWhileOracle(startPreds,endPreds, endStmts, values, qty.flag(), 1, loopVars, tmpVars)])
 
     def visitNum(self, ctx: Programmer.QXNum):
         return DXNum(ctx.num())
