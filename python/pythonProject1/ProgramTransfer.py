@@ -1350,7 +1350,7 @@ class ProgramTransfer(ProgramVisitor):
                     news = dict()
                     for elem in loc:
                         va = vars.get(elem.location())
-                        news.update({elem.location(): SubstIndex(va, va)})
+                        news.update({elem.location(): va})
                     self.originLocus = loc, news
                     v = ctx.exp().accept(self)
                     if v is not None:
@@ -2261,24 +2261,25 @@ class ProgramTransfer(ProgramVisitor):
             tmpVars += [DXBind('step', SType('nat'), self.counter)]
             self.counter += 1
 
+
+        #subst the variables in the current oracle state with indexing for stmts and predicates
         stmtSubsts = []
         for i in len(loca):
             stmtSubsts += [SubstDAExp(ctx.bindings()[i], constructIndex(loca[i],loopVars))]
 
         substs = []
         for i in len(loca):
-            substs += [SubstDAExp(ctx.bindings()[i], constructIndex(loca[i],tmpVars))]
+            substs += [SubstDAExp(ctx.bindings()[i], loca[i])]
 
 
-        oldStmtSubsts = []
-        for i in len(loc):
-            oldStmtSubsts += [SubstIndex(ctx.bindings()[i], loopVars)]
-
-
+        #history predicate substitution
         oldSubsts = []
-        for i in len(loc):
-            oldSubsts += [SubstIndex(ctx.bindings()[i], tmpVars)]
+        for i in len(loca):
+            oldSubsts += [SubstDAExp(loca[i].location(), vars.get(loca[i].location()))]
 
+        indexSubsts = []
+        for key in len(vars.keys()):
+            indexSubsts += [SubstIndex(key, tmpVars)]
 
 
         newVars = dict()
@@ -2286,63 +2287,57 @@ class ProgramTransfer(ProgramVisitor):
             newVars.update({elem.location: num.get(elem.location).newBind(self.counter)})
             self.counter += 1
 
-        endTmpStmts = []
-
-        for i in len(loca):
-            thisStmt = ctx.vectors(i)
-            for subst in stmtSubsts:
-                thisStmt = subst.visit(thisStmt)
-            endTmpStmts += [thisStmt]
-
+        #substituion for stmts
         endStmts = []
 
-        for i in len(endTmpStmts):
-            thisStmt = endTmpStmts[i]
-            for subst in oldStmtSubsts:
+        for i in len(loca):
+            thisStmt = ctx.vectors()[i]
+            for subst in stmtSubsts:
                 thisStmt = subst.visit(thisStmt)
             endStmts += [DXAssign([constructIndex(newVars.get(loca[i].location()), loopVars)],
                                   thisStmt, qafny_line_number=ctx.line_number())]
 
         thisStmt = ctx.amp()
-        for subst in substs:
+        for subst in stmtSubsts:
             thisStmt = subst.visit(thisStmt)
-        for subst in oldStmtSubsts:
-            thisStmt = subst.visit(thisStmt)
-
 
         endStmts = ([DXAssign([constructIndex(newVars.get('amp'), loopVars)],
                              thisStmt,qafny_line_number=ctx.line_number())] + endStmts)
 
+
+        #substituion for predicates, including two parts, startPreds include history predicate for old value
+        #endPreds include new predicates for new variable with respect to old value.
         startPreds = []
 
-        for i in len(loc):
-            thisPred = vars.get(loc[i].location())
+        for i in len(loca):
+            thisPred = num.get(loca[i].location())
             for subst in oldSubsts:
                 thisPred = subst.visit(thisPred)
-            startPreds += [DXComp('==',[constructIndex(num.get(loc[i].location()), tmpVars)],
+            for subst in indexSubsts:
+                thisPred = subst.visit(thisPred)
+            startPreds += [DXComp('==',[constructIndex(num.get(loca[i].location()), tmpVars)],
                                   thisPred, qafny_line_number=ctx.line_number())]
 
-        thisPred = vars.get('amp')
+        thisPred = num.get('amp')
         for subst in oldSubsts:
+            thisPred = subst.visit(thisPred)
+        for subst in indexSubsts:
             thisPred = subst.visit(thisPred)
 
         startPreds = ([DXComp('==',constructIndex(num.get('amp'), tmpVars),
                               thisPred, qafny_line_number=ctx.line_number())] + startPreds)
 
 
-        endTmpPreds = []
-
-        for i in len(loca):
-            thisPred = ctx.vectors(i)
-            for subst in substs:
-                thisPred = subst.visit(thisPred)
-            endTmpPreds += [thisPred]
-
+        #substitution to get the output predicates for the current oracle operation
         endPreds = []
 
-        for i in len(endTmpPreds):
-            thisPred = endTmpPreds[i]
+        for i in len(loca):
+            thisPred = ctx.vectors()[i]
+            for subst in substs:
+                thisPred = subst.visit(thisPred)
             for subst in oldSubsts:
+                thisPred = subst.visit(thisPred)
+            for subst in indexSubsts:
                 thisPred = subst.visit(thisPred)
             endPreds += [DXAssign([constructIndex(newVars.get(loca[i].location()), tmpVars)],
                                   thisPred, qafny_line_number=ctx.line_number())]
@@ -2350,7 +2345,9 @@ class ProgramTransfer(ProgramVisitor):
         thisPred = ctx.amp()
         for subst in substs:
             thisPred = subst.visit(thisPred)
-        for subst in oldStmtSubsts:
+        for subst in oldSubsts:
+            thisPred = subst.visit(thisPred)
+        for subst in indexSubsts:
             thisPred = subst.visit(thisPred)
 
         endPreds = ([DXComp('==',constructIndex(newVars.get('amp'), tmpVars),
@@ -2365,8 +2362,19 @@ class ProgramTransfer(ProgramVisitor):
         self.libFuns.add('sqrt')
         self.libFuns.add('omega0')
 
-        return ([DXInit(x, qafny_line_number=ctx.line_number()) for x in loopVars] +
+        res = ([DXInit(x, qafny_line_number=ctx.line_number()) for x in loopVars] +
                 [self.buildWhileOracle(startPreds,endPreds, endStmts, values, qty.flag(), 1, loopVars, tmpVars)])
+
+        #update the stored map for history code
+        for i in len(loca):
+            newExp = ctx.vectors()[i]
+            for subst in substs:
+                newExp = subst.visit(newExp)
+            for subst in oldSubsts:
+                newExp = subst.visit(newExp)
+            vars.update({loca[i].location(): newExp})
+
+        return res
 
     def visitNum(self, ctx: Programmer.QXNum):
         return DXNum(ctx.num())
