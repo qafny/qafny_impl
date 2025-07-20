@@ -2261,20 +2261,44 @@ class ProgramTransfer(ProgramVisitor):
             tmpVars += [DXBind('step', SType('nat'), self.counter)]
             self.counter += 1
 
+        stmtSubsts = []
+        for i in len(loca):
+            stmtSubsts += [SubstDAExp(ctx.bindings()[i], constructIndex(loca[i],loopVars))]
+
         substs = []
         for i in len(loca):
-            substs += [SubstDAExp(ctx.bindings()[i], constructIndex(loca[i],loopVars))]
+            substs += [SubstDAExp(ctx.bindings()[i], constructIndex(loca[i],tmpVars))]
+
+
+        oldStmtSubsts = []
+        for i in len(loc):
+            oldStmtSubsts += [SubstIndex(ctx.bindings()[i], loopVars)]
+
+
+        oldSubsts = []
+        for i in len(loc):
+            oldSubsts += [SubstIndex(ctx.bindings()[i], tmpVars)]
+
+
 
         newVars = dict()
         for elem in loca:
             newVars.update({elem.location: num.get(elem.location).newBind(self.counter)})
             self.counter += 1
 
-        endStmts = []
+        endTmpStmts = []
 
         for i in len(loca):
             thisStmt = ctx.vectors(i)
-            for subst in substs:
+            for subst in stmtSubsts:
+                thisStmt = subst.visit(thisStmt)
+            endTmpStmts += [thisStmt]
+
+        endStmts = []
+
+        for i in len(endTmpStmts):
+            thisStmt = endTmpStmts[i]
+            for subst in oldStmtSubsts:
                 thisStmt = subst.visit(thisStmt)
             endStmts += [DXAssign([constructIndex(newVars.get(loca[i].location()), loopVars)],
                                   thisStmt, qafny_line_number=ctx.line_number())]
@@ -2282,20 +2306,19 @@ class ProgramTransfer(ProgramVisitor):
         thisStmt = ctx.amp()
         for subst in substs:
             thisStmt = subst.visit(thisStmt)
+        for subst in oldStmtSubsts:
+            thisStmt = subst.visit(thisStmt)
 
-        endStmts = ([DXAssign([constructIndex(newVars.get(loca[i].location()), loopVars)],
+
+        endStmts = ([DXAssign([constructIndex(newVars.get('amp'), loopVars)],
                              thisStmt,qafny_line_number=ctx.line_number())] + endStmts)
-
-        oldSubsts = []
-        for i in len(loca):
-            oldSubsts += [SubstIndex(ctx.bindings()[i], tmpVars)]
 
         startPreds = []
 
         for i in len(loc):
             thisPred = vars.get(loc[i].location())
             for subst in oldSubsts:
-                thisPred = subst.visit(thisStmt)
+                thisPred = subst.visit(thisPred)
             startPreds += [DXComp('==',[constructIndex(num.get(loc[i].location()), tmpVars)],
                                   thisPred, qafny_line_number=ctx.line_number())]
 
@@ -2307,20 +2330,30 @@ class ProgramTransfer(ProgramVisitor):
                               thisPred, qafny_line_number=ctx.line_number())] + startPreds)
 
 
-        endPreds = []
+        endTmpPreds = []
 
         for i in len(loca):
             thisPred = ctx.vectors(i)
             for subst in substs:
                 thisPred = subst.visit(thisPred)
-            endPreds += [DXComp('==',constructIndex(newVars.get(loca[i].location()), tmpVars),
+            endTmpPreds += [thisPred]
+
+        endPreds = []
+
+        for i in len(endTmpPreds):
+            thisPred = endTmpPreds[i]
+            for subst in oldSubsts:
+                thisPred = subst.visit(thisPred)
+            endPreds += [DXAssign([constructIndex(newVars.get(loca[i].location()), tmpVars)],
                                   thisPred, qafny_line_number=ctx.line_number())]
 
         thisPred = ctx.amp()
         for subst in substs:
             thisPred = subst.visit(thisPred)
+        for subst in oldStmtSubsts:
+            thisPred = subst.visit(thisPred)
 
-        endPreds = ([DXComp('==',constructIndex(newVars.get(loca[i].location()), tmpVars),
+        endPreds = ([DXComp('==',constructIndex(newVars.get('amp'), tmpVars),
                               thisPred, qafny_line_number=ctx.line_number())] + endPreds)
 
         values = []
