@@ -1886,13 +1886,13 @@ class ProgramTransfer(ProgramVisitor):
     def visitCon(self, ctx: Programmer.QXCon):
         return super().visitCon(ctx)
 
-    def buildLenEqAux(self, vs: dict):
+    def buildLenEqAux(self, vs: [DXAExp]):
         res = None
-        if len(list(vs.values())) <= 1:
+        if len(vs) <= 1:
             return res
-        left = vs.values()[0]
-        for i in range(1,len(list(vs.values()))):
-            right = vs.values()[i]
+        left = vs[0]
+        for i in range(1,len(vs)):
+            right = vs[i]
             if res is None:
                 res = DXComp('==', DXLength(left), DXLength(right))
             else:
@@ -1927,15 +1927,15 @@ class ProgramTransfer(ProgramVisitor):
         return v
 
     #n is the flag from en type
-    def buildLenEq(self, vs:dict, n:int, m:int, loopVars: [DXBind], tmpVars: [DXBind]):
+    def buildLenEq(self, vs:[DXAExp], n:int, m:int, loopVars: [DXBind], tmpVars: [DXBind]):
         newVars = tmpVars[0:n-1]
-        news = dict()
-        for key, value in vs.items():
-            news.update({key: self.constructIndex(value, newVars)})
+        news = []
+        for value in vs:
+            news += [self.constructIndex(value, newVars)]
 
         res = self.buildLenEqAux(news)
 
-        return self.buildLenEqAuxA(res,list(vs.values())[0],m, loopVars, tmpVars[0:n-1], tmpVars)
+        return self.buildLenEqAuxA(res,vs[0],m, loopVars, tmpVars[0:n-1], tmpVars)
 
 
     def buildLoopCount(self, x:DXBind, y:DXAExp):
@@ -1947,7 +1947,7 @@ class ProgramTransfer(ProgramVisitor):
             return DXComp('==',DXBin(op, left, right), ind)
         else:
             return DXAll(tmpVars[0], DXLogic('==>', DXLogic('&&', DXComp('<=', DXNum(0), tmpVars[0]),
-                                                            DXComp('<', tmpVars[0], DXLength(self.constructIndex(x,tmpVars[0:m])))),
+                                                            DXComp('<', tmpVars[0], DXLength(self.constructIndex(x,countVars[0:m])))),
                                       self.buildBExpPredB(op, DXIndex(left, tmpVars[0]), DXIndex(right, tmpVars[0]),
                                                           DXIndex(ind, tmpVars[0]), m+1, x, loopVars[1:], tmpVars[1:],countVars))
                    , qafny_line_number=left.qafny_line_number())
@@ -1976,7 +1976,7 @@ class ProgramTransfer(ProgramVisitor):
         x = list(vars.values())[0]
 
         invariants = [self.buildLoopCount(loopVars[m-1], self.constructIndex(x, tmpVars[0:m-1]))]
-        invariants += [self.buildLenEq(vars, n, m, loopVars, tmpVars)]
+        invariants += [self.buildLenEq(vars.values(), n, m, loopVars, tmpVars)]
         invariants += [self.buildBExpPredA(op, left, right, ind, m, x, loopVars, tmpVars, tmpVars)]
 
         #loopCount = self.constructIndex(list(vars.values())[0], loopVars)
@@ -2180,94 +2180,136 @@ class ProgramTransfer(ProgramVisitor):
 
         return None
 
+    def buildWhileCondition(self, loopVars: [DXBind], st: [DXStmt], conditions: [StackFactor]):
+        if not conditions:
+            return st
+
+        if isinstance(conditions[0], EnFactor):
+            op, left, right = conditions[0].condition()
+            return [DXIf(DXComp(op, self.constructIndex(left, loopVars), right, left.qafny_line_number()),
+                         self.buildWhileCondition(loopVars, st, conditions[1:]), [])]
+        return []
+
+    def buildOraclePredB(self, v:DXComp, m:int, x:DXAExp, loopVars: [DXBind], tmpVars: [DXBind], countVars : [DXBind]):
+        if not loopVars:
+            return v
+        else:
+            return DXAll(tmpVars[0], DXLogic('==>', DXLogic('&&', DXComp('<=', DXNum(0), tmpVars[0]),
+                                                            DXComp('<', tmpVars[0], DXLength(self.constructIndex(x,countVars[0:m])))),
+                                      self.buildOraclePredB(v, m+1, x, loopVars[1:], tmpVars[1:],countVars))
+                   , qafny_line_number=v.qafny_line_number())
+
+
+    def buildOraclePredA(self, v:DXComp,m:int, x:DXAExp, loopVars: [DXBind], tmpVars: [DXBind], countVars : [DXBind]):
+        if not loopVars:
+            return v
+        else:
+            if m <= 1:
+                return self.buildOraclePredB(v, 0, x, loopVars, tmpVars, countVars)
+            return DXAll(tmpVars[0], DXLogic('==>',
+                                      DXLogic('&&', DXComp('<=', DXNum(0), tmpVars[0]), DXComp('<', tmpVars[0], loopVars[0])),
+                                      self.buildOraclePredA(v, m-1,x, loopVars[1:], tmpVars[1:],countVars))
+                   , qafny_line_number=v.qafny_line_number())
+
+    def buildWhileOracle(self, comps:[DXComp], st: [DXStmt], vars:[DXAExp], n:int,m:int, loopVars: [DXBind], tmpVars: [DXBind]):
+
+        if n == m:
+            return self.buildWhileCondition(loopVars, st, self.conStack)
+
+        x = vars[0]
+
+        invariants = [self.buildLoopCount(loopVars[m-1], self.constructIndex(x, tmpVars[0:m-1]))]
+        invariants += [self.buildLenEq(vars, n, m, loopVars, tmpVars)]
+        invariants += [self.buildOraclePredA(comp, m, x, loopVars, tmpVars, tmpVars) for comp in list(comps)]
+
+        #loopCount = self.constructIndex(list(vars.values())[0], loopVars)
+        #looping_var = DXBind('tmp', SType('nat'), self.counter)
+        #self.counter += 1
+
+        #invariants = [self.buildLoopCount(looping_var, loopCount)]
+
+        #invariants += [self.buildLenEq(vars, tmpVars)]
+
+        #loopVars += [looping_var]
+        #tmpVars += [DXBind('tmp', SType('nat'), self.counter)]
+        #self.counter += 1
+
+        return DXWhile(DXComp('<',loopVars[m-1],DXLength(self.constructIndex(x, tmpVars[0:m-1]))),
+                [self.buildWhileOracle(comps, st, vars, n, m+1, loopVars, tmpVars)],
+                       invariants, qafny_line_number=st[0].qafny_line_number())
+
     def visitOracle(self, ctx: Programmer.QXOracle):
 
-       loca, vars = self.originLocus
-       loc, qty, num = self.currLocus
+        loca, vars = self.originLocus
+        loc, qty, num = self.currLocus
         #if v is not None:
         #    loc, qty, num = v
-       result = []
+        result = []
+        if isinstance(qty, TyHad):
+            tmpStmt = QXCast(TyEn(QXNum(1)), loc).accept(self)
+            result.append(tmpStmt)
+            qty = TyEn(QXNum(1))
+            # num += 1
+        loopVars = []
+        tmpVars = []
+        for i in range(qty.flag()):
+            loopVars += [DXBind('step', SType('nat'), self.counter)]
+            self.counter += 1
+            tmpVars += [DXBind('step', SType('nat'), self.counter)]
+            self.counter += 1
 
-       if isinstance(qty, TyHad):
-           tmpStmt = QXCast(TyEn(QXNum(1)), self.currLocus).accept(self)
-           result.append(tmpStmt)
-           qty = TyEn(QXNum(1))
-           # num += 1
+        substs = []
+        for i in len(loca):
+            substs += [SubstDAExp(ctx.bindings()[i], self.constructIndex(loca[i],loopVars))]
 
-       unchanged_range = []
-       for i in loc:
-           unchanged_range.append(i.location())
+        newVars = dict()
+        for elem in loca:
+            newVars.update({elem.location: num.get(elem.location).newBind(self.counter)})
+            self.counter += 1
 
-       name = "newFun" + str(self.counter)
-       self.counter += 1
+        endStmts = []
 
-       newVars = self.upVarsSub(num)
+        for i in len(loca):
+            thisStmt = ctx.vectors(i)
+            for subst in substs:
+                thisStmt = subst.visit(thisStmt)
+            endStmts += [DXAssign(self.constructIndex(newVars.get(loca[i].location()), loopVars),
+                                  thisStmt, qafny_line_number=ctx.line_number())]
 
-       rpreds = []
-       preds = []
-       ids = [x.ID() if isinstance(x, QXBind) else x for x in ctx.bindings()]
-       for vec in ctx.vectors():
-           vec_d = vec.vector().accept(self)
+        thisStmt = ctx.amp()
+        for subst in substs:
+            thisStmt = subst.visit(thisStmt)
 
-           def lambda_check(lself, x):
-               if isinstance(x, DXBin) and (x.op() == '/' or x.op() == '%') and isinstance(x.right(),
-                                                                                           DXBind) and x.right().ID() not in ids:
-                   lself.outputs.append(x.right())
+        endStmts = ([DXAssign(self.constructIndex(newVars.get(loca[i].location()), loopVars),
+                             thisStmt,qafny_line_number=ctx.line_number())] + endStmts)
 
-           lamb_subst = SubstLambda(lambda_check)
-           lamb_subst.visit(vec_d)
-           for b in lamb_subst.outputs:
-               rpreds += [DXRequires(DXComp('>', b, DXNum(0), qafny_line_number=ctx.line_number()),
-                                     qafny_line_number=ctx.line_number())]
+        endPreds = []
 
-       preds += self.genPreds(loc, qty, num.values(), newVars.values(), ids, ctx.vectors(), ctx.amp(), unchanged_range)
-       newConds = rpreds
-       for pred in preds:
-           newConds += [DXEnsures(pred, qafny_line_number=ctx.line_number())]
+        for i in len(loca):
+            thisPred = ctx.vectors(i)
+            for subst in substs:
+                thisPred = subst.visit(thisPred)
+            endPreds += [DXComp('==',self.constructIndex(newVars.get(loca[i].location()), tmpVars),
+                                  thisPred, qafny_line_number=ctx.line_number())]
 
-       varids = []
+        thisPred = ctx.amp()
+        for subst in substs:
+            thisPred = subst.visit(thisPred)
 
-       def lambda_check(lself, x):
-           if isinstance(x, DXBind):
-               lself.outputs.append(x)
+        endPreds = ([DXComp('==',self.constructIndex(newVars.get(loca[i].location()), tmpVars),
+                              thisPred, qafny_line_number=ctx.line_number())] + endPreds)
 
-       for i in ctx.vectors():
-           tmp = i.vector().accept(self)
-           lamb_subst = SubstLambda(lambda_check)
-           lamb_subst.visit(tmp)
-           varids += [
-               DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self),
-                      qafny_line_number=ctx.line_number())
-               for t in lamb_subst.outputs if t.ID() not in ids]
+        values = []
+        for key in newVars.keys():
+            values += [newVars.get(key), num.get(key)]
 
-       lamb_subst = SubstLambda(lambda_check)
-       lamb_subst.visit(ctx.amp().accept(self))
-       varids += [
-           DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self), qafny_line_number=ctx.line_number())
-           for t in lamb_subst.outputs if t.ID() not in ids]
+        self.libFuns.add('pow2')
+        self.libFuns.add('omega')
+        self.libFuns.add('sqrt')
+        self.libFuns.add('omega0')
 
-       cvars = num.values() + varids
-
-       self.addFuns += [
-           DXMethod(name, True, cvars, newVars.values(), newConds, [], qafny_line_number=ctx.line_number())]
-
-       for i in newVars.values():
-           result.append(DXInit(i, qafny_line_number=ctx.line_number()))
-
-       result.append(DXAssign(newVars.values(), DXCall(name, cvars, qafny_line_number=ctx.line_number()),
-                              qafny_line_number=ctx.line_number()))
-
-       result.append(DXCall('omega0', [], True, qafny_line_number=ctx.line_number()))
-
-       self.removeLocus(loc)
-       self.varnums = [(loc, qty, newVars)] + self.varnums
-       self.libFuns.add('pow2')
-       self.libFuns.add('omega')
-       self.libFuns.add('sqrt')
-       self.libFuns.add('omega0')
-       return result
-
-
+        return ([DXInit(x, qafny_line_number=ctx.line_number()) for x in loopVars] +
+                [self.buildWhileOracle(endPreds, endStmts, values, qty.flag(), 1, loopVars, tmpVars)])
 
     def visitNum(self, ctx: Programmer.QXNum):
         return DXNum(ctx.num())
@@ -2290,6 +2332,82 @@ class ProgramTransfer(ProgramVisitor):
     def visitVarState(self, ctx):
         pass
 
+
+"""
+        unchanged_range = []
+        for i in loc:
+            unchanged_range.append(i.location())
+
+        name = "newFun" + str(self.counter)
+        self.counter += 1
+
+        newVars = self.upVarsSub(num)
+
+        rpreds = []
+        preds = []
+        ids = [x.ID() if isinstance(x, QXBind) else x for x in ctx.bindings()]
+        for vec in ctx.vectors():
+            vec_d = vec.vector().accept(self)
+
+            def lambda_check(lself, x):
+                if isinstance(x, DXBin) and (x.op() == '/' or x.op() == '%') and isinstance(x.right(),
+                                                                                            DXBind) and x.right().ID() not in ids:
+                    lself.outputs.append(x.right())
+
+            lamb_subst = SubstLambda(lambda_check)
+            lamb_subst.visit(vec_d)
+            for b in lamb_subst.outputs:
+                rpreds += [DXRequires(DXComp('>', b, DXNum(0), qafny_line_number=ctx.line_number()),
+                                      qafny_line_number=ctx.line_number())]
+
+        preds += self.genPreds(loc, qty, num.values(), newVars.values(), ids, ctx.vectors(), ctx.amp(), unchanged_range)
+        newConds = rpreds
+        for pred in preds:
+            newConds += [DXEnsures(pred, qafny_line_number=ctx.line_number())]
+
+        varids = []
+
+        def lambda_check(lself, x):
+            if isinstance(x, DXBind):
+                lself.outputs.append(x)
+
+        for i in ctx.vectors():
+            tmp = i.vector().accept(self)
+            lamb_subst = SubstLambda(lambda_check)
+            lamb_subst.visit(tmp)
+            varids += [
+                DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self),
+                       qafny_line_number=ctx.line_number())
+                for t in lamb_subst.outputs if t.ID() not in ids]
+
+        lamb_subst = SubstLambda(lambda_check)
+        lamb_subst.visit(ctx.amp().accept(self))
+        varids += [
+            DXBind(t.ID(), self.kenv[self.fvar][0][t.ID()].accept(self), qafny_line_number=ctx.line_number())
+            for t in lamb_subst.outputs if t.ID() not in ids]
+
+        cvars = num.values() + varids
+
+        self.addFuns += [
+            DXMethod(name, True, cvars, newVars.values(), newConds, [], qafny_line_number=ctx.line_number())]
+
+        for i in newVars.values():
+            result.append(DXInit(i, qafny_line_number=ctx.line_number()))
+
+        result.append(DXAssign(newVars.values(), DXCall(name, cvars, qafny_line_number=ctx.line_number()),
+                               qafny_line_number=ctx.line_number()))
+
+        result.append(DXCall('omega0', [], True, qafny_line_number=ctx.line_number()))
+
+        self.removeLocus(loc)
+        self.varnums = [(loc, qty, newVars)] + self.varnums
+        self.libFuns.add('pow2')
+        self.libFuns.add('omega')
+        self.libFuns.add('sqrt')
+        self.libFuns.add('omega0')
+        return result
+
+"""
 
 
 """

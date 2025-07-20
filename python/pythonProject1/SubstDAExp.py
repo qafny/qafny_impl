@@ -17,59 +17,6 @@ class SubstDAExp(TargetProgramVisitor):
     def exp(self):
         return self._exp
 
-    def visit(self, ctx):
-        match ctx:
-            case DXBin():
-                return self.visitBin(ctx)
-            case DXUni():
-                return self.visitUni(ctx)
-            case DXAll():
-                return self.visitAll(ctx)
-            case DXAssert():
-                return self.visitAssert(ctx)
-            case DXAssign():
-                return self.visitAssign(ctx)
-            case DXComp():
-                return self.visitComp(ctx)
-            case DXEnsures():
-                return self.visitEnsures(ctx)
-            case FunType():
-                return self.visitFunType(ctx)
-            case DXIf():
-                return self.visitIf(ctx)
-            case DXInit():
-                return self.visitInit(ctx)
-            case DXInRange():
-                return self.visitInRange(ctx)
-            case DXLogic():
-                return self.visitLogic(ctx)
-            case DXMethod():
-                return self.visitMethod(ctx)
-            case DXNot():
-                return self.visitNot(ctx)
-            case DXProgram():
-                return self.visitProgram(ctx)
-            case DXRequires():
-                return self.visitRequires(ctx)
-            case SeqType():
-                return self.visitSeqType(ctx)
-            case SType():
-                return self.visitSType(ctx)
-            case DXWhile():
-                return self.visitWhile(ctx)
-            case DXCall():
-                return self.visitCall(ctx)
-            case DXBind():
-                return self.visitBind(ctx)
-            case DXIfExp():
-                return self.visitIfExp(ctx)
-            case DXCast():
-                return self.visitCast(ctx)
-            case DXReal():
-                return self.visitReal(ctx)
-            
-            
-
     def visitBin(self, ctx: DXBin):
         l=ctx.left().accept(self)
         r=ctx.right().accept(self)
