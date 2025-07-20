@@ -31,12 +31,12 @@ def compareRangeLocus(q1: QXQRange, qs: [QXQRange]):
                 return (vs + [QXQRange(q1.location(), qs[i].index(),
                                        QXCRange(qs[i].crange().left(),
                                                 QXBin("+",q1.crange().right(), QXNum(1)),
-                                                qs[i].crange().line_number()), qs[i].line_numer())]
+                                                parser_context=qs[i].crange()), parser_context=qs[i])]
                         + (qs[i+1:len(qs)]))
         vs = vs + [qs[i]]
     return None
 
-#compareLocus and return the reminder locus
+# compareLocus and return the reminder locus
 def compareLocus(q1: [QXQRange], q2: [QXQRange]):
     vs = q2
     for elem in q1:
@@ -45,14 +45,14 @@ def compareLocus(q1: [QXQRange], q2: [QXQRange]):
             return None
     return vs
 
-#check if q2 is in the database, and then return locus,qty,num, where q2 is part of locus
+# check if q2 is in the database, and then return locus,qty,num, where q2 is part of locus
 def subLocus(q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
     vs = q2
     qsf = []
     for locus,qty,num in qs:
         vs = compareLocus(q2, locus)
         if vs is not None:
-            return locus,qty, num
+            return locus, qty, num
     return None
 
 def genType(n:int, t:DXType):
@@ -229,7 +229,7 @@ class ProgramTransfer(ProgramVisitor):
                                                                                    bVars.values()[0].type(), self.counter)})),
                           ([QXQRange(q.location(),
                                      QXCRange(QXBin(q.crange().right(), QXNum(1)), aLocus[0].crange().right()),
-                                     q.line_number())], TyNor, aVars(q.location()).num())]
+                                     parser_context=q)], TyNor, aVars(q.location()).num())]
                     self.counter += 1
                     return vs
             # we only allow one qubit had in bexp
@@ -242,7 +242,7 @@ class ProgramTransfer(ProgramVisitor):
                                                                                    bVars.values()[0].type(), self.counter)})),
                           ([QXQRange(q.location(),
                                      QXCRange(QXBin(q.crange().right(), QXNum(1)), aLocus[0].crange().right()),
-                                     q.line_number())], TyHad, aVars(q.location()).num())]
+                                     parser_context=q)], TyHad, aVars(q.location()).num())]
                     self.counter += 1
                     return vs
 
@@ -271,7 +271,7 @@ class ProgramTransfer(ProgramVisitor):
 
         return tmp
 
-    def upVarsSub(self, v: dict, qs:set):
+    def upVarsSub(self, v: dict, qs: set):
         tmp = dict()
         for key in v.keys():
             if key in qs:
@@ -348,27 +348,28 @@ class ProgramTransfer(ProgramVisitor):
     def genBindRequires(self):
         '''Generates pre-conditions (i.e. requires) based off of the binds present in this method.'''
 
-        def generate_pow2_expr(node):
+        def generate_pow2_expr(node: Union[QXBind, QXNum]) -> DXCall:
             if isinstance(node, QXBind):
                 return DXCall('pow2', [DXBind(node.ID(), SType("nat"))])
             return DXCall('pow2', [DXNum(node.num())])
-        def generateENRequiresForLocus(locus, qty, curr_bind, lcounter):
+
+        def generateENRequiresForLocus(locus: [QXQRange], qty: TyEn, curr_bind: DXBind, lcounter: int) -> [DXRequires]:
             res = []
             for i in range(qty.flag().num()+1):
                 if i == 0:
                     tr = DXCall('pow2', [DXBind(locus[i].crange().right().ID(),SType("nat"))
                                          if isinstance(locus[i].crange().right(), QXBind)
-                                         else DXNum(locus[i].crange().right().num())], qafny_line_number=self.current_qafny_line_number)
-                    tmp = DXComp('==', DXLength(curr_bind), tr, qafny_line_number=self.current_qafny_line_number)
-                    res.append(DXRequires(tmp, qafny_line_number=self.current_qafny_line_number))
+                                         else DXNum(locus[i].crange().right().num())], transformed_from=locus[i].crange().right())
+                    tmp = DXComp('==', DXLength(curr_bind), tr, transformed_from=locus[i].crange().right())
+                    res.append(DXRequires(tmp, transformed_from=locus[i].crange().right()))
                 else:
                     allvar = DXBind('tmp', SType('nat', transformed_from=locus[i-1]), lcounter, transformed_from=locus[i-1])
                     lcounter += 1
                     pow2_in_var = DXCall('pow2',[DXBind(locus[i-1].crange().right().ID(),SType("nat"))],
-                                         qafny_line_number=self.current_qafny_line_number) \
+                                         transformed_from=locus[i-1].crange()) \
                         if isinstance(locus[i-1].crange().right(), QXBind) \
                         else DXCall('pow2',[DXNum(locus[i-1].crange().right().num())],
-                                    qafny_line_number=self.current_qafny_line_number)
+                                    transformed_from=locus[i-1].crange())
                     pow2_var = DXCall('pow2',[DXBind(locus[i].crange().right().ID(), SType("nat"))
                                               if isinstance(locus[i].crange().right(), QXBind)
                                               else DXNum(locus[i].crange().right().num())])\
@@ -491,7 +492,7 @@ class ProgramTransfer(ProgramVisitor):
     def genOutEnsures(self):
         '''Generates post-conditions (i.e. ensures) based off of the return binds generated for this method'''
 
-        def generateENEnsuresForLocus(locus, qty, curr_bind, lcounter):
+        def generateENEnsuresForLocus(locus, qty, curr_bind, lcounter: int):
             res = []
             ttype = SType('bv1')
             cb_id = curr_bind.ID()
