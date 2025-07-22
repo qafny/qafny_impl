@@ -1,6 +1,6 @@
 import AbstractTargetVisitor
 
-import Programmer
+from Programmer import QXTop
 
 from typing import (Tuple, Union)
 
@@ -9,21 +9,25 @@ from typing import (Tuple, Union)
 
 class DXTop:
 
-    def __init__(self, transformed_from_node: Union[QXTop, DXTop, None]):
+    def __init__(self, transformed_from_node: Union[QXTop, 'DXTop', None]):
         '''Base initializer for all Dafny nodes. transformed_from_node is the Qafny or Dafny node that this node was transformed from. This is used for copying line, column, and range information.'''
-        self._qafny_node = transformed_from_node if isinstance(transformed_from_node, QXTop) else transformed_from_node._qafny_node
+        self._qafny_node = None
+        if isinstance(transformed_from_node, QXTop):
+            self._qafny_node = transformed_from_node
+        elif isinstance(transformed_from_node, DXTop):
+            self._qafny_node = transformed_from_node._qafny_node
 
     def accept(self, visitor: AbstractTargetVisitor):
         pass
 
     def qafny_line() -> int:
-        return self._qafny_node.line()
+        return self._qafny_node.line() if self._qafny_node is not None else None
 
     def qafny_col() -> int:
-        return self._qafny_node.col()
+        return self._qafny_node.col() if self._qafny_node is not None else None
 
     def qafny_range() -> Tuple[int, int]:
-        return self._qafny_node.range()
+        return self._qafny_node.range() if self._qafny_node is not None else None
 
     def __repr__(self):
         return f'DXTop()'

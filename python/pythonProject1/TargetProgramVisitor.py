@@ -67,7 +67,6 @@ class TargetProgramVisitor(AbstractTargetVisitor):
             case _:
                 raise NotImplementedError(f"No visit method defined for {type(ctx)}")
 
-
     def visitMethod(self, ctx: TargetProgrammer.DXMethod):
         for bindelem in ctx.bindings():
             bindelem.accept(self)
@@ -85,7 +84,6 @@ class TargetProgramVisitor(AbstractTargetVisitor):
         for elem in ctx.method():
             elem.accept(self)
 
-
     def visitAssert(self, ctx: TargetProgrammer.DXAssert):
         return ctx.spec().accept(self)
 
@@ -97,7 +95,6 @@ class TargetProgramVisitor(AbstractTargetVisitor):
 
     def visitInit(self, ctx: TargetProgrammer.DXInit):
         return ctx.binding().accept(self)
-
 
     def visitInRange(self, ctx: TargetProgrammer.DXInRange):
         ctx.bind().accept(self)
@@ -127,10 +124,10 @@ class TargetProgramVisitor(AbstractTargetVisitor):
             elem.accept(self)
         return ctx.ID()
 
-    def visitSType(self, ctx:TargetProgrammer.SType):
+    def visitSType(self, ctx: TargetProgrammer.SType):
         return ctx.type()
 
-    def visitSeqType(self, ctx:TargetProgrammer.SeqType):
+    def visitSeqType(self, ctx: TargetProgrammer.SeqType):
         return ctx.type().accept(self)
 
     def visitFunType(self, ctx: TargetProgrammer.FunType):

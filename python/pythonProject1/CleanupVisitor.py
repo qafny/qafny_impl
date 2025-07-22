@@ -118,7 +118,7 @@ class CleanupVisitor(TargetProgramVisitor):
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), qafny_line_number=ctx.qafny_line_number())
 
     def visitUni(self, ctx: TargetProgrammer.DXUni):
-        return DXUni(ctx.op(), ctx.next().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXUni(ctx.op(), ctx.next().accept(self), transformed_from=ctx)
 
     def visitNum(self, ctx: TargetProgrammer.DXNum):
         return ctx
@@ -131,37 +131,34 @@ class CleanupVisitor(TargetProgramVisitor):
         for i in ctx.exprs():
             exprs.append(i.accept(self))
 
-        return DXList(exprs, qafny_line_number=ctx.qafny_line_number())
+        return DXList(exprs, transformed_from=ctx)
 
     def visitCall(self, ctx: TargetProgrammer.DXCall):
         #if ctx.ID() == 'omega' and isinstance(ctx.exps()[0], DXNum) and ctx.exps()[0].num() == 0:
             #return DXCast(SType('real'), DXNum(1))
 
         if ctx.ID() == 'ketIndex':
-            return DXIndex(ctx.exps()[0], ctx.exps()[1], qafny_line_number=ctx.qafny_line_number())
+            return DXIndex(ctx.exps()[0], ctx.exps()[1], transformed_from=ctx)
         
         exps = []
         for exp in ctx.exps():
             exps.append(exp.accept(self))
         
-        return DXCall(ctx.ID(), exps, ctx.end(), qafny_line_number=ctx.qafny_line_number())
+        return DXCall(ctx.ID(), exps, ctx.end(), transformed_from=ctx)
     
     def visitIndex(self, ctx: TargetProgrammer.DXIndex):
-        return DXIndex(ctx.bind().accept(self), ctx.index().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXIndex(ctx.bind().accept(self), ctx.index().accept(self), transformed_from=ctx)
         
     def visitCast(self, ctx: TargetProgrammer.DXCast):
-        return DXCast(ctx.type(), ctx.next().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXCast(ctx.type(), ctx.next().accept(self), transformed_from=ctx)
 
     def visitIfExp(self, ctx: TargetProgrammer.DXIfExp):
         return DXIfExp(ctx.bexp().accept(self),
         ctx.left().accept(self),
-        ctx.right().accept(self), qafny_line_number=ctx.qafny_line_number())
+        ctx.right().accept(self), transformed_from=ctx)
 
     def visitLength(self, ctx: TargetProgrammer.DXLength):
-        return DXLength(ctx.var().accept(self), qafny_line_number=ctx.qafny_line_number())
-
-    def visitVar(self, ctx: TargetProgrammer.DXVar):
-        return ctx
+        return DXLength(ctx.var().accept(self), transformed_from=ctx)
 
     def visitWhile(self, ctx: TargetProgrammer.DXWhile):
         
@@ -175,7 +172,7 @@ class CleanupVisitor(TargetProgramVisitor):
         for i in ctx.inv():
             invs.append(i.accept(self))
 
-        return DXWhile(cond, stmts, invs, qafny_line_number=ctx.qafny_line_number())
+        return DXWhile(cond, stmts, invs, transformed_from=ctx)
 
     def visitIf(self, ctx: TargetProgrammer.DXIf):
         cond = ctx.cond().accept(self)
@@ -188,10 +185,10 @@ class CleanupVisitor(TargetProgramVisitor):
         for r in ctx.right():
             right.append(r.accept(self))
 
-        return DXIf(cond, left, right, qafny_line_number=ctx.qafny_line_number())
+        return DXIf(cond, left, right, transformed_from=ctx)
 
     def visitAssert(self, ctx:TargetProgrammer.DXAssert):
-        return DXAssert(ctx.spec().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXAssert(ctx.spec().accept(self), transformed_from=ctx)
 
     def visitAssign(self, ctx: TargetProgrammer.DXAssign):
         ids = []
@@ -206,7 +203,7 @@ class CleanupVisitor(TargetProgramVisitor):
         else:      
             exp = ctx.exp().accept(self)
 
-        return DXAssign(ids, exp, ctx.init(), qafny_line_number=ctx.qafny_line_number())
+        return DXAssign(ids, exp, ctx.init(), transformed_from=ctx)
     
     def visitInit(self, ctx: TargetProgrammer.DXInit):
         return ctx
