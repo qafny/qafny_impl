@@ -2,20 +2,20 @@ from TargetProgrammer import *
 from PrinterVisitor import *
 
 def method1():
-    inp = DXVar('x', SType('seq<int>'))
-    out = DXVar('y', SType('seq<int>'))
-    i = DXVar('i', SType('int'))
-    zero = DXVar('0', SType('int'))
+    inp = DXBind('x', SType('seq<int>'))
+    out = DXBind('y', SType('seq<int>'))
+    i = DXBind('i', SType('int'))
+    zero = DXBind('0', SType('int'))
     s2 = DXInit(i, zero)
-    one = DXVar('1', SType('int'))
-    ls1 = DXAssign([out], DXBin('+', out, DXIndex(DXVar(''), DXBin('+',DXIndex(inp, i), one))))
+    one = DXBind('1', SType('int'))
+    ls1 = DXAssign([out], DXBin('+', out, DXIndex(DXBind(''), DXBin('+',DXIndex(inp, i), one))))
     ls2 = DXAssign([i], DXBin('+', i, one))
-    s1 = DXAssign([out], DXVar('[]', SType('array')))
+    s1 = DXAssign([out], DXBind('[]', SType('array')))
 
     cond = DXComp('<', i, DXLength(inp))
 
 
-    k = DXVar('k', SType('int'))
+    k = DXBind('k', SType('int'))
     respec = DXAll(k, DXComp('==>', DXInRange(k, zero, DXLength(inp)), DXComp('==', DXIndex(inp, k), zero)))
     enspec = DXAll(k, DXComp('==>', DXInRange(k, zero, DXLength(out)), DXComp('==', DXIndex(out, k), one)))
 
@@ -33,29 +33,29 @@ def method1():
 
 
 def method2():
-    inp1 = DXVar('k', SType('real'))
-    inp2 = DXVar('n', SType('nat'))
+    inp1 = DXBind('k', SType('real'))
+    inp2 = DXBind('n', SType('nat'))
 
-    out = DXVar('x', SType('seq<real>'))
+    out = DXBind('x', SType('seq<real>'))
 
-    zero = DXVar('0', SType('int'))
-    j = DXVar('j', SType('int'))
+    zero = DXBind('0', SType('int'))
+    j = DXBind('j', SType('int'))
     enspec1 = DXBin('==', DXLength(out), inp2)
     enspec2 = DXAll(j, DXComp('==>', DXInRange(j, zero, inp2), DXComp('==', DXIndex(out, j), inp1)))
     ensures1 = DXEnsures(enspec1)
     ensures2 = DXEnsures(enspec2)
 
-    i = DXVar('i', SType('int'))
-    zero = DXVar('0', SType('int'))
-    one = DXVar('1', SType('int'))
-    s1 = DXAssign([out], DXVar('[]'))
+    i = DXBind('i', SType('int'))
+    zero = DXBind('0', SType('int'))
+    one = DXBind('1', SType('int'))
+    s1 = DXAssign([out], DXBind('[]'))
     s2 = DXInit(i, zero)
 
     loop_cond = DXComp('<', i, inp2)
     inv1 = DXComp('<=', zero, DXComp('<=', i, inp2))
     inv2 = DXComp('==', DXLength(out), i)
     inv3 = DXAll(j, DXComp('==>', DXInRange(j, zero, i), DXComp('==', DXIndex(out, j), inp1)))
-    ls1 = DXAssign([out], DXBin('+', out, DXIndex(DXVar(''), inp1)))
+    ls1 = DXAssign([out], DXBin('+', out, DXIndex(DXBind(''), inp1)))
     ls2 = DXAssign([i], DXBin('+', i, one))
     loop = DXWhile(loop_cond, [ls1, ls2], [inv1, inv2, inv3])
 

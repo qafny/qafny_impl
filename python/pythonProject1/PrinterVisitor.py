@@ -155,7 +155,7 @@ class PrinterVisitor(TargetProgramVisitor):
 
         self.current_line += 1
         return 'if (' + ctx.cond().accept(self) + '){\n' + stmts + '}' + elsepart
-    
+
     def visitIndex(self, ctx: TargetProgrammer.DXIndex):
         return ctx.bind().accept(self) + '[' + ctx.index().accept(self) + ']'
     
