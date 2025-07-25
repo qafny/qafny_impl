@@ -160,9 +160,6 @@ class CleanupVisitor(TargetProgramVisitor):
     def visitLength(self, ctx: TargetProgrammer.DXLength):
         return DXLength(ctx.var().accept(self), qafny_line_number=ctx.qafny_line_number())
 
-    def visitVar(self, ctx: TargetProgrammer.DXVar):
-        return ctx
-
     def visitWhile(self, ctx: TargetProgrammer.DXWhile):
         
         cond =ctx.cond().accept(self)
