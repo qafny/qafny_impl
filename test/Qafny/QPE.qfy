@@ -3,67 +3,13 @@
 //ODO: Alex, I am putting the Simon's algorithm code here, because I think the structure is very similar.
 //Please look at the wiki and try to modify the code to be a phase estimation.
 //lambda value here is the eigenvalue for U, so you will need to say the eigen value property about U here.
-
-method {:axiom} U(n:nat, q: Q[n], a:nat)
-  requires { q[0 , n) : en ↦ ⊗ phi }
-  ensures { q[0 , n) : en ↦ omega(a, 2^n) ⊗ phi }
-  
-
-method repeat(n:nat, q:Q[n], a:nat, m:nat)
-  requires { q[0 , n) : en ↦ ⊗ phi }
-  ensures { q[0 , n) : en ↦ omega(m * a, 2^n) ⊗ phi }
+method QPE(n:nat, q : Q[n], p : Q[n], r : Q[1], u : Q[1], N:nat)
+  requires { q[0,n), p[0,n) : en(2) ↦ ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n) . 1/2^n | k ⟩ | j ⟩ }
+  requires { r [0] : nor ↦ |0⟩ }
+  requires { u [0] : nor ↦ |0⟩ }
+  ensures  { q[0,n), p[0,n), u[0, 1), r[0, 1) : en(3) ↦ ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n)@(j < N) . ∑ i ∈ [0, 2) . 1/2^n * (1/sqrt(2^1))  | k ⟩ | j ⟩ | 1 ⟩ | i ⟩ + ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n)@ (not (j < N) ) . ∑ i ∈ [0, 2) . 1/2^n | k ⟩ | j ⟩ | 0 ⟩ | 0 ⟩ }
 {
-
-  for k in [0, m)
-  invariant { q[0 , n) : en ↦ omega(k * a, 2^n) ⊗ phi }
-  {
-     U(n,q,a);
-  }
+  // induce superposition on the first qubit
+  if (p[0,n) < N @ u[0]) { r[0] *= H; }
+  //(en)q[0,n); //it is best if we do not need this
 }
-  
-  
-method QPE(q : Q[n], p : Q[n], n:nat, lambda : nat) returns (y:nat, p : real)
-  requires { q[0 , n) : nor ↦ |0⟩ }
-  requires { p[0 , n) : en ↦ ⊗ phi } 
-  //requires forall k, U(k, psi) == ω (k * lambda, 1) * psi
-    // need to have a way to say, we can increment the phase to a quantum state psi.
-    // ω (k * lambda, 1) = e^(2pi * i * k * lambda / 1)
-  ensures y  == lambda * 2^n ==> p == 1 //using the probablitic theorems listed in the QPE, can be hard-code.
-{
-  q[0, n) *= H;
-
-  //assert { p[0..n] : En ↦ ∑ k ∈ [0, 2^n) . e^(2pi * i * k * lambda) | k , p[k]  ⟩ };
-  
-  for k in [0, n)
-    //separates q[0, k), p[0, n)
-    invariant {
-      q[0, k), p[0, n) : en ↦ ∑ j ∈ [0, 2^k) . 1 / sqrt(2^k) * ω (j * lambda, 1) | j ⟩ ⊗ phi
-       //splitting the basis of q[0, k), p[0, n) into two parts, maybe we can split q[0, k), p[0, n) into q[0, k) and p[0, n)
-       //q[0, k) : En ↦ ∑ k ∈ [0, 2^k)) . 1 / sqrt(2^k) . ω (k * lambda, 1)   . | k ⟩ and p[0, n) ↦ psi
-    }
-    invariant {
-      q [k, n) : had ↦ |+⟩
-    }
-  {
-    //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
-    repeat(n,p, lambda, 2^k);
-
-    // This is super hacky, but I have no good way to do this now....
-    // TODO: find out one way to take the reference of the underlying range
-    // e.g. [[ p[0 .. N] ]] ?
-    //#LemmaPowEquiv(p_seq'nat'_7__emit, base, i, N);
-  }
-
-  //q[0, n) : En ↦ ∑ j ∈ [0, 2^n)) . 1 / sqrt(2^n) . ω (j * lambda, 1)  . | j ⟩ 
-  //--> En ↦ ∑ j ∈ [0, 2^n)) . 1 / sqrt(2^n) * 1 / sqrt(2^n) . (∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (- j * v, 2^n)  . | v ⟩ )
-  q[0, n) *= RQFT;
-  //the 1 / sqrt(2^n) * 1 / sqrt(2^n) can be rewritten as 1 / 2^n, but we can keep it in 1 / sqrt(2^n) * 1 / sqrt(2^n) or 1/ (sqrt(2^n) * sqrt(2^n))
-  assert { q[0, n) : en ↦  ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n) * 1 / sqrt(2^n) . (∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (-j * v, 2^n) | v ⟩ ) };
-  assert { q[0, n) : en ↦  ∑ v ∈ [0, 2^n) . 1 / (2^n) . (∑ j ∈ [0, 2^n) . ω (j * lambda * 2^n - j * v, 2/n) | v ⟩ ) };
-   // the above step rearrange the arrays from ∑ j  and ∑ v
-   //can do something smart, we can start with the one in line 47, 
-  y, p *= measure(q[0, n));
-  y, prob *= measure(q[0, n));
-  //we will need the post-analysis leading to the above result set up in https://en.wikipedia.org/wiki/Simon%27s_problem
-}  
-

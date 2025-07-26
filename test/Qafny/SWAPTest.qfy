@@ -4,66 +4,13 @@
 
 // q and p are messages, we want to check if they are equal. r is initialized to all zeroes
 // r is one qubit. q and p are n qubits.
-method swap(q : Q[1], p : Q[1])
-  requires { q[0] : nor ↦ ⊗ x }
-  requires { p[0] : nor ↦ ⊗ y }
-  ensures { q[0] : nor ↦ ⊗ y }
-  ensures { p[0] : nor ↦ ⊗ x }
+method SWAPTest(n:nat, q : Q[n], p : Q[n], r : Q[1], u : Q[1], N:nat)
+  requires { q[0,n), p[0,n) : en(2) ↦ ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n) . 1/2^n | k ⟩ | j ⟩ }
+  requires { r [0] : nor ↦ |0⟩ }
+  requires { u [0] : nor ↦ |0⟩ }
+  ensures  { q[0,n), p[0,n), u[0, 1), r[0, 1) : en(3) ↦ ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n)@(j < N) . ∑ i ∈ [0, 2) . 1/2^n * (1/sqrt(2^1))  | k ⟩ | j ⟩ | 1 ⟩ | i ⟩ + ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n)@ (not (j < N) ) . ∑ i ∈ [0, 2) . 1/2^n | k ⟩ | j ⟩ | 0 ⟩ | 0 ⟩ }
 {
-      if (p[0]) { q[0] *= λ(b => |b + 1⟩); }
-      if (q[0]) { p[0] *= λ(b => |b + 1⟩); }
-      if (p[0]) { q[0] *= λ(b => |b + 1⟩); }
-}
-
-method nswap(q: Q[n], p: Q[n], n : nat)
-  requires { q[0,n) : nor ↦ ⊗ x }
-  requires { p[0,n) : nor ↦ ⊗ y }
-  ensures { q[0,n) : nor ↦ ⊗ y }
-  ensures { p[0,n) : nor ↦ ⊗ x }
-{
-      for i in [0,n)
-        invariant { forall k in [0, i) ==> q[0,k) == old(p[0,k))}
-        invariant { forall k in [0, i) ==> p[0,k) == old(q[0,k))}
-      {
-        swap(q[i], p[i]);
-      }
-}
-
-method SWAPTest(n: nat, q: Q[n], p: Q[n], r: Q[1]) returns (y:nat, prob:real)
-    requires { r[0] : nor ↦ |0⟩ }
-    requires { q[0, n) : en ↦ ∑ k ∈ [0 , 2^n) . x[k] } //what is x and what is y?
-    requires { p[0, n) : en ↦ ∑ j ∈ [0 , 2^n) . y[j] }
-    ensures { y == 0 ==> prob == 1/2 + 1/2 * (∑ k ∈ [0, 2^n) . a[k] * b[k]) } //what are a and b?
-    //this fact relies on an axiom that the measurement result of 0 for y is:
-    // 1/2 (s ⊗ t + t ⊗ s) 1/2(s ⊗ t + t ⊗ s)^*
-    //== 1/4 (s ⊗ t + t ⊗ s) ((s ⊗ t)^* + (t ⊗ s)^*)
-    //== 1/4 (s ⊗ t + t ⊗ s) (s^* ⊗ t^* + t^* ⊗ s^*)
-    //== 1/4 {(s ⊗ t) (s^* ⊗ t^*) + (t ⊗ s) (s^* ⊗ t^*) + (s ⊗ t) (t^* ⊗ s^*) + (t ⊗ s) (t^* ⊗ s^*)}
-    //where (s ⊗ t) (s^* ⊗ t^*) and (t ⊗ s) (t^* ⊗ s^*) both are 1.
-    //and (t ⊗ s) (s^* ⊗ t^*) + (s ⊗ t) (t^* ⊗ s^*) == < s | t > == (∑ k ∈ [0 , 2^n) . a[k] * b[k])
-    
-{
-    r[0] *= H;
-
-    // controlled SWAP (controlled by first qubit of r)
-    if r[0] // is this a measurement, so wo just do if r[0]
-    {
-      nswap(q, p);
-    }
-    
-    //name p[0,n) as s;
-    //name q[0,n) as t;//we can name the EN type state as some states
-
-    assert { r[0], p[0, n), q[0, n) : en(3) ↦ ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n) . 1/sqrt(2) |0⟩  ⊗ x[k] ⊗ y[j] + ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n) . 1/sqrt(2) |1⟩ ⊗ y[j] ⊗ x[k] };
-
-    r[0] *= H; // A typical quantum state projection. turning information to the phase.
-
-    assert { r[0], p[0, n), q[0, n) : en(4) ↦ 1/2 . ∑ t ∈ [0, 2) . ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n) . 1/sqrt(2) |t⟩ ⊗ x[k] ⊗ y[j] 
-                                                        + ∑ t ∈ [0, 2) . ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n) . 1/sqrt(2) * omega(t, 2) |t⟩ ⊗ y[j] ⊗ x[k] };
-    
-    //converting the state to be based on 0 / 1 computational basis
-    //assert {r[0],p[0,n),q[0,n) : en ↦ 1/2 . |0⟩ (s ⊗ t + t ⊗ s) + 1/2  |1⟩ ⊗ (s ⊗ t - t ⊗ s) } 
-    
-    y, prob *= measA(r[0]); //we need a special measurement that will abort the other qubits and the main product is to compute the probablity of y.
-    
+  // induce superposition on the first qubit
+  if (p[0,n) < N @ u[0]) { r[0] *= H; }
+  //(en)q[0,n); //it is best if we do not need this
 }
