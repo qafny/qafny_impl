@@ -1,78 +1,12 @@
 // Non-Boolean Amp
 // https://arxiv.org/abs/2102.04975
-
-function phi(n:nat, a:nat -> real)
+method NonBoolean(n:nat, q : Q[n], p : Q[n], r : Q[1], u : Q[1], N:nat)
+  requires { q[0,n), p[0,n) : en(2) ↦ ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n) . 1/2^n | k ⟩ | j ⟩ }
+  requires { r [0] : nor ↦ |0⟩ }
+  requires { u [0] : nor ↦ |0⟩ }
+  ensures  { q[0,n), p[0,n), u[0, 1), r[0, 1) : en(3) ↦ ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n)@(j < N) . ∑ i ∈ [0, 2) . 1/2^n * (1/sqrt(2^1))  | k ⟩ | j ⟩ | 1 ⟩ | i ⟩ + ∑ k ∈ [0, 2^n) . ∑ j ∈ [0, 2^n)@ (not (j < N) ) . ∑ i ∈ [0, 2) . 1/2^n | k ⟩ | j ⟩ | 0 ⟩ | 0 ⟩ }
 {
-  ∑ k ∈ [0, 2) . ∑ j ∈ [0, 2^n) . 1/sqrt(2) * a(j) | k ⟩ | j ⟩
-}
-
-function alpha(n:nat, a:nat -> real, f:nat -> real)
-{
-  ∑ k ∈ [0, 2) . ∑ j ∈ [0, 2^n) . 1/sqrt(2) * a(j) * omega(f(j) * (-1)^k, 2^n) | k ⟩ | j ⟩
-}
-
-function beta(n:nat, a:nat -> real, f:nat -> real)
-{
-  ∑ k ∈ [0, 2) . ∑ j ∈ [0, 2^n) . 1/sqrt(2) * a(j) * omega(f(j) * (-1)^(k+1), 2^n) | k ⟩ | j ⟩
-}
-
-method {:axiom} sf(n:nat, p: Q[1], q: Q[n], a:nat -> real)
-  requires { p[0], q[0 , n) : en(2) ↦ ⊗ phi(n, a) }
-  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ phi(n, a) }
-  
-lemma {:axiom} sfalpha(n:nat, p: Q[1], q: Q[n], a:nat -> real, f:nat -> real, theta:real)
-  requires { p[0], q[0 , n) : en(2) ↦ ⊗ alpha(n, a, f) }
-  ensures { p[0], q[0 , n) : en(2) ↦ 2 * cos(theta) ⊗ phi(n, a) + omega(1,2) ⊗ alpha(n, a, f) }
-  
-lemma {:axiom} sfbeta(n:nat, p: Q[1], q: Q[n], a:nat -> real, f:nat -> real,theta:real)
-  requires { p[0], q[0 , n) : en(2) ↦ ⊗ beta(n, a, f) }
-  ensures { p[0], q[0 , n) : en(2) ↦ 2 * cos(theta) ⊗ phi(n, a) + omega(1,2) ⊗ beta(n, a, f) }
-  
-method {:axiom} U(n:nat, q: Q[n], f : nat -> real)
-  requires { q[0 , n) : nor ↦ | j ⟩ }
-  ensures { q[0 , n) : nor ↦ omega(f(j), 2^n) | j ⟩ }
-
-lemma {:axiom} cuphi(n:nat, p:Q[1], q: Q[n], a:nat -> real, f : nat -> real)
-  requires { p[0], q[0 , n) : en(2) ↦ ⊗ phi(n, a) }
-  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ alpha(n, a, f) }
-  
-lemma {:axiom} cubeta(n:nat, p:Q[1], q: Q[n], f : nat -> real)
-  requires { p[0], q[0 , n) : en(2) ↦ ⊗ beta(n, a, f) }
-  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ phi(n, a) }
-  
-lemma {:axiom} invcuphi(n:nat, p:Q[1], q: Q[n], a:nat -> real, f : nat -> real)
-  requires { p[0], q[0 , n) : en(2) ↦ ⊗ phi(n, a) }
-  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ beta(n, a, f) }
-  
-lemma {:axiom} invcualpha(n:nat, p:Q[1], q: Q[n], f : nat -> real)
-  requires { p[0], q[0 , n) : en(2) ↦ ⊗ alpha(n, a, f) }
-  ensures { p[0], q[0 , n) : en(2) ↦ ⊗ phi(n, a) }
-
-method NonBoolean(n: nat, q : Q[n], p: Q[1], m: nat, a: nat -> real, f: nat -> real, theta:real) returns (y: nat, prob: real)
-    requires theta == 1/2 * ∑ j ∈ [0, 2^n) . abs(a(k))^2 * 2 * cos(f(k))
-    requires { p[0], q[0,n) : en(2) ↦ ∑ k ∈ [0, 2) . ∑ j ∈ [0, 2^n) . 1/sqrt(2) * a(j) | k ⟩ | j ⟩ }
-{ 
-    
-    for j in [0, m)
-      invariant j % 2 == 1 ==> p[0], q[0 , n) : en(2) ↦  sin((k+1) * theta) / sin(theta) ⊗ phi(n, a) + omega(1,2) * sin(k * theta) / sin(theta) ⊗ alpha(n, a, f)
-      invariant j % 2 == 0 ==> p[0], q[0 , n) : en(2) ↦  sin((k+1) * theta) / sin(theta) ⊗ phi(n, a) + omega(1,2) * sin(k * theta) / sin(theta) ⊗ beta(n, a, f)
-    {
-
-      if (j % 2 == 0)
-      {
-        if (p[0]) { U(q, n,f); }
-        assert cuphi(n, p, q, a, f);
-        assert cubeta(n, p, q, a, f);
-      }
-      else {
-        if (not p[0]) { U^{-1}(q,n,f); }
-        assert invcuphi(n, p, q, a, f);
-        assert invcualpha(n, p, q, a, f);
-      }
-      sf(n,p,q,a);
-      assert sfalpha(n,p,q, a, f, theta);
-      assert sfbeta(n, p, q, a, f,theta);
-    }
-    
-    y, prob := meas(p[0]);
+  // induce superposition on the first qubit
+  if (p[0,n) < N @ u[0]) { r[0] *= H; }
+  //(en)q[0,n); //it is best if we do not need this
 }
