@@ -53,34 +53,34 @@ DEFAULT_FILENAMES = [
     example_program("test7"),
     example_program("test8"),
     example_program("test9"),
-    #example_program("test10"),
-    #example_program("test11"),
-    #example_program("test12"),
-    #example_program("test13"),
+    example_program("test10"),
+    example_program("test11"),
+    example_program("test12"),
+    example_program("test13"),
     example_program("test14"),
-    #example_program("BellPair"),
-    #example_program("GHZ"),
-    #example_program("Teleportation"),
-    #example_program("Superdense"),
-    #example_program("Shors"),
-    #example_program("DeutschJozsa"),
-    #example_program("simon"),
-    #example_program("DiscreteLog"),
-    #example_program("Grovers"),
-    #example_program("QPE"),
-    #example_program("SWAPTest"),
-    #example_program("AmpAmp"),
-    #example_program("AmplitudeEstimation"),
-    #example_program("AppxCounting"),
-    #example_program("BHSP"),
-    #example_program("FirstAmpEstimate"),
-    #example_program("FOQA"),
-    #example_program("LongDistanceEntangle"),
-    #example_program("NonBoolean"),
-    #example_program("QFTModQ"),
-    #example_program("SimpleAmpEstimate"),
-    #example_program("Stabilizer"),
-    #example_program("StateDistinguishing")
+    example_program("BellPair"),
+    example_program("GHZ"),
+    example_program("Teleportation"),
+    example_program("Superdense"),
+    example_program("Shors"),
+    example_program("DeutschJozsa"),
+    example_program("simon"),
+    example_program("DiscreteLog"),
+    example_program("Grovers"),
+    example_program("QPE"),
+    example_program("SWAPTest"),
+    example_program("AmpAmp"),
+    example_program("AmplitudeEstimation"),
+    example_program("AppxCounting"),
+    example_program("BHSP"),
+    example_program("FirstAmpEstimate"),
+    example_program("FOQA"),
+    example_program("LongDistanceEntangle"),
+    example_program("NonBoolean"),
+    example_program("QFTModQ"),
+    example_program("SimpleAmpEstimate"),
+    example_program("Stabilizer"),
+    example_program("StateDistinguishing")
 ]
 
 #######################################
@@ -228,20 +228,25 @@ if __name__ == "__main__":
 
                 if dafny_result.returncode != 0: 
                     error_message = dafny_result.stdout
-                    pattern = r"<stdin>\((?P<line>\d+),.*?\): Error:"
-                    match = re.search(pattern, error_message)
-                    if match:
-                        line_number = int(match.group('line'))
-                        if line_number in target_printer_visitor.line_mapping:
-                            print('Estimated qafny error line number', target_printer_visitor.line_mapping[line_number].qafny_line_number())
+                    if error_message is not None:
+                        pattern = r"<stdin>\((?P<line>\d+),.*?\): Error:"
+                        match = re.search(pattern, error_message)
+
+                        if match:
+                            line_number = int(match.group('line'))
+                            if line_number in target_printer_visitor.line_mapping:
+                                print('Estimated qafny error line number', target_printer_visitor.line_mapping[line_number].qafny_line_number())
+                            else:
+                                print('Could not find qafny line number')
+                                print(error_message)
+
                         else:
-                            print('Could not find qafny line number')
-                            print(error_message)
-
+                            print("Could not find error line number.")
+                        print("\nVerifier Output:\n" + dafny_result.stdout)
                     else:
-                        print("Could not find error line number.")
+                        print("No error message from Dafny.")
 
-                    print("\nVerifier Output:\n" + dafny_result.stdout)
+                    
 
                 show_step_status(filename, "Verify", dafny_result.returncode == 0)
 
