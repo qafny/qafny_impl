@@ -47,7 +47,7 @@ function {:axiom} castBVInt(x : seq<bv1>) : nat
                 ensures castBVInt(x) >= 0
 
 lemma {:axiom} powNTimesMod()
-          ensures forall k: nat, j: nat, l : nat, N:nat :: N > 0 ==> powN(k, j) * (powN(k, l) % N) % N == powN(k, j + l) % N
+          ensures forall k: nat, j: nat, l : nat, N:nat {:trigger powN(k, j) * (powN(k, l) % N)}:: N > 0 ==> powN(k, j) * (powN(k, l) % N) % N == powN(k, j + l) % N
 
 lemma {:axiom} triggerSqrtMul()
                       ensures forall k, j :: k > 0.0 && j > 0.0 ==> sqrt(k) * sqrt(j) == sqrt(k * j)
