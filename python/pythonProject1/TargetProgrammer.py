@@ -374,7 +374,7 @@ class DXBoolValue(DXBool):
         self._bool = v
 
     def accept(self, visitor: AbstractTargetVisitor):
-        return visitor.visitVar(self)
+        return visitor.visitBind(self)
 
     def value(self):
         return self._bool

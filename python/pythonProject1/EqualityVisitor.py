@@ -56,8 +56,6 @@ class EqualityVisitor:
                 return self.visitCall(ctx, ctx1)
             case DXBind():
                 return self.visitBind(ctx, ctx1)
-            case DXVar():
-                return self.visitVar(ctx, ctx1)
             case DXIfExp():
                 return self.visitIfExp(ctx, ctx1)
             case DXCast():
@@ -96,12 +94,6 @@ class EqualityVisitor:
             a.ID() == b.ID() and
             self.visit(a.type(), b.type()) and
             a.num() == b.num()
-        )
-
-    def visitVar(self, a, b):
-        return (
-            a.ID() == b.ID() and
-            self.visit(a.type(), b.type())
         )
 
     def visitNum(self, a, b):
