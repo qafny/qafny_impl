@@ -1,0 +1,18 @@
+method HammingWeight(n: nat, q: Q[n], p: Q[n]) returns (v: nat, prob: real)
+    requires { q[0, n) : nor ↦ |0⟩ } 
+    requires { p[0, n) : nor ↦ |0⟩ } //ancilla
+    ensures { q[0, n), p[0, n): en ↦ ∑ k ∈ [0, 2^n) . |k⟩ |w(k)⟩}
+    ensures prob == Binomial(n, v) / 2^n
+{
+    q[0, n) := H;
+
+    for i in [0, n)
+    invariant { q[0, i), p[0, n): en ↦ ∑ k ∈ [0, 2^i) . |k⟩ |w(k)⟩ }
+    invariant { q[i, n): Had ↦ |+⟩ }
+    {
+        if (q[i]) {p[0, n) := p[0, n) + 1}
+    }
+
+    v, prob *= measure(p[0, n));
+
+}
