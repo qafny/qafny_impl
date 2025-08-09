@@ -1,0 +1,87 @@
+// --------------------------- LOGIC GATES -------------------------------------
+
+
+method Hadamard(q : Q[1]) returns (q : Q[1])
+  requires {q[0] : nor ↦ |0⟩}
+  ensures {q[0] : had ↦ |+⟩}
+{
+  q[0] *= H;
+}
+
+
+method PauliX(q : Q[1]) returns (q : Q[1])
+  requires {q[0] : nor ↦ |0⟩}
+  ensures {q[0] : nor ↦ |1⟩}
+{
+  q[0] *= λ (x => |(x + 1) % 2⟩);   // Not general - only works for nor types.
+}
+
+
+method PauliXGeneral(q : Q[1]) returns (q : Q[1])
+  requires {q[0] : nor ↦ |0⟩}
+  ensures {q[0] : had ↦ i|1⟩}
+{
+  // Want: a|0> + b|1> maps to a|1> + b|0>.
+  // Is this possible?
+}
+
+
+// ---------------------- STATE CONSTRUCTION -----------------------------------
+
+method BellPair(q : Q[2]) returns (q : Q[2])
+  requires {q[0,2) : nor ↦ |00⟩}
+  ensures {q[0,2) : en ↦ 1/sqrt(2) (|00⟩ + |11⟩)}
+{
+  q[0] *= H;
+  if (q[0]) { q[1] *= λ (x => |(x + 1) % 2⟩); }
+}
+
+
+method GHZ(q : Q[3]) returns (q : Q[3])
+  requires {q[0,3) : nor ↦ |000⟩}
+  ensures {q[0,3) : en ↦ 1/sqrt(2) (|000⟩ + |111⟩)}
+{
+  q[0] *= H;
+  if (q[0]) {
+    q[1] *= λ (x => |(x + 1) % 2⟩);
+    q[2] *= λ (x => |(x + 1) % 2⟩);
+  }
+}
+
+method GHZGeneral(q : Q[n]) returns (q : Q[n])
+  requires {q[0,n) : nor ↦ ⊗ i ∈ [0,n) . |0⟩}
+  ensures {q[0,n) : en ↦ 1/sqrt(2) ((⊗ i ∈ [0,n) . |0⟩) + (⊗ i ∈ [0,n) . |1⟩))}
+{
+  q[0] *= H;
+  for i in [0, n) {
+    if (q[0]) {
+      q[i] *= λ (x => |(x + 1) % 2⟩);
+    }
+  }
+}
+
+
+
+// ------------------------- REVERSIBILITY -------------------------------------
+
+// Apply the hadamard gate twice to return to the inital state
+method DoubleH(q : Q[1]) returns (q : Q[1])
+  requires {q[0] : nor ↦ |0⟩}
+  ensures {q[0] : nor ↦ |0⟩}
+{
+  q[0] *= H;
+  q[0] *= H;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+// Questions
