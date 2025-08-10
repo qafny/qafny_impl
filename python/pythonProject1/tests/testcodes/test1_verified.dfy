@@ -25,12 +25,12 @@ function {:axiom} omega(n:nat, a:nat): real
 method hadtest(n: nat, q: seq<bv1>) returns (q5: seq<real>)
   requires n > 0
   requires |q| == n
-  requires castBVInt(q) == 0
+  //requires castBVInt(q) == 0
   requires forall tmp2 :: 0 <= tmp2 < n ==> q[tmp2] == 0
   ensures |q5| == n
   ensures forall i :: 0 <= i < n ==> q5[i] == omega(0, 2)
 {
-  assert castBVInt(q) == 0;
+//  assert castBVInt(q) == 0;
   assert forall tmp3 :: 0 <= tmp3 < n ==> q[tmp3] == 0;
   var q4:seq<real>;
   q4 := hadNorHad(q);

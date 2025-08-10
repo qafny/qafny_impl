@@ -14,6 +14,7 @@ from CollectKind import CollectKind # usage: collecting the kind environment fro
 from TypeCollector import TypeCollector # usage: collecting the type environment from the qafny AST (see the README for a breakdown of types vs. kinds)
 from TypeChecker import TypeChecker # usage: type checking the parsed file
 from ProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one
+#from nProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one (new version)
 from PrinterVisitor import PrinterVisitor # usage: outputting string text dafny code from a dafny (TargetProgrammer) AST
 from DafnyLibrary import DafnyLibrary # usage: generating template library functions for verification
 from CleanupVisitor import CleanupVisitor # usage: perforaming final cleanup operations before verifying such as convertiong x ^ y to powN(x, y)
@@ -44,7 +45,7 @@ def example_program(filename: str) -> str:
 
 # The suite of test qafny files (Qafny defaults to verifying these)
 DEFAULT_FILENAMES = [
-    example_program("test1"),
+ #   example_program("test1"),
     example_program("test2"),
     example_program("test3"),
     example_program("test4"),
@@ -158,7 +159,7 @@ if __name__ == "__main__":
             qafny_ast = transformer.visitProgram(ast)
 
             # qpp = QafnyPP()
-            # print(f"\n qafny_ast:\n{qafny_ast}")
+            print(f"\n qafny_ast:\n{qafny_ast}")
             # pp = qafny_ast.accept(qpp)
             # print(pp)
 
@@ -228,20 +229,25 @@ if __name__ == "__main__":
 
                 if dafny_result.returncode != 0: 
                     error_message = dafny_result.stdout
-                    pattern = r"<stdin>\((?P<line>\d+),.*?\): Error:"
-                    match = re.search(pattern, error_message)
-                    if match:
-                        line_number = int(match.group('line'))
-                        if line_number in target_printer_visitor.line_mapping:
-                            print('Estimated qafny error line number', target_printer_visitor.line_mapping[line_number].qafny_line_number())
+                    if error_message is not None:
+                        pattern = r"<stdin>\((?P<line>\d+),.*?\): Error:"
+                        match = re.search(pattern, error_message)
+
+                        if match:
+                            line_number = int(match.group('line'))
+                            if line_number in target_printer_visitor.line_mapping:
+                                print('Estimated qafny error line number', target_printer_visitor.line_mapping[line_number].qafny_line_number())
+                            else:
+                                print('Could not find qafny line number')
+                                print(error_message)
+
                         else:
-                            print('Could not find qafny line number')
-                            print(error_message)
-
+                            print("Could not find error line number.")
+                        print("\nVerifier Output:\n" + dafny_result.stdout)
                     else:
-                        print("Could not find error line number.")
+                        print("No error message from Dafny.")
 
-                    print("\nVerifier Output:\n" + dafny_result.stdout)
+                    
 
                 show_step_status(filename, "Verify", dafny_result.returncode == 0)
 

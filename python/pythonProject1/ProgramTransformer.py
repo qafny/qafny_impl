@@ -577,7 +577,7 @@ class ProgramTransformer(ExpVisitor):
             # the end sumspec (not recursive)
             sum = self.visitMaySum(ctx.maySum())
             amp = None
-            condition = None
+        #    condition = None
             if ctx.arithExpr() is not None:
                 amp = self.visitArithExpr(ctx.arithExpr())
                 # if we have a condition, we want to extract it from the amplitude expression
@@ -586,7 +586,7 @@ class ProgramTransformer(ExpVisitor):
             
             kets = self.visitManyketpart(ctx.manyketpart())
 
-            return QXSum([sum], amp, kets, condition, ctx,line_number=ctx.start.line)
+            return QXSum([sum], amp, kets, ctx, line_number=ctx.start.line)
         elif ctx.maySum() is not None:
             # recursive sum spec, add to this sum
             this_sum = self.visitMaySum(ctx.maySum())

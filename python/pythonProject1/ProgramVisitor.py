@@ -218,7 +218,7 @@ class ProgramVisitor(AbstractProgramVisitor):
     def visitCall(self, ctx: Programmer.QXCall):
         for elem in ctx.exps():
             elem.accept(self)
-        return ctx.ids()
+        return ctx.ID()
 
     def visitCAssign(self, ctx: Programmer.QXCAssign):
         ctx.aexp().accept(self)
@@ -440,8 +440,8 @@ class ProgramVisitor(AbstractProgramVisitor):
                     e.accept(self)
             else:
                 elem.accept(self)
-        if ctx.amp():
-            ctx.amp().accept(self)
+        # if ctx.amp():
+        #     ctx.amp().accept(self)
         if ctx.range():
             ctx.range().accept(self)
         return ctx.ID()

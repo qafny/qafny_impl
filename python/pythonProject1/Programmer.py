@@ -1229,12 +1229,12 @@ class QXQState(QXTop):
 @qafny.auto.equality
 class QXTensor(QXQState):
 
-    def __init__(self, kets: [QXKet], id: str = None, crange: QXCRange = None, amp: QXAExp = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
+    def __init__(self, kets: [QXKet], id: str = None, crange: QXCRange = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
         super().__init__(parser_context=parser_context)
         self._kets = kets
         self._id = id.getText() if isAntlrNode(id) else id
         self._crange = crange
-        self._amp = amp
+#        self._amp = amp
         self._line_number = line_number
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -1249,11 +1249,11 @@ class QXTensor(QXQState):
     def kets(self):
         return self._kets
 
-    def amp(self):
-        return self._amp
+    # def amp(self):
+    #     return self._amp
 
     def __repr__(self):
-        return f"QXTensor(kets={self._kets}, id={repr(str(self._id))}, crange={self._crange}, amp={self._amp})"
+        return f"QXTensor(kets={self._kets}, id={repr(str(self._id))}, crange={self._crange})"
     
     def line_number(self):
         return self._line_number
@@ -1263,12 +1263,12 @@ class QXTensor(QXQState):
 @qafny.auto.equality
 class QXSum(QXQState):
 
-    def __init__(self, sums: [QXCon], amp: QXAExp, kets: [QXKet], condition: QXBExp = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
+    def __init__(self, sums: [QXCon], amp: QXAExp, kets: [QXKet], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
         super().__init__(parser_context=parser_context)
         self._sums = sums
         self._amp = amp
         self._kets = kets
-        self._condition = condition
+    #    self._condition = condition
         self._line_number = line_number
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -1288,7 +1288,7 @@ class QXSum(QXQState):
     #     return self._condition
 
     def __repr__(self):
-        return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets}, condition={self._condition})"
+        return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets})"
     
     def line_number(self):
         return self._line_number
