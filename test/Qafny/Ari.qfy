@@ -85,10 +85,4 @@ method DoubleH(q : Q[1]) returns (q : Q[1])
 
 
 
-
-
-
-
-
-
 // Questions
