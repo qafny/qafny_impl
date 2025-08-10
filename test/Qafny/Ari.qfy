@@ -30,7 +30,14 @@ method PauliXGeneral(q : Q[1]) returns (q : Q[1])
 
 method BellPair(q : Q[2]) returns (q : Q[2])
   requires {q[0,2) : nor ↦ |00⟩}
-  ensures {q[0,2) : en ↦ 1/sqrt(2) (|00⟩ + |11⟩)}
+  ensures {q[0,2) : en ↦ ∑ k ∈ [0, 2) . 1/sqrt(2) |kk⟩}
+  ensures {q[0,2) : en ↦ 1/sqrt(2) (|00⟩) + 1/sqrt(2) (|11⟩)}
+
+  // These versions of the above line don't work:
+  // ensures {q[0,2) : en ↦ 1/sqrt(2) ∑ k ∈ [0, 2) . |kk⟩}
+  // ensures {q[0,2) : en ↦ 1/sqrt(2) (|00⟩ + |11⟩)}
+  // It appears Qafny doesn't like statements with magnitudes factored out
+
 {
   q[0] *= H;
   if (q[0]) { q[1] *= λ (x => |(x + 1) % 2⟩); }
@@ -39,7 +46,7 @@ method BellPair(q : Q[2]) returns (q : Q[2])
 
 method GHZ(q : Q[3]) returns (q : Q[3])
   requires {q[0,3) : nor ↦ |000⟩}
-  ensures {q[0,3) : en ↦ 1/sqrt(2) (|000⟩ + |111⟩)}
+  ensures {q[0,3) : en ↦ ∑ k ∈ [0, 2) . 1/sqrt(2) |k⟩|k⟩|k⟩}
 {
   q[0] *= H;
   if (q[0]) {
@@ -48,17 +55,17 @@ method GHZ(q : Q[3]) returns (q : Q[3])
   }
 }
 
-method GHZGeneral(q : Q[n]) returns (q : Q[n])
-  requires {q[0,n) : nor ↦ ⊗ i ∈ [0,n) . |0⟩}
-  ensures {q[0,n) : en ↦ 1/sqrt(2) ((⊗ i ∈ [0,n) . |0⟩) + (⊗ i ∈ [0,n) . |1⟩))}
-{
-  q[0] *= H;
-  for i in [0, n) {
-    if (q[0]) {
-      q[i] *= λ (x => |(x + 1) % 2⟩);
-    }
-  }
-}
+//method GHZGeneral(q : Q[n]) returns (q : Q[n])
+//  requires {q[0,n) : nor ↦ ⊗ i ∈ [0,n) . |0⟩}
+//  ensures {q[0,n) : en ↦ ∑ k ∈ [0, 2) . 1/sqrt(2) ((⊗ i ∈ [0,n) . |k⟩)}
+//{
+  //q[0] *= H;
+  //for i in [0, n) {
+   // if (q[0]) {
+    //  q[i] *= λ (x => |(x + 1) % 2⟩);
+    //}
+  //}
+//}
 
 
 
