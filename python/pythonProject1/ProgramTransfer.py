@@ -544,13 +544,13 @@ class ProgramTransfer(ProgramVisitor):
 
     def genSizeMap(self):
         self.sizemap = dict()
-        print('self.varnums', self.varnums)
+    #    print('self.varnums', self.varnums)
         for locus, qty, var_num in self.varnums:          
             for elem in locus:
                 v = self.calRange(elem.crange())
                 print('genSizeMap', elem.location(), var_num.get(elem.location()), v)
                 self.sizemap.update({(elem.location(), var_num.get(elem.location())):v})
-        print('sizemap', self.sizemap)
+    #    print('sizemap', self.sizemap)
 
 
     def genArgs(self, binds):
@@ -828,10 +828,10 @@ class ProgramTransfer(ProgramVisitor):
         self.fkenv = self.kenv.get(self.fvar)
         self.ftenvp = self.tenv.get(self.fvar)[0]
         self.ftenvr = self.tenv.get(self.fvar)[1]
-        print('ftenvp', self.ftenvp)
-        print('ftenvr', self.ftenvr)
+        print('ftenvp in method:\n', self.ftenvp)
+        print('ftenvr in method:\n', self.ftenvr)
         self.varnums = self.genVarNumMap(self.ftenvp)
-        print('self.varnums', self.varnums)
+        print('self.varnums in method:\n', self.varnums)
         self.outvarnums = self.genVarNumMap(self.ftenvr)
 #        self.genSizeMap()
         self.current_line = ctx.line_number()
@@ -858,7 +858,7 @@ class ProgramTransfer(ProgramVisitor):
             if isinstance(condelem, QXRequires):
                 self.current_line = condelem.line_number()
                 tmpcond.extend(condelem.accept(self))
-        print('tmpcond after requires', tmpcond)
+        print('tmpcond after requires:\n', tmpcond)
 
         self.current_line = ctx.line_number()
         # add predicates existing from the type environment
@@ -1784,75 +1784,85 @@ class ProgramTransfer(ProgramVisitor):
     def visitEn(self, ctx: Programmer.TyEn):
         super().visitEn(ctx)
 
-    def visitQSpec(self, ctx: Programmer.QXQSpec):
-        preds = []
+    def visitQSpec(self, ctx: QXQSpec):
+        
         env = self.outvarnums if self.t_ensures else self.varnums
         res = subLocus(ctx.locus(), env)
         if not res:
             return []
         loc,qty,varbind = res
-       
-        #shape predicates
-        if isinstance(qty, (TyNor, TyHad)):
-            for elem in loc:
-                bind = varbind.get(elem.location())
-                if bind:
-                    qrange = elem.crange().right().accept(self)
-                    preds.append(DXComp(">", qrange, DXNum(0), line=ctx.line_number()))
-                    preds.append(DXComp("==", DXLength(bind), qrange, line=ctx.line_number()))
         
-        elif isinstance(qty, TyEn):
-            n = qty.flag().num()
-            if ctx.states() and isinstance(ctx.states()[0], QXSum):
-                sum_vars = ctx.states()[0].sums()
-                def _wrap_in_foralls(body, iterators, range_checks):
-                    """Helper to wrap an assertion in nested foralls."""
-                    nested_forall = body
-                    for i in range(len(iterators) - 1, -1, -1):
-                        nested_forall = DXAll(iterators[i], DXLogic("==>", range_checks[i], nested_forall, line=self.current_line), line=self.current_line)
-                    return nested_forall
-                 # A single loop to handle all n+1 dimensions
-            for i in range(n + 1):
-                iterators = [DXBind(sum_vars[j].ID(), SType("nat")) for j in range(i)]
-                range_checks = [DXInRange(it, DXNum(0), sv.range().right().accept(self)) for it, sv in zip(iterators, sum_vars)]
-                
-                for var, dvar in varbind.items():
-                    is_amp = (var == 'amp')                   
-                    # Amplitudes are n-dimensional, basis vectors are (n+1)-dimensional.
-                    # Skip this iteration if the variable is not deep enough.
-                    if is_amp and i >= n:
-                        continue
-                    for it in iterators:
-                        dvar = DXIndex(dvar, it)
-                    
-                    # Determine the correct bound for this dimension's length assertion.
-                    if i < n:
-                        bound = sum_vars[i].range().right().accept(self)
-                    else: # Innermost dimension for basis vectors
-                        qrange = None
-                        for r in loc:
-                            if r.location() == var:
-                                qrange = r.crange().right().accept(self)
-                                break
-                        bound = qrange                   
-                    if bound:
-                        len_pred = DXComp("==", DXLength(dvar), bound, line=self.current_line)
-                        preds.append(_wrap_in_foralls(len_pred, iterators, range_checks))
-        
-        elif isinstance(qty, TyAA): 
-            pass
-                
-        #value predicates
-        self.currBinds = varbind #for use in children nodes
-        for i in ctx.states():
-            result = i.accept(self)
-            if isinstance(result, list):
-                preds.extend(result)
-            else:
-                preds.append(result)
+        preds = []
 
-        print('\nqspec preds', preds, '\n')
-        return preds
+        for st in ctx.states():
+            if isinstance(st, QXSum):
+                preds.extend(self.visitSum(st, loc, qty, varbind))
+            elif isinstance(st, QXTensor):
+                preds.extend(self.visitTensor(st, loc, qty, varbind))
+        
+        return [DXRequires(p, line=ctx.line_number()) if not self.t_ensures else DXEnsures(p, line=ctx.line_number()) for p in preds]
+       
+        # #shape predicates
+        # if isinstance(qty, (TyNor, TyHad)):
+        #     for elem in loc:
+        #         bind = varbind.get(elem.location())
+        #         if bind:
+        #             qrange = elem.crange().right().accept(self)
+        #             preds.append(DXComp(">", qrange, DXNum(0), line=ctx.line_number()))
+        #             preds.append(DXComp("==", DXLength(bind), qrange, line=ctx.line_number()))
+        
+        # elif isinstance(qty, TyEn):
+        #     n = qty.flag().num()
+        #     if ctx.states() and isinstance(ctx.states()[0], QXSum):
+        #         sum_vars = ctx.states()[0].sums()
+        #         def _wrap_in_foralls(body, iterators, range_checks):
+        #             """Helper to wrap a pred in nested foralls."""
+        #             nested_forall = body
+        #             for i in range(len(iterators) - 1, -1, -1):
+        #                 nested_forall = DXAll(iterators[i], DXLogic("==>", range_checks[i], nested_forall, line=self.current_line), line=self.current_line)
+        #             return nested_forall
+        #          # A single loop to handle all n+1 dimensions
+        #     for i in range(n + 1):
+        #         iterators = [DXBind(sum_vars[j].ID(), SType("nat")) for j in range(i)]
+        #         range_checks = [DXInRange(it, DXNum(0), sv.range().right().accept(self)) for it, sv in zip(iterators, sum_vars)]
+                
+        #         for var, dvar in varbind.items():
+        #             is_amp = (var == 'amp')                   
+        #             # Amplitudes are n-dimensional, basis vectors are (n+1)-dimensional.
+        #             # Skip this iteration if the variable is not deep enough.
+        #             if is_amp and i >= n:
+        #                 continue
+        #             for it in iterators:
+        #                 dvar = DXIndex(dvar, it)
+                    
+        #             # Determine the correct bound for this dimension's length assertion.
+        #             if i < n:
+        #                 bound = sum_vars[i].range().right().accept(self)
+        #             else: # Innermost dimension for basis vectors
+        #                 qrange = None
+        #                 for r in loc:
+        #                     if r.location() == var:
+        #                         qrange = r.crange().right().accept(self)
+        #                         break
+        #                 bound = qrange                   
+        #             if bound:
+        #                 len_pred = DXComp("==", DXLength(dvar), bound, line=self.current_line)
+        #                 preds.append(_wrap_in_foralls(len_pred, iterators, range_checks))
+        
+        # elif isinstance(qty, TyAA): 
+        #     pass
+                
+        # #value predicates
+        # self.currBinds = varbind #for use in children nodes
+        # for i in ctx.states():
+        #     result = i.accept(self)
+        #     if isinstance(result, list):
+        #         preds.extend(result)
+        #     else:
+        #         preds.append(result)
+
+        # print('\nqspec preds', preds, '\n')
+        # return preds
 
 
     def visitAA(self, ctx: Programmer.TyAA):
@@ -1864,88 +1874,163 @@ class ProgramTransfer(ProgramVisitor):
     def visitVKet(self, ctx: Programmer.QXVKet):
         return ctx.vector().accept(self)
 
-    def visitTensor(self, ctx: Programmer.QXTensor):
+    def visitTensor(self, ctx:QXTensor, loc:[QXQRange], qty:QXQTy, varbind:dict):
         """
         Translates a QXTensor specification into Dafny assertions.
         This is used for simple, non-superposition states (TyNor and TyHad).
-        """
-        
-          
+        """          
         if ctx.ID() is None:
-            x = DXBind("tmp", SType("nat"), self.counter)
-            self.counter += 1
+            x = DXBind("i", SType("nat"))
         else:
             x = DXBind(str(ctx.ID()))
 
         tmp = []
-        print('\nself.currBinds in tensor', self.currBinds)
-        vars = [x for x in self.currBinds if x != 'amp'] 
 
-        # if self.t_ensures:
-        #     r = subLocus(self.locus, self.outvarnums)
-        # else:
-        #     r = subLocus(self.locus, self.varnums)
+        #shape predicates
+        for elem in loc:
+            dvar = varbind.get(elem.location())
+            if dvar:
+                qcount = elem.crange().right().accept(self)
+                tmp.append(DXComp(">", qcount, DXNum(0), line=ctx.line_number()))
 
-        for i in range(len(vars)):
-            v = ctx.kets()[i].accept(self)
-            x = DXBind(ctx.ID(), SType("nat"))
-            print('\nvar, v in tensor', vars[i], v)
-            if isinstance(v, DXNum):
-                tmp += [DXAll(x, DXLogic("==>", DXInRange(x, DXNum(0), ctx.range().right()), DXComp("==", DXIndex(v, x), v)), line=ctx.line_number())]
+        #value predicates 
+        for i, ket in enumerate(ctx.kets()):
+            var = loc[i].location()
+            dvar = varbind.get(var)
+            if not dvar: continue
+
+            ket_val = ket.accept(self)
+            qcount = loc[i].crange().right().accept(self)
+            drange = DXInRange(x, DXNum(0), qcount, line=ctx.line_number())
+
+            body = DXComp("==", DXIndex(dvar, x), ket_val, line=ctx.line_number())
+
+            if body:
+                tmp.append(DXAll(x, DXLogic("==>", drange, body), line=ctx.line_number()))    
         
         return tmp
 
 
-    def visitSum(self, ctx: Programmer.QXSum):
+    def visitSum(self, ctx: QXSum, loc:[QXQRange], qty:TyEn, varbind:dict):
+        """
+        Translates a QXSum specification into a complete list of Dafny predicates,
+        including both structural (shape) and logical (value) predicates.
+        """
+
         tmp = []
-#        print('self.currBinds', self.currBinds)
-        vars = [x for x in self.currBinds if x != 'amp']
-#        print('\nvars in sum', vars)
-#        tmp_current_line = self.current_line
-        self.current_line = ctx.line_number()
-        for i in range(len(vars)):
-            v = ctx.kets()[i].accept(self)
-            eq = DXComp("==",DXCall('castBVInt', [makeIndex(vars[i], ctx.sums())]),v, line=ctx.line_number())
-#            print('\neq in sum', eq)
-            self.libFuns.add('castBVInt')
-            for con in ctx.sums()[::-1]:
-                x = DXBind(con.ID(), SType("nat"))
-                arange = DXInRange(x, con.range().left().accept(self), con.range().right().accept(self), line=ctx.line_number())
-                if con.condition():
-                    arange = DXBin('&&', arange, con.condition().accept(self))
-                eq = DXAll(x, DXLogic("==>",arange,eq), line=ctx.line_number())
-            tmp += [eq]
-#        print('\ntmp in sum', tmp)
+        n = qty.flag().num()
+        sum_vars = ctx.sums()
 
-#        num = self.qvars[0].num()
-#        ampvar = makeIndex(DXBind("amp", SType("real"), num),ctx.sums())
-        ampvar = makeIndex(self.currBinds.get('amp'), ctx.sums())
-        v = ctx.amp().accept(self)
-        eq = DXComp("==", ampvar, v, line=ctx.line_number())
-        for con in ctx.sums()[::-1]:
-            x = DXBind(con.ID(), SType("nat"))
-            arange = DXInRange(x, con.range().left().accept(self), con.range().right().accept(self), line=ctx.line_number())
-            if con.condition():
-                    arange = DXBin('&&', arange, con.condition().accept(self))
-            eq = DXAll(x, DXLogic("==>", arange, eq), line=ctx.line_number())
-
-        if not self.t_ensures:
-            loc, qty, num = subLocus(self.locus, self.varnums)
-            ampl = None
-            if isinstance(qty, TyEn):
-                ampl = v
-            for i in range(len(loc)):
-                subd = {}
-                v = ctx.kets()[i].accept(self)
-                subd['qty'] = qty
-                subd['val'] = v
-                subd['length'] = loc[i].crange().right().ID() if isinstance(loc[i].crange().right(), QXBind) else loc[i].crange().right().num()
-                subd['amp'] = ampl
-                toString = TargetToString()
-                self.initial_locus_data[loc[i].location() + loc[i].crange().left().accept(toString) + ',' + loc[i].crange().right().accept(toString)] = subd
+        def _warp_in_foralls(body, iterators):
+            """Helper to wrap a pred in nested foralls."""
+            nested_forall = body
+            for i in range(len(iterators) - 1, -1, -1):
+                drange = DXInRange(iterators[i], sum_vars[i].range().left().accept(self), sum_vars[i].range().right().accept(self), line=self.current_line)
+                if sum_vars[i].condition():
+                    drange = DXBin('&&', drange, sum_vars[i].condition().accept(self))
+                nested_forall = DXAll(iterators[i], DXLogic("==>", drange, nested_forall, line=self.current_line), line=self.current_line)
+            return nested_forall
         
-#        self.current_line = tmp_current_line
-        return ([eq]+tmp)
+        # Shape predicates
+        for i in range(n + 1):
+            iterators = [DXBind(sum_vars[j].ID(), SType("nat")) for j in range(i)]
+
+            for var, dvar in varbind.items():
+                is_amp = (var == 'amp')
+                if is_amp and i >= n:
+                    continue
+                for it in iterators:
+                    dvar = DXIndex(dvar, it)
+                # Determine the correct bound for this dimension's length assertion.
+                if i < n:
+                    bound = sum_vars[i].range().right().accept(self)
+                else: # Innermost dimension for basis vectors
+                    qrange = next((r for r in loc if r.location() == var), None)
+                    bound = qrange.crange().right().accept(self) if qrange else None
+                if bound:
+                    len_pred = DXComp("==", DXLength(dvar), bound)
+                    tmp.append(_warp_in_foralls(len_pred, iterators))
+
+        # Value predicates
+        var_ket = {loc[i].location(): ket for i, ket in enumerate(ctx.kets())}   
+        for var, dvar in varbind.items():
+            if var == 'amp':
+                continue
+            ket = var_ket.get(var)
+            if ket is None:
+                continue
+            idx = ket.accept(self)
+            eq = DXComp("==", DXCall('castBVInt', [makeIndex(dvar, sum_vars)]), idx, line=ctx.line_number())
+            self.libFuns.add('castBVInt')
+            tmp.append(_warp_in_foralls(eq, [DXBind(sv.ID(), SType("nat"), line=ctx.line_number()) for sv in sum_vars]))
+
+        # Amplitude predicate
+        ampvar = varbind.get('amp')
+        if ampvar:
+            amp_val = ctx.amp().accept(self)
+            idx_amp = makeIndex(ampvar, sum_vars)
+            body = DXComp("==", idx_amp, amp_val, line=ctx.line_number())
+            tmp.append(_warp_in_foralls(body, [DXBind(sv.ID(), SType("nat"), line=ctx.line_number()) for sv in sum_vars]))
+        
+        return tmp
+
+            
+
+
+
+
+
+
+
+
+# #        print('self.currBinds', self.currBinds)
+#         vars = [x for x in self.currBinds if x != 'amp']
+# #        print('\nvars in sum', vars)
+# #        tmp_current_line = self.current_line
+#         self.current_line = ctx.line_number()
+#         for i in range(len(vars)):
+#             v = ctx.kets()[i].accept(self)
+#             eq = DXComp("==",DXCall('castBVInt', [makeIndex(vars[i], ctx.sums())]),v, line=ctx.line_number())
+# #            print('\neq in sum', eq)
+#             self.libFuns.add('castBVInt')
+#             for con in ctx.sums()[::-1]:
+#                 x = DXBind(con.ID(), SType("nat"))
+#                 arange = DXInRange(x, con.range().left().accept(self), con.range().right().accept(self), line=ctx.line_number())
+#                 if con.condition():
+#                     arange = DXBin('&&', arange, con.condition().accept(self))
+#                 eq = DXAll(x, DXLogic("==>",arange,eq), line=ctx.line_number())
+#             tmp += [eq]
+# #        print('\ntmp in sum', tmp)
+
+# #        num = self.qvars[0].num()
+# #        ampvar = makeIndex(DXBind("amp", SType("real"), num),ctx.sums())
+#         ampvar = makeIndex(self.currBinds.get('amp'), ctx.sums())
+#         v = ctx.amp().accept(self)
+#         eq = DXComp("==", ampvar, v, line=ctx.line_number())
+#         for con in ctx.sums()[::-1]:
+#             x = DXBind(con.ID(), SType("nat"))
+#             arange = DXInRange(x, con.range().left().accept(self), con.range().right().accept(self), line=ctx.line_number())
+#             if con.condition():
+#                     arange = DXBin('&&', arange, con.condition().accept(self))
+#             eq = DXAll(x, DXLogic("==>", arange, eq), line=ctx.line_number())
+
+#         if not self.t_ensures:
+#             loc, qty, num = subLocus(self.locus, self.varnums)
+#             ampl = None
+#             if isinstance(qty, TyEn):
+#                 ampl = v
+#             for i in range(len(loc)):
+#                 subd = {}
+#                 v = ctx.kets()[i].accept(self)
+#                 subd['qty'] = qty
+#                 subd['val'] = v
+#                 subd['length'] = loc[i].crange().right().ID() if isinstance(loc[i].crange().right(), QXBind) else loc[i].crange().right().num()
+#                 subd['amp'] = ampl
+#                 toString = TargetToString()
+#                 self.initial_locus_data[loc[i].location() + loc[i].crange().left().accept(toString) + ',' + loc[i].crange().right().accept(toString)] = subd
+        
+# #        self.current_line = tmp_current_line
+#         return ([eq]+tmp)
 
     def visitLogic(self, ctx: Programmer.QXLogic):
         left = ctx.left().accept(self)
