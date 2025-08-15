@@ -1,12 +1,23 @@
 // --------------------------- LOGIC GATES -------------------------------------
 
 
-method Hadamard(q : Q[1]) returns (q : Q[1])
+method HadamardZero(q : Q[1]) returns (q : Q[1])
   requires {q[0] : nor ↦ |0⟩}
   ensures {q[0] : had ↦ |+⟩}
 {
   q[0] *= H;
 }
+
+// Note: Omega(x,y) is the xth root of unity for root y.
+// ie, omega(x,y)=exp(2πix/y)
+
+method HadamardGeneral(q : Q[1], a : real, b : real) returns (q : Q[1])
+  requires {q[0] : had ↦ a|0⟩ + b|1⟩}
+  ensures {q[0] : had ↦ (a+b)/sqrt(2)|0⟩ + (a-b)/sqrt(2)|1⟩}
+{
+  q[0] *= H;
+}
+
 
 
 method PauliX(q : Q[1]) returns (q : Q[1])
@@ -17,8 +28,8 @@ method PauliX(q : Q[1]) returns (q : Q[1])
 }
 
 
-method PauliXGeneral(q : Q[1]) returns (q : Q[1])
-  requires {q[0] : nor ↦ |0⟩}
+method PauliXGeneral(q : Q[1], x : nat) returns (q : Q[1])
+  requires {q[0] : nor ↦ |x⟩}
   ensures {q[0] : had ↦ i|1⟩}
 {
   // Want: a|0> + b|1> maps to a|1> + b|0>.
@@ -79,6 +90,16 @@ method DoubleH(q : Q[1]) returns (q : Q[1])
   q[0] *= H;
   q[0] *= H;
 }
+
+// Reverse a QFT
+
+
+// -------------------- QUANTUM FOURIER TRANSFORM ------------------------------
+
+
+// Do a QFT on 
+
+// Apply one, check if it's as described in the paper
 
 
 
