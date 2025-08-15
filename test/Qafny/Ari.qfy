@@ -91,13 +91,18 @@ method DoubleH(q : Q[1]) returns (q : Q[1])
   q[0] *= H;
 }
 
-// Reverse a QFT
+// Doesn't compile
+method QFTInvertability(q : Q[n]) returns (q : Q[n])
+  requires {q[0,n) : nor ↦ |0⟩}
+  ensures {q[0,n) : nor ↦ ⊗ i ∈ [0,n) . |0⟩}
+{
+  q[0,n) *= QFT;
+  q[0,n) *= RQFT;
+}
+
 
 
 // -------------------- QUANTUM FOURIER TRANSFORM ------------------------------
-
-
-// Do a QFT on 
 
 // Apply one, check if it's as described in the paper
 
