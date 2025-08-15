@@ -1,6 +1,7 @@
 // --------------------------- LOGIC GATES -------------------------------------
 
 
+// Works.
 method HadamardZero(q : Q[1]) returns (q : Q[1])
   requires {q[0] : nor ↦ |0⟩}
   ensures {q[0] : had ↦ |+⟩}
@@ -8,9 +9,7 @@ method HadamardZero(q : Q[1]) returns (q : Q[1])
   q[0] *= H;
 }
 
-// Note: Omega(x,y) is the xth root of unity for root y.
-// ie, omega(x,y)=exp(2πix/y)
-
+// Doesn't compile
 method HadamardGeneral(q : Q[1], a : real, b : real) returns (q : Q[1])
   requires {q[0] : had ↦ a|0⟩ + b|1⟩}
   ensures {q[0] : had ↦ (a+b)/sqrt(2)|0⟩ + (a-b)/sqrt(2)|1⟩}
@@ -18,8 +17,7 @@ method HadamardGeneral(q : Q[1], a : real, b : real) returns (q : Q[1])
   q[0] *= H;
 }
 
-
-
+// Compiles, doesn't verify, since "castBVInt(q6)" generates instead of "castBVInt(q7)"
 method PauliX(q : Q[1]) returns (q : Q[1])
   requires {q[0] : nor ↦ |0⟩}
   ensures {q[0] : nor ↦ |1⟩}
@@ -106,4 +104,5 @@ method DoubleH(q : Q[1]) returns (q : Q[1])
 
 
 
-// Questions
+// Notes:
+// - Omega(x,y) is the xth root of unity for root y, ie, omega(x,y)=exp(2πix/y)
