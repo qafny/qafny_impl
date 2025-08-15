@@ -1,7 +1,7 @@
 // --------------------------- LOGIC GATES -------------------------------------
 
 
-// Works.
+// Works
 method HadamardZero(q : Q[1]) returns (q : Q[1])
   requires {q[0] : nor ↦ |0⟩}
   ensures {q[0] : had ↦ |+⟩}
@@ -17,6 +17,17 @@ method HadamardGeneral(q : Q[1], a : real, b : real) returns (q : Q[1])
   q[0] *= H;
 }
 
+// Doesn't Compile
+method HadamardArray(q : Q[n]) returns (q : Q[n])
+  requires {q[0,n) : nor ↦ ⊗ i ∈ [0,n) . |0⟩}
+  ensures {q[0,n) : had ↦ ⊗ i ∈ [0,n) . |+⟩}
+{
+  for i in [0, k)
+  {
+    q[i] *= H;
+  }
+}
+
 // Compiles, doesn't verify, since "castBVInt(q6)" generates instead of "castBVInt(q7)"
 method PauliX(q : Q[1]) returns (q : Q[1])
   requires {q[0] : nor ↦ |0⟩}
@@ -25,7 +36,7 @@ method PauliX(q : Q[1]) returns (q : Q[1])
   q[0] *= λ (x => |(x + 1) % 2⟩);   // Not general - only works for nor types.
 }
 
-
+// ??
 method PauliXGeneral(q : Q[1], x : nat) returns (q : Q[1])
   requires {q[0] : nor ↦ |x⟩}
   ensures {q[0] : had ↦ i|1⟩}
@@ -37,9 +48,10 @@ method PauliXGeneral(q : Q[1], x : nat) returns (q : Q[1])
 
 // ---------------------- STATE CONSTRUCTION -----------------------------------
 
+
+// Doesn't compile
 method BellPair(q : Q[2]) returns (q : Q[2])
   requires {q[0,2) : nor ↦ |00⟩}
-  ensures {q[0,2) : en ↦ ∑ k ∈ [0, 2) . 1/sqrt(2) |kk⟩}
   ensures {q[0,2) : en ↦ 1/sqrt(2) (|00⟩) + 1/sqrt(2) (|11⟩)}
 
   // These versions of the above line don't work:
@@ -53,34 +65,24 @@ method BellPair(q : Q[2]) returns (q : Q[2])
 }
 
 
-method GHZ(q : Q[3]) returns (q : Q[3])
-  requires {q[0,3) : nor ↦ |000⟩}
-  ensures {q[0,3) : en ↦ ∑ k ∈ [0, 2) . 1/sqrt(2) |k⟩|k⟩|k⟩}
+// Doesn't compile
+method GHZGeneral(q : Q[n]) returns (q : Q[n])
+  requires {q[0,n) : nor ↦ ⊗ i ∈ [0,n) . |0⟩}
+  ensures {q[0,n) : en ↦ ∑ k ∈ [0, 2) . 1/sqrt(2) (⊗ i ∈ [0,n) . |k⟩)}
 {
   q[0] *= H;
-  if (q[0]) {
-    q[1] *= λ (x => |(x + 1) % 2⟩);
-    q[2] *= λ (x => |(x + 1) % 2⟩);
+  for i in [0, n) {
+    if (q[0]) {
+      q[i] *= λ (x => |(x + 1) % 2⟩);
+    }
   }
 }
-
-//method GHZGeneral(q : Q[n]) returns (q : Q[n])
-//  requires {q[0,n) : nor ↦ ⊗ i ∈ [0,n) . |0⟩}
-//  ensures {q[0,n) : en ↦ ∑ k ∈ [0, 2) . 1/sqrt(2) ((⊗ i ∈ [0,n) . |k⟩)}
-//{
-  //q[0] *= H;
-  //for i in [0, n) {
-   // if (q[0]) {
-    //  q[i] *= λ (x => |(x + 1) % 2⟩);
-    //}
-  //}
-//}
 
 
 
 // ------------------------- REVERSIBILITY -------------------------------------
 
-// Apply the hadamard gate twice to return to the inital state
+// Doesn't compile
 method DoubleH(q : Q[1]) returns (q : Q[1])
   requires {q[0] : nor ↦ |0⟩}
   ensures {q[0] : nor ↦ |0⟩}
