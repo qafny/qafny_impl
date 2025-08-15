@@ -45,6 +45,15 @@ method PauliXGeneral(q : Q[1], x : nat) returns (q : Q[1])
   // Is this possible?
 }
 
+// Works
+method PhaseShift(q : Q[1], k : nat, x : real, y : real) returns (q : Q[1])
+  requires {q[0] : nor ↦ |k⟩}
+  ensures {q[0] : nor ↦ ω(x, y)|k⟩}
+{
+  q[0] *= λ (x => ω(x, y)|x⟩);
+}
+
+
 
 // ---------------------- STATE CONSTRUCTION -----------------------------------
 
