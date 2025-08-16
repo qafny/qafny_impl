@@ -113,7 +113,22 @@ method QFTInvertability(q : Q[n]) returns (q : Q[n])
 
 // -------------------- QUANTUM FOURIER TRANSFORM ------------------------------
 
-// Apply one, check if it's as described in the paper
+// Doesn't Compile
+method QFourierTransform(q : Q[n]) returns (q : Q[n])
+  // This isn't general... how can i specify conditions for any qubit arbitrary precondition
+  // (not just |0> or |k>) and ensure it's correct?
+  requires {q[0,n) : nor ↦ |0⟩}
+  ensures {q[0,n) : had ↦ 1/sqrt(2)|0⟩ + 1/sqrt(2)|1⟩}
+{
+  for i in [0,n) {
+    q[i] *= H;
+    for j in [i+1,n) {
+      if (q[i]) {
+        q[j] *= λ (x => ω(1, 2^(j-i+1))|x⟩);
+      }
+    }
+  }
+}
 
 
 
