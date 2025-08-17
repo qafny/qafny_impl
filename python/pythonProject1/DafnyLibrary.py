@@ -30,7 +30,8 @@ class DafnyLibrary:
                 ensures abs(n) == if n >= 0 then n else -n''',
 
     'powN' : '''function {:axiom} powN(N:nat, k: nat) : int
-                    ensures powN(N, k) > 0''',
+                    ensures powN(N, k) > 0
+                    ensures powN(N, k) == if k == 0 then 1 else N * powN(N, k - 1)''',
     'powNTimesMod' : '''lemma {:axiom} powNTimesMod()
           ensures forall k: nat, j: nat, l : nat, N:nat {:trigger powN(k, j) * (powN(k, l) % N)}:: N > 0 ==> powN(k, j) * (powN(k, l) % N) % N == powN(k, j + l) % N''',
 
