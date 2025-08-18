@@ -172,7 +172,7 @@ class TargetProgramVisitor(AbstractTargetVisitor):
         return ctx.op()
 
     def visitNum(self, ctx: TargetProgrammer.DXNum):
-        return ctx.num()
+        return ctx.val()
 
     def visitReal(self, ctx: TargetProgrammer.DXReal):
         return ctx.real()

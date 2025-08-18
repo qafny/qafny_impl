@@ -269,8 +269,8 @@ class QXQExp(QXTop):
 class QXHad(QXQExp):
     '''A hadmard state (+ or -)'''
 
-    def __init__(self, state: str, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, state: str , line_number = None):
+         
         self._state = state.getText() if isAntlrNode(state) else state
         self._line_number = line_number
 
@@ -300,8 +300,8 @@ class TyArray(QXType):
     Represents the array type, which contains an inner type and potentially a size.
     '''
 
-    def __init__(self, type: QXType, flag: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, type: QXType, flag: QXAExp , line_number = None):
+         
         self._type = type
         self._flag = flag
         self._line_number = line_number
@@ -333,8 +333,8 @@ class TySet(QXType):
     Represents a set in Qafny: set<xxx>, directly analogous to a Dafny set.
     '''
 
-    def __init__(self, type: QXType, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, type: QXType , line_number = None):
+         
         self._type = type
         self._line_number = line_number
 
@@ -358,8 +358,8 @@ class TySingle(QXType):
     Represents non-quantum types as a string indicating the type. i.e. 'nat' or 'bool'
     '''
 
-    def __init__(self, name: str, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, name: str , line_number = None):
+         
         self._name = name.getText() if isAntlrNode(name) else name
         self._line_number = line_number
 
@@ -383,8 +383,8 @@ class TyQ(QXType):
     Represents the q-bit string type.
     '''
 
-    def __init__(self, flag: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, flag: QXAExp , line_number = None):
+         
         self._flag = flag
         self._line_number = line_number
 
@@ -408,8 +408,8 @@ class TyFun(QXType):
     Represents a function type, which has a number of parameters and a single return type.
     '''
 
-    def __init__(self, parameters: [QXType], return_type: QXType, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, parameters: [QXType], return_type: QXType , line_number = None):
+         
         self._parameters = parameters
         self._return_type = return_type
         self._line_number = line_number
@@ -458,8 +458,8 @@ class TyHad(QXQTy):
 @qafny.auto.equality
 class TyEn(QXQTy):
 
-    def __init__(self, flag: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, flag: QXAExp , line_number = None):
+         
         self._flag = flag
         self._line_number = line_number
 
@@ -481,8 +481,8 @@ class TyEn(QXQTy):
 @qafny.auto.equality
 class TyAA(QXQTy):
 
-    def __init__(self, flag: QXAExp, qrange = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, flag: QXAExp, qrange = None , line_number = None):
+         
         self._flag = flag
         self._qrange = qrange
         self._line_number = line_number
@@ -542,8 +542,8 @@ class QXCond(QXTop):
 @qafny.auto.equality
 class QXBind(QXAExp):
 
-    def __init__(self, id: str, type: QXType = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, id: str, type: QXType = None , line_number = None):
+         
         self._id = coerceStr(id)
         self._type = type
         self._line_number = line_number
@@ -575,8 +575,8 @@ class QXBool(QXBExp, QXSpec):
 @qafny.auto.equality
 class QXLogic(QXBool):
 
-    def __init__(self, op: str, left: QXBool, right: QXBool, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, op: str, left: QXBool, right: QXBool , line_number = None):
+         
         self._op = op.getText() if isAntlrNode(op) else op
         self._left = left
         self._right = right
@@ -605,8 +605,8 @@ class QXLogic(QXBool):
 @qafny.auto.equality
 class QXCNot(QXBool):
 
-    def __init__(self, next: QXBool, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, next: QXBool , line_number = None):
+         
         self._next = next
         self._line_number = line_number
 
@@ -627,8 +627,8 @@ class QXCNot(QXBool):
 @qafny.auto.equality
 class QXComp(QXBool):
 
-    def __init__(self, op: str, left: QXAExp, right: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, op: str, left: QXAExp, right: QXAExp , line_number = None):
+         
         self._op = op.getText() if isAntlrNode(op) else op
         self._left = left
         self._right = right
@@ -657,8 +657,8 @@ class QXComp(QXBool):
 @qafny.auto.equality
 class QXAll(QXSpec):
 
-    def __init__(self, bind: QXBind, bounds: QXComp, next: QXSpec, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, bind: QXBind, bounds: QXComp, next: QXSpec , line_number = None):
+         
         self._bind = bind
         self._bounds = bounds
         self._next = next
@@ -693,8 +693,8 @@ class QXQBool(QXBExp):
 @qafny.auto.equality
 class QXQIndex(QXQBool, QXAExp):
 
-    def __init__(self, id: str, index: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, id: str, index: QXAExp , line_number = None):
+         
         self._id = id.getText() if isAntlrNode(id) else id
         self._index = index
         self._line_number = line_number
@@ -719,8 +719,8 @@ class QXQIndex(QXQBool, QXAExp):
 @qafny.auto.equality
 class QXIfExp(QXAExp):
 
-    def __init__(self, bexp: QXBExp, left: QXAExp, right: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, bexp: QXBExp, left: QXAExp, right: QXAExp , line_number = None):
+         
         self._bexp = bexp
         self._left = left
         self._right = right
@@ -746,8 +746,8 @@ class QXIfExp(QXAExp):
 @qafny.auto.equality
 class QXBin(QXAExp):
 
-    def __init__(self, op: str, left: QXAExp, right: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, op: str, left: QXAExp, right: QXAExp , line_number = None):
+         
         self._op = op.getText() if isAntlrNode(op) else op
         self._left = left
         self._right = right
@@ -775,8 +775,7 @@ class QXBin(QXAExp):
 @qafny.auto.equality
 class QXCRange(QXTop):
 
-    def __init__(self, left: QXAExp, right: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, left: QXAExp, right: QXAExp , line_number = None):    
         self._left = left
         self._right = right
         self._line_number = line_number
@@ -811,8 +810,8 @@ class QXCRange(QXTop):
 @qafny.auto.equality
 class QXQRange(QXTop):
 
-    def __init__(self, location: str, index: QXAExp = None, crange: QXCRange = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, location: str, index: QXAExp = None, crange: QXCRange = None , line_number = None):
+         
         self._location = location
         self._index = index
         self._crange = crange
@@ -844,8 +843,8 @@ class QXQRange(QXTop):
 @qafny.auto.equality
 class QXCon(QXTop):
 
-    def __init__(self, id: str, crange: QXCRange, condition: QXBExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, id: str, crange: QXCRange, condition: QXBExp , line_number = None):
+         
         self._id = id.getText() if isAntlrNode(id) else id
         self._crange = crange
         self._condition = condition
@@ -874,8 +873,8 @@ class QXCon(QXTop):
 @qafny.auto.equality
 class QXUni(QXAExp):
 
-    def __init__(self, op: str, next:QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, op: str, next:QXAExp , line_number = None):
+         
         self._op = op.getText() if isAntlrNode(op) else op
         self._next = next
         self._line_number = line_number
@@ -903,8 +902,8 @@ class QXNum(QXAExp):
     Represents a number literal. Can either be an integer number or a float.
     '''
 
-    def __init__(self, num: Union[float, int], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, num: Union[float, int] , line_number = None):
+         
         self._num = num
         self._line_number = line_number
 
@@ -925,8 +924,8 @@ class QXNum(QXAExp):
 @qafny.auto.equality
 class QXBoolLiteral(QXBool):
 
-    def __init__(self, value: bool, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, value: bool , line_number = None):
+         
         self._value = value
         self._line_number = line_number
 
@@ -947,8 +946,8 @@ class QXBoolLiteral(QXBool):
 @qafny.auto.equality
 class QXSet(QXAExp):
 
-    def __init__(self, members: [QXAExp], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, members: [QXAExp] , line_number = None):
+         
         self._members = members
         self._line_number = line_number
 
@@ -978,8 +977,8 @@ class QXMemberAccess(QXAExp):
     ╰────────────────────────╯
     '''
 
-    def __init__(self, ids: [str], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, ids: [str] , line_number = None):
+         
         self._ids = ids
         self._line_number = line_number
 
@@ -1000,8 +999,8 @@ class QXMemberAccess(QXAExp):
 @qafny.auto.equality
 class QXNegation(QXAExp):
 
-    def __init__(self, aexp: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, aexp: QXAExp , line_number = None):
+         
         self._aexp = aexp
         self._line_number = line_number
 
@@ -1022,8 +1021,8 @@ class QXNegation(QXAExp):
 @qafny.auto.equality
 class QXSumAExp(QXAExp):
 
-    def __init__(self, sum: QXCon, aexp: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, sum: QXCon, aexp: QXAExp , line_number = None):
+         
         self._sum = sum
         self._aexp = aexp
         self._line_number = line_number
@@ -1048,8 +1047,8 @@ class QXSumAExp(QXAExp):
 @qafny.auto.equality
 class QXQComp(QXQBool):
 
-    def __init__(self, op: str, left:QXAExp, right: QXAExp, index: QXQIndex, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, op: str, left:QXAExp, right: QXAExp, index: QXQIndex , line_number = None):
+         
         self._op = op.getText() if isAntlrNode(op) else op
         self._left = left
         self._right = right
@@ -1082,8 +1081,8 @@ class QXQComp(QXQBool):
 @qafny.auto.equality
 class QXQNot(QXQBool):
 
-    def __init__(self, next: QXQBool, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, next: QXQBool , line_number = None):
+         
         self._next = next
         self._line_number = line_number
 
@@ -1110,8 +1109,8 @@ class QXExp(QXTop):
 @qafny.auto.equality
 class QXSingle(QXExp):
 
-    def __init__(self, op: str, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, op: str , line_number = None):
+         
         self._op = op.getText() if isAntlrNode(op) else op
         self._line_number = line_number
 
@@ -1138,8 +1137,8 @@ class QXKet(QXTop):
 @qafny.auto.equality
 class QXSKet(QXKet):
 
-    def __init__(self, vector: QXQExp, negative: bool = False, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, vector: QXQExp, negative: bool = False , line_number = None):
+         
         self._vector = vector
         self._negative = negative
         self._line_number = line_number
@@ -1164,8 +1163,8 @@ class QXSKet(QXKet):
 @qafny.auto.equality
 class QXVKet(QXKet):
 
-    def __init__(self, vector: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, vector: QXAExp , line_number = None):
+         
         self._vector = vector
         self._line_number = line_number
 
@@ -1186,8 +1185,8 @@ class QXVKet(QXKet):
 @qafny.auto.equality
 class QXOracle(QXExp):
 
-    def __init__(self, bindings: [QXBind], amp: QXAExp, kets: [QXKet], inverse: bool = False, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, bindings: [QXBind], amp: QXAExp, kets: [QXKet], inverse: bool = False , line_number = None):
+         
         self._bindings = bindings
         self._amp = amp
         self._kets = kets
@@ -1229,8 +1228,8 @@ class QXQState(QXTop):
 @qafny.auto.equality
 class QXTensor(QXQState):
 
-    def __init__(self, kets: [QXKet], id: str = None, crange: QXCRange = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, kets: [QXKet], id: str = None, crange: QXCRange = None , line_number = None):
+         
         self._kets = kets
         self._id = id.getText() if isAntlrNode(id) else id
         self._crange = crange
@@ -1263,8 +1262,8 @@ class QXTensor(QXQState):
 @qafny.auto.equality
 class QXSum(QXQState):
 
-    def __init__(self, sums: [QXCon], amp: QXAExp, kets: [QXKet], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, sums: [QXCon], amp: QXAExp, kets: [QXKet] , line_number = None):
+         
         self._sums = sums
         self._amp = amp
         self._kets = kets
@@ -1304,8 +1303,8 @@ class QXStmt(QXTop):
 @qafny.auto.equality
 class QXAssert(QXStmt):
 
-    def __init__(self, spec: QXSpec, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, spec: QXSpec , line_number = None):
+         
         self._spec = spec
         self._line_number = line_number
 
@@ -1326,8 +1325,8 @@ class QXAssert(QXStmt):
 @qafny.auto.equality
 class QXCast(QXStmt):
 
-    def __init__(self, qty :QXQTy, locus: [QXQRange], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, qty :QXQTy, locus: [QXQRange] , line_number = None):
+         
         self._qty = qty
         self._locus = locus
         self._line_number = line_number
@@ -1352,8 +1351,8 @@ class QXCast(QXStmt):
 @qafny.auto.equality
 class QXInit(QXStmt):
 
-    def __init__(self, binding: QXBind, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, binding: QXBind , line_number = None):
+         
         self._binding = binding
         self._line_number = line_number
 
@@ -1374,8 +1373,8 @@ class QXInit(QXStmt):
 @qafny.auto.equality
 class QXCAssign(QXStmt):
 
-    def __init__(self, ids: [Union[QXBind, QXQIndex]], expr : QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, ids: [Union[QXBind, QXQIndex]], expr : QXAExp , line_number = None):
+         
         self._ids = ids
         self._expr = expr
         self._line_number = line_number
@@ -1403,12 +1402,12 @@ class QXQAssign(QXStmt):
     Represents a quantum assignment operation.
     '''
 
-    def __init__(self, location: Union[list[QXQRange], str], expr : QXExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
+    def __init__(self, location: Union[list[QXQRange], str], expr : QXExp , line_number = None):
         '''
         location - either a QXQRange or an identifier indicating the variable to transform.
         expr - the operation to apply to the variable
         '''
-        super().__init__(parser_context=parser_context)
+         
         self._location = location
         self._expr = expr
         self._line_number = line_number
@@ -1445,8 +1444,8 @@ class QXQCreate(QXStmt):
     ╰────────────────────────╯
     '''
 
-    def __init__(self, qrange: QXQRange, size: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, qrange: QXQRange, size: QXAExp , line_number = None):
+         
         self._qrange = qrange
         self._size = size
         self._line_number = line_number
@@ -1470,8 +1469,8 @@ class QXQCreate(QXStmt):
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class QXMeasure(QXStmt):
-    def __init__(self, ids: [QXBind | QXQIndex], locus: Union[str, list[QXQRange]], res: QXAExp = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, ids: [QXBind | QXQIndex], locus: Union[str, list[QXQRange]], res: QXAExp = None , line_number = None):
+         
         self._ids = ids
         self._locus = locus
         self._res = res
@@ -1511,8 +1510,8 @@ class QXMeasureAbort(QXStmt):
 
     '''
 
-    def __init__(self, ids: str, locus: list[QXQRange], res: QXAExp = None, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, ids: str, locus: list[QXQRange], res: QXAExp = None , line_number = None):
+         
         self._ids = ids
         self._locus = locus
         self._res = res
@@ -1541,8 +1540,8 @@ class QXMeasureAbort(QXStmt):
 @qafny.auto.equality
 class QXIf(QXStmt):
 
-    def __init__(self, bexp: QXBExp, stmts: [QXStmt], else_branch: [QXStmt], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, bexp: QXBExp, stmts: [QXStmt], else_branch: [QXStmt] , line_number = None):
+         
         self._bexp = bexp
         self._stmts = stmts
         self._else_branch = else_branch
@@ -1571,8 +1570,8 @@ class QXIf(QXStmt):
 @qafny.auto.equality
 class QXFor(QXStmt):
 
-    def __init__(self, id: str, crange: QXCRange, conds: [QXCond], stmts: [QXStmt], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, id: str, crange: QXCRange, conds: [QXCond], stmts: [QXStmt] , line_number = None):
+         
         self._id = id.getText() if isAntlrNode(id) else id
         self._crange = crange
         self._conds = conds
@@ -1617,8 +1616,8 @@ class QXFor(QXStmt):
 @qafny.auto.equality
 class QXWhile(QXStmt):
 
-    def __init__(self, bexp: QXBExp, conds: [QXCond], stmts: [QXStmt], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, bexp: QXBExp, conds: [QXCond], stmts: [QXStmt] , line_number = None):
+         
         self._bexp = bexp
         self._conds = conds
         self._stmts = stmts
@@ -1647,8 +1646,8 @@ class QXWhile(QXStmt):
 @qafny.auto.equality
 class QXCall(QXStmt, QXAExp):
 
-    def __init__(self, id: str, exps: [QXAExp], inverse: bool = False, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, id: str, exps: [QXAExp], inverse: bool = False , line_number = None):
+         
         self._id = id.getText() if isAntlrNode(id) else id
         self._exps = exps
         self._inverse = inverse
@@ -1687,8 +1686,8 @@ class QXReturn(QXStmt):
     }
     '''
 
-    def __init__(self, ids: [str], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, ids: [str] , line_number = None):
+         
         self._ids = ids
         self._line_number = line_number
 
@@ -1724,7 +1723,7 @@ class QXBreak(QXStmt):
     ...
     '''
     def __init__(self, parser_context: antlr4.ParserRuleContext = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+         
         self._line_number = line_number
     
     def accept(self, visitor: AbstractProgramVisitor):
@@ -1759,8 +1758,8 @@ class QXPartPredicate(QXTop):
               ╰─────────────────────────╯
     '''
 
-    def __init__(self, amplitude: QXAExp, predicate: QXBExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, amplitude: QXAExp, predicate: QXBExp , line_number = None):
+         
         self._amplitude = amplitude
         self._predicate = predicate
         self._line_number = line_number
@@ -1793,8 +1792,8 @@ class QXPartsection(QXTop):
                                                                                ╰────────────────────────────────────╯
     '''
 
-    def __init__(self, amplitude: QXAExp, ket: QXSKet, predicate: QXCall, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, amplitude: QXAExp, ket: QXSKet, predicate: QXCall , line_number = None):
+         
         self._amplitude = amplitude
         self._ket = ket
         # predicate should be of type QXCall
@@ -1842,8 +1841,8 @@ class QXPart(QXQState):
                            ╰─────────────────────────────────────────────────────────────────╯
     '''
 
-    def __init__(self, num : QXAExp, fname: QXAExp, tamp: QXAExp, famp : QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, num : QXAExp, fname: QXAExp, tamp: QXAExp, famp : QXAExp , line_number = None):
+         
         self._num = num
         self._fname = fname
         self._tamp = tamp
@@ -1892,8 +1891,8 @@ class QXPartWithPredicates(QXQState):
     
     '''
 
-    def __init__(self, num: QXAExp | None, true_predicate: QXPartPredicate, false_predicate: QXPartPredicate, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, num: QXAExp | None, true_predicate: QXPartPredicate, false_predicate: QXPartPredicate , line_number = None):
+         
         self._num = num
         self._true_predicate = true_predicate
         self._false_predicate = false_predicate
@@ -1936,8 +1935,8 @@ class QXPartGroup(QXQState):
                                ╰─────────────────────────────────────────────────────────╯
     '''
     
-    def __init__(self, fpred: str, bool_lit: QXBoolLiteral, amplitude: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, fpred: str, bool_lit: QXBoolLiteral, amplitude: QXAExp , line_number = None):
+         
         self._fpred = fpred.getText() if isAntlrNode(fpred) else fpred
         self._bool_lit = bool_lit
         self._amplitude = amplitude
@@ -1982,8 +1981,8 @@ class QXPartLambda(QXQState):
                                                                          ╰─────────────────────────╯
     '''
 
-    def __init__(self, fpred: str, amplitude: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, fpred: str, amplitude: QXAExp , line_number = None):
+         
         self._fpred = fpred.getText() if isAntlrNode(fpred) else fpred
         self._amplitude = amplitude
         self._line_number = line_number
@@ -2023,8 +2022,8 @@ class QXPartWithSections(QXQState):
                                                                          ╰───────────────────────────────────────────────────────────────────────────────╯
     '''
 
-    def __init__(self, sections: [QXPartsection], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, sections: [QXPartsection] , line_number = None):
+         
         self._sections = sections
         self._line_number = line_number
 
@@ -2045,8 +2044,8 @@ class QXPartWithSections(QXQState):
 @qafny.auto.equality
 class QXQSpec(QXSpec):
 
-    def __init__(self, locus: [QXQRange], qty: QXType, states: [QXQState], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, locus: [QXQRange], qty: QXType, states: [QXQState] , line_number = None):
+         
         self._locus = locus
         self._qty = qty
         self._states = states
@@ -2075,8 +2074,8 @@ class QXQSpec(QXSpec):
 @qafny.auto.equality
 class QXRequires(QXCond):
 
-    def __init__(self, spec: QXSpec, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, spec: QXSpec , line_number = None):
+         
         self._spec = spec
         self._line_number = line_number
 
@@ -2097,8 +2096,8 @@ class QXRequires(QXCond):
 @qafny.auto.equality
 class QXEnsures(QXCond):
 
-    def __init__(self, spec: QXSpec, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, spec: QXSpec , line_number = None):
+         
         self._spec = spec
         self._line_number = line_number
 
@@ -2119,8 +2118,8 @@ class QXEnsures(QXCond):
 @qafny.auto.equality
 class QXInvariant(QXCond):
 
-    def __init__(self, spec: QXSpec, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, spec: QXSpec , line_number = None):
+         
         self._spec = spec
         self._line_number = line_number
 
@@ -2152,8 +2151,8 @@ class QXDecreases(QXCond):
     ...
     '''
 
-    def __init__(self, arith_expr: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, arith_expr: QXAExp , line_number = None):
+         
         self._arith_expr = arith_expr
         self._line_number = line_number
 
@@ -2185,8 +2184,8 @@ class QXSeparates(QXCond):
     ...
     '''
 
-    def __init__(self, locus: [QXQRange], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, locus: [QXQRange] , line_number = None):
+         
         self._locus = locus
         self._line_number = line_number
 
@@ -2223,8 +2222,8 @@ class QXInclude(QXTop):
     ...
     '''
 
-    def __init__(self, path: str, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, path: str , line_number = None):
+         
         self._path = path.getText() if isAntlrNode(path) else path
         self._line_number = line_number
 
@@ -2246,8 +2245,8 @@ class QXInclude(QXTop):
 @qafny.auto.equality
 class QXMethod(QXTop):
 
-    def __init__(self, id: str, axiom: bool, bindings: [QXBind], returns: [QXBind], conds: [QXCond], stmts: [QXStmt], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, id: str, axiom: bool, bindings: [QXBind], returns: [QXBind], conds: [QXCond], stmts: [QXStmt] , line_number = None):
+         
         self._id = id.getText() if isAntlrNode(id) else id
         self._axiom = axiom
         self._bindings = bindings
@@ -2288,8 +2287,8 @@ class QXMethod(QXTop):
 @qafny.auto.equality
 class QXFunction(QXTop):
 
-    def __init__(self, id: str, axiom: bool, bindings: [QXBind], return_type: QXQTy, arith_expr: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, id: str, axiom: bool, bindings: [QXBind], return_type: QXQTy, arith_expr: QXAExp , line_number = None):
+         
         self._id = id.getText() if isAntlrNode(id) else id
         self._axiom = axiom
         self._bindings = bindings
@@ -2326,8 +2325,8 @@ class QXFunction(QXTop):
 @qafny.auto.equality
 class QXLemma(QXTop):
 
-    def __init__(self, id: str, axiom: bool, bindings: [QXBind], conds: [QXCond], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, id: str, axiom: bool, bindings: [QXBind], conds: [QXCond] , line_number = None):
+         
         self._id = id.getText() if isAntlrNode(id) else id
         self._axiom = axiom
         self._bindings = bindings
@@ -2360,8 +2359,8 @@ class QXLemma(QXTop):
 @qafny.auto.equality
 class QXPredicate(QXTop):
 
-    def __init__(self, id: str, bindings: [QXBind], arith_expr: QXAExp, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, id: str, bindings: [QXBind], arith_expr: QXAExp , line_number = None):
+         
         self._id = id.getText() if isAntlrNode(id) else id
         self._bindings = bindings
         self._arith_expr = arith_expr
@@ -2390,8 +2389,8 @@ class QXPredicate(QXTop):
 @qafny.auto.equality
 class QXProgram(QXTop):
 
-    def __init__(self, exps: [QXTop], parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None, line_number = None):
-        super().__init__(parser_context=parser_context)
+    def __init__(self, exps: [QXTop] , line_number = None):
+         
         self._exps = exps
         self._line_number = line_number
 

@@ -62,7 +62,7 @@ class CleanupVisitor(TargetProgramVisitor):
     def visitProgram(self, ctx: TargetProgrammer.DXProgram):
         methods = []
         for method in ctx.method():
-            print(f"Visiting method: {method}")
+#            print(f"Visiting method: {method}")
             methods.append(method.accept(self))
 
         return DXProgram(methods, line=ctx.line())
@@ -102,18 +102,18 @@ class CleanupVisitor(TargetProgramVisitor):
         return DXNot(ctx.next().accept(self), line=ctx.line())
     
     def visitInRange(self, ctx):
-        if isinstance(ctx.right(), DXNum) and ctx.right().num() == 2:
+        if isinstance(ctx.right(), DXNum) and ctx.right().val() == 2:
             return DXInRange(ctx.bind(), ctx.left().accept(self), DXCall('pow2', [DXNum(1)]), line=ctx.line()) 
         return DXInRange(ctx.bind(), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line())
     
     def visitBin(self, ctx: TargetProgrammer.DXBin):
         if ctx.op() == '^':
-            if isinstance(ctx.left(), DXNum) and ctx.left().num() == 2:
+            if isinstance(ctx.left(), DXNum) and ctx.left().val() == 2:
                 return DXCall('pow2', [ctx.right().accept(self)], line=ctx.line())
             else:
                 return DXCall('powN', [ctx.left().accept(self), ctx.right().accept(self)], line=ctx.line()) 
             
-        elif ctx.op() == '/' and isinstance(ctx.left(), DXNum) and ctx.left().num() == 1 and isinstance(ctx.right(), DXCall) and ctx.right().ID() == 'pow2':
+        elif ctx.op() == '/' and isinstance(ctx.left(), DXNum) and ctx.left().val() == 1 and isinstance(ctx.right(), DXCall) and ctx.right().ID() == 'pow2':
             return DXBin('/',DXNum(1.0), DXCast(SType('real'), ctx.right()), line=ctx.line())
 
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line())
@@ -142,7 +142,9 @@ class CleanupVisitor(TargetProgramVisitor):
             return DXIndex(ctx.exps()[0], ctx.exps()[1], line=ctx.line())
         
         exps = []
+#        print(f"Visiting call: {ctx} with arguments:")
         for exp in ctx.exps():
+#            print(f"Visiting call argument: {exp}")
             exps.append(exp.accept(self))
         
         return DXCall(ctx.ID(), exps, ctx.end(), line=ctx.line())

@@ -9,5 +9,6 @@ method conditionaltest1(n:nat, q : Q[n], p : Q[n], i:nat, base: nat, N:nat)
 {
   // induce superposition on the first qubit
   if (q[i]) { p[0, n) *= λ (x => |((base ^ (2 ^ i)) * x) % N⟩); }
+  //else {p[0, n) *= λ (x => |(base ^ k) % N⟩)}
   //(en)q[0,n); //it is best if we do not need this
 }

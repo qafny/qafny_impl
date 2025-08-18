@@ -245,48 +245,48 @@ class DXUni(DXAExp):
     def line(self):
         return self._line
 
-class DXCast(DXAExp):
-    '''Represents a dafny cast, i.e. x as real'''
+# class DXCast(DXAExp):
+#     '''Represents a dafny cast, i.e. x as real'''
 
-    def __init__(self, aexp: DXAExp, type: DXType, line: int = None):
-        # <aexp> as <type>
-        self._aexp = aexp
-        self._type = type
-        self._line = line
+#     def __init__(self, aexp: DXAExp, type: DXType, line: int = None):
+#         # <aexp> as <type>
+#         self._aexp = aexp
+#         self._type = type
+#         self._line = line
 
-    def accept(self, visitor: AbstractTargetVisitor):
-        return visitor.visitCast(self)
+#     def accept(self, visitor: AbstractTargetVisitor):
+#         return visitor.visitCast(self)
 
-    def aexp(self) -> DXAExp:
-        return self._aexp
+#     def aexp(self) -> DXAExp:
+#         return self._aexp
 
-    def type(self) -> DXType:
-        return self._type
+#     def type(self) -> DXType:
+#         return self._type
 
-    def __repr__(self):
-        return f'DXCast(aexp={self._aexp}, type={self._type})'
+#     def __repr__(self):
+#         return f'DXCast(aexp={self._aexp}, type={self._type})'
     
-    def line(self):
-        return self._line
+#     def line(self):
+#         return self._line
 
 class DXNum(DXType, DXAExp):
     '''Represents an integer literal value for Dafny syntax.'''
 
-    def __init__(self, num: int, line: int = None):
-        self._num = num
+    def __init__(self, val: int|float, line: int = None):
+        self._val = val
         self._line = line
 
     def accept(self, visitor : AbstractTargetVisitor):
         return visitor.visitNum(self)
 
-    def num(self):
-        return self._num
+    def val(self):
+        return self._val
 
     def as_real(self):
-        return DXReal(float(self._num))
+        return DXReal(float(self._val))
 
     def __repr__(self):
-        return f'DXNum(num={self._num})'
+        return f'DXNum(val={self._val})'
     
     def line(self):
         return self._line

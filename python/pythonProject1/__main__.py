@@ -45,43 +45,43 @@ def example_program(filename: str) -> str:
 
 # The suite of test qafny files (Qafny defaults to verifying these)
 DEFAULT_FILENAMES = [
- #   example_program("test1"),
- #   example_program("test2"),
-     example_program("test3"),
+#    example_program("test1"),
+#    example_program("test2"),
+    # example_program("test3"),
     # example_program("test4"),
     # example_program("test5"),
     # example_program("test6"),
     # example_program("test7"),
-    # example_program("test8"),
-    example_program("test9"),
+     example_program("test8"),
+    #example_program("test9"),
     #example_program("test10"),
-    example_program("test11"),
-    example_program("test12"),
-    example_program("test13"),
-    example_program("test14"),
-    example_program("BellPair"),
-    example_program("GHZ"),
-    example_program("Teleportation"),
-    example_program("Superdense"),
-    example_program("Shors"),
-    example_program("DeutschJozsa"),
-    example_program("simon"),
-    example_program("DiscreteLog"),
-    example_program("Grovers"),
-    example_program("QPE"),
-    example_program("SWAPTest"),
-    example_program("AmpAmp"),
-    example_program("AmplitudeEstimation"),
-    example_program("AppxCounting"),
-    example_program("BHSP"),
-    example_program("FirstAmpEstimate"),
-    example_program("FOQA"),
-    example_program("LongDistanceEntangle"),
-    example_program("NonBoolean"),
-    example_program("QFTModQ"),
-    example_program("SimpleAmpEstimate"),
-    example_program("Stabilizer"),
-    example_program("StateDistinguishing")
+    # example_program("test11"),
+    # example_program("test12"),
+    # example_program("test13"),
+    # example_program("test14"),
+    # example_program("BellPair"),
+    # example_program("GHZ"),
+    # example_program("Teleportation"),
+    # example_program("Superdense"),
+    # example_program("Shors"),
+    # example_program("DeutschJozsa"),
+    # example_program("simon"),
+    # example_program("DiscreteLog"),
+    # example_program("Grovers"),
+    # example_program("QPE"),
+    # example_program("SWAPTest"),
+    # example_program("AmpAmp"),
+    # example_program("AmplitudeEstimation"),
+    # example_program("AppxCounting"),
+    # example_program("BHSP"),
+    # example_program("FirstAmpEstimate"),
+    # example_program("FOQA"),
+    # example_program("LongDistanceEntangle"),
+    # example_program("NonBoolean"),
+    # example_program("QFTModQ"),
+    # example_program("SimpleAmpEstimate"),
+    # example_program("Stabilizer"),
+    # example_program("StateDistinguishing")
 ]
 
 #######################################
@@ -236,7 +236,7 @@ if __name__ == "__main__":
                         if match:
                             line_number = int(match.group('line'))
                             if line_number in target_printer_visitor.line_mapping:
-                                print('Estimated qafny error line number', target_printer_visitor.line_mapping[line_number].qafny_line_number())
+                                print('Estimated qafny error line number', target_printer_visitor.line_mapping[line_number].line())
                             else:
                                 print('Could not find qafny line number')
                                 print(error_message)

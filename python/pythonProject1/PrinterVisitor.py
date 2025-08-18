@@ -20,7 +20,7 @@ class PrinterVisitor(TargetProgramVisitor):
     
     def visitMethod(self, ctx: TargetProgrammer.DXMethod):
         # visit all attributes of method, append the resultant strings to create a method
-
+        print(f'\nVisiting method: {ctx}')
         bindings = ''
         for binding in ctx.bindings():
             bindings += binding.ID() + (str(binding.num()) if binding.num() else '') + ': ' + binding.type().accept(self) + ', ' if binding.type() else '' 
@@ -66,6 +66,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return 'ensures ' + ctx.spec().accept(self)
 
     def visitInit(self, ctx: TargetProgrammer.DXInit):
+#        print('\ninit', ctx)
         if ctx.exp() and isinstance(ctx.exp(), DXList) and len(ctx.exp().exprs()) == 0 and ctx.binding().type():
             return 'var ' + ctx.binding().ID() + (str(ctx.binding().num()) if ctx.binding().num() else '') + ':' + ctx.binding().type().accept(self) + ' := ' + ctx.exp().accept(self) + ';'
 
@@ -92,16 +93,18 @@ class PrinterVisitor(TargetProgramVisitor):
         return res
 
     def visitBin(self, ctx: TargetProgrammer.DXBin):
+        print('\nvisitBin', ctx)
         return '(' + ctx.left().accept(self) + ' ' + ctx.op() + ' ' + ctx.right().accept(self) + ')'
 
     def visitUni(self, ctx: TargetProgrammer.DXUni):
         return ctx.op() + '(' + ctx.next().accept(self) + ')'
 
     def visitBind(self, ctx: TargetProgrammer.DXBind):
+        print('\nvisitBind', ctx)
         return ctx.ID() + (str(ctx.num()) if ctx.num() else '')
 
     def visitNum(self, ctx: TargetProgrammer.DXNum):
-        return str(ctx.num())
+        return str(ctx.val())
 
     def visitCall(self, ctx: TargetProgrammer.DXCall):
         args = ''
