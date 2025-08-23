@@ -30,7 +30,7 @@ cd qafny
 
 # environment setup
 python -m venv .venv
-python -m pip install -r ./python/pythonProject1/requirements.txt
+python -m pip install -r ./src/requirements.txt
 ```
 
 ## Usage
