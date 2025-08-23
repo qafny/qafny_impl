@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+title: Qafny
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Liyi
+    family-names: Li
+    email: liyili2@iastate.edu
+    affiliation: Iowa State Unviersity
+    orcid: 'https://orcid.org/0000-0001-8184-0244'
+  - given-names: Feifei
+    family-names: Cheng
+    email: fch777@iastate.edu
+    affiliation: Iowa State University
+identifiers:
+  - type: doi
+    value: 10.48550/arXiv.2211.06411
+    description: Original Qafny Paper
+repository-code: 'https://github.com/qafny/qafny_impl/'
+abstract: >-
+  Despite recent development of quantum program
+  verification, it is still in its early stage, where many
+  quantum programs are hard to verify due to their inherent
+  probabilistic nature and parallelism in quantum
+  superposition. We propose Qafny, a system that compiles
+  quantum program verification into a well-established
+  classical program verifier Dafny, enabling the formal
+  verification of quantum programs. The key insight behind
+  Qafny is the separation of quantum program verification
+  from its execution, leveraging the strength of classical
+  verifiers to ensure correctness before compiling certified
+  quantum programs into executable circuits. Using Qafny, we
+  have successfully verified 37 diverse quantum programs by
+  compiling their verification into Dafny. To the best of
+  our knowledge, this is the most extensive formally
+  verified set of quantum programs.
+keywords:
+  - quantum-computing
+  - verification
