@@ -40,7 +40,7 @@ def path_relative_to_self(path: str) -> str:
 
 def example_program(filename: str) -> str:
     """Return full path to '../../test/Qafny/<filename>.qfy' relative to __main__.py."""
-    return path_relative_to_self(f"../../test/Qafny/{filename}.qfy")
+    return path_relative_to_self(f"../test/Qafny/{filename}.qfy")
 
 # The suite of test qafny files (Qafny defaults to verifying these)
 DEFAULT_FILENAMES = [

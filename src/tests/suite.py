@@ -60,7 +60,7 @@ TEST_FILES = [
 ]
 
 # add the qafny test root directory and extension to the testing files
-TEST_FILES = [f'../../../test/Qafny/{base}.qfy' for base in TEST_FILES]
+TEST_FILES = [f'../../test/Qafny/{base}.qfy' for base in TEST_FILES]
 
 class TestSuite:
 
