@@ -64,7 +64,7 @@ class CleanupVisitor(TargetProgramVisitor):
         for method in ctx.method():
             methods.append(method.accept(self))
 
-        return DXProgram(methods, qafny_line_number=ctx.qafny_line_number())
+        return DXProgram(methods, transformed_from=ctx)
 
     def visitMethod(self, ctx: TargetProgrammer.DXMethod):
         id = ctx.ID()
@@ -80,42 +80,42 @@ class CleanupVisitor(TargetProgramVisitor):
         for stmt in ctx.stmts():
             stmts.append(stmt.accept(self))
 
-        return DXMethod(id, axiom, bindings, returns, conds, stmts, qafny_line_number=ctx.qafny_line_number())
+        return DXMethod(id, axiom, bindings, returns, conds, stmts, transformed_from=ctx)
 
     def visitRequires(self, ctx: TargetProgrammer.DXRequires):
-        return DXRequires(ctx.spec().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXRequires(ctx.spec().accept(self), transformed_from=ctx)
 
     def visitEnsures(self, ctx: TargetProgrammer.DXEnsures):
-        return DXEnsures(ctx.spec().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXEnsures(ctx.spec().accept(self), transformed_from=ctx)
 
     def visitAll(self, ctx: TargetProgrammer.DXAll):
-        return DXAll(ctx.bind(), ctx.next().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXAll(ctx.bind(), ctx.next().accept(self), transformed_from=ctx)
     
     def visitLogic(self, ctx: TargetProgrammer.DXLogic):
-        return DXLogic(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXLogic(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), transformed_from=ctx)
     
     def visitComp(self, ctx: TargetProgrammer.DXComp):
-        return DXComp(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXComp(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), transformed_from=ctx)
     
     def visitNot(self, ctx: TargetProgrammer.DXNot):
-        return DXNot(ctx.next().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXNot(ctx.next().accept(self), transformed_from=ctx)
     
     def visitInRange(self, ctx):
         if isinstance(ctx.right(), DXNum) and ctx.right().num() == 2:
-            return DXInRange(ctx.bind(), ctx.left().accept(self), DXCall('pow2', [DXNum(1)]), qafny_line_number=ctx.qafny_line_number()) 
-        return DXInRange(ctx.bind(), ctx.left().accept(self), ctx.right().accept(self), qafny_line_number=ctx.qafny_line_number())
+            return DXInRange(ctx.bind(), ctx.left().accept(self), DXCall('pow2', [DXNum(1)]), transformed_from=ctx) 
+        return DXInRange(ctx.bind(), ctx.left().accept(self), ctx.right().accept(self), transformed_from=ctx)
     
     def visitBin(self, ctx: TargetProgrammer.DXBin):
         if ctx.op() == '^':
             if isinstance(ctx.left(), DXNum) and ctx.left().num() == 2:
-                return DXCall('pow2', [ctx.right().accept(self)], qafny_line_number=ctx.qafny_line_number())
+                return DXCall('pow2', [ctx.right().accept(self)], transformed_from=ctx)
             else:
-                return DXCall('powN', [ctx.left().accept(self), ctx.right().accept(self)], qafny_line_number=ctx.qafny_line_number()) 
+                return DXCall('powN', [ctx.left().accept(self), ctx.right().accept(self)], transformed_from=ctx) 
             
         elif ctx.op() == '/' and isinstance(ctx.left(), DXNum) and ctx.left().num() == 1 and isinstance(ctx.right(), DXCall) and ctx.right().ID() == 'pow2':
-            return DXBin('/',DXNum(1.0), DXCast(SType('real'), ctx.right()), qafny_line_number=ctx.qafny_line_number())
+            return DXBin('/',DXNum(1.0), DXCast(SType('real'), ctx.right()), transformed_from=ctx)
 
-        return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), qafny_line_number=ctx.qafny_line_number())
+        return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), transformed_from=ctx)
 
     def visitUni(self, ctx: TargetProgrammer.DXUni):
         return DXUni(ctx.op(), ctx.next().accept(self), transformed_from=ctx)
