@@ -706,7 +706,7 @@ class QXBin(QXAExp):
 @qafny.auto.equality
 class QXCRange(QXTop):
 
-    def __init__(self, left: QXAExp, right: QXAExp, **kwargs, line_number = None):
+    def __init__(self, left: QXAExp, right: QXAExp, **kwargs):
         super().__init__(**kwargs)
         self._left = left
         self._right = right
@@ -1126,12 +1126,11 @@ class QXTensor(QXQState):
 @qafny.auto.equality
 class QXSum(QXQState):
 
-    def __init__(self, sums: [QXCon], amp: QXAExp, kets: [QXKet], condition: QXBExp = None, **kwargs):
+    def __init__(self, sums: [QXCon], amp: QXAExp, kets: [QXKet], **kwargs):
         super().__init__(**kwargs)
         self._sums = sums
         self._amp = amp
         self._kets = kets
-        self._condition = condition
 
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitSum(self)
@@ -1145,12 +1144,8 @@ class QXSum(QXQState):
     def kets(self):
         return self._kets
 
-    # def condition(self):
-    #     '''Returns the condition of this sum, indicating when it should be tested against. Most conditions will include variables from the QXCon'''
-    #     return self._condition
-
     def __repr__(self):
-        return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets}, condition={self._condition})"
+        return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets})"
 
 
 class QXStmt(QXTop):

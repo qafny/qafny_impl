@@ -5,7 +5,7 @@
 // confidence interval method is Chernoff-Hoeffding
 // need arrays for k, up, and K. could also have variables just for i-1, i, and i+1
 
-method {:axiom} Q(n: nat, q: Q[n], k: real)
+method {:axiom} Q_f(n: nat, q: Q[n], k: real)
     ensures { q[0, n) : en ↦ cos((2 * k + 1) * phi) |a⟩|0⟩ + sin((2 * k + 1) * phi) |b⟩|1⟩ }
 
 method AmplitudeEstimation(n: nat, q: Q[n], k: array<nat>, up: array<bool>, K: array<nat>, eps: real, a: real, Nshots: nat) returns (a_l: real, a_u: real)
@@ -44,7 +44,7 @@ method AmplitudeEstimation(n: nat, q: Q[n], k: array<nat>, up: array<bool>, K: a
         var ai: nat := 0;
         for _ in [0, N) {
             // this is the actual quantum computing part of the algorithm
-            Q(n, q, k);
+            Q_f(n, q, k);
             var result, prob *= measure(q[n - 1]);
             ai := ai + result; // result will either be 0 or 1, taking a sum of all the results and dividing by n will approximate a[i]
         }

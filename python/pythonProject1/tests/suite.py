@@ -55,7 +55,8 @@ TEST_FILES = [
     'QFTModQ',
     'SimpleAmpEstimate',
     'Stabilizer',
-    'StateDistinguishing'
+    'StateDistinguishing',
+    # 'HammingWeight'
 ]
 
 # add the qafny test root directory and extension to the testing files
