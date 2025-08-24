@@ -217,7 +217,7 @@ class TypeCollector(ProgramVisitor):
                     return False
                 #Requires { x[i,j) : en(1) -> .... }
                 # i <= j, if i == j, then x[i,j) == {}
-                print('\nRequires range check:', left, right, kty.flag())
+    #            print('\nRequires range check:', left, right, kty.flag())
                 if not compareAExp(left, QXNum(0)):
                     addElem((QXComp("<=",QXNum(0),left)), self.pred, True)
                 if not compareAExp(right, kty.flag()):

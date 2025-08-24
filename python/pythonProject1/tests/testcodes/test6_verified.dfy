@@ -22,7 +22,7 @@ method {:axiom} newFun2(q: seq<seq<seq<bv1>>>, p: seq<seq<seq<bv1>>>, amp: seq<s
   ensures forall tmp4 :: 0 <= tmp4 < |amp3| ==> forall tmp5 :: 0 <= tmp5 < |amp3[tmp4]| ==> |p[tmp4][tmp5]| == |p3[tmp4][tmp5]| == |q[tmp4][tmp5]| == |q3[tmp4][tmp5]|
   ensures forall tmp4 :: 0 <= tmp4 < |p3| ==> forall tmp5 :: 0 <= tmp5 < |p3[tmp4]| ==> castBVInt(p3[tmp4][tmp5]) == castBVInt(p[tmp4][tmp5])
   ensures forall tmp4 :: 0 <= tmp4 < |q3| ==> forall tmp5 :: 0 <= tmp5 < |q3[tmp4]| ==> castBVInt(q3[tmp4][tmp5]) == castBVInt(q[tmp4][tmp5])
-  ensures forall tmp4 :: 0 <= tmp4 < |amp3| ==> forall tmp5 :: 0 <= tmp5 < |amp3[tmp4]| ==> amp3[tmp4][tmp5] == (amp[tmp4][tmp5] * omega(castBVInt(p[tmp4][tmp5]), abs(pow2(n))))
+  ensures forall tmp4 :: 0 <= tmp4 < |amp3| ==> forall tmp5 :: 0 <= tmp5 < |amp3[tmp4]| ==> amp3[tmp4][tmp5] == (amp[tmp4][tmp5] * omega(castBVInt(p[tmp4][tmp5]), pow2(n)))
 
 method lambdatest(n: nat, k: nat, amp: seq<seq<real>>, q: seq<seq<seq<bv1>>>, p: seq<seq<seq<bv1>>>) returns (amp4: seq<seq<real>>, q4: seq<seq<seq<bv1>>>, p4: seq<seq<seq<bv1>>>)
   requires n > 0

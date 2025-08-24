@@ -775,7 +775,8 @@ class QXBin(QXAExp):
 @qafny.auto.equality
 class QXCRange(QXTop):
 
-    def __init__(self, left: QXAExp, right: QXAExp , line_number = None):    
+    def __init__(self, left: QXAExp, right: QXAExp , line_number = None):
+         
         self._left = left
         self._right = right
         self._line_number = line_number
@@ -1185,10 +1186,10 @@ class QXVKet(QXKet):
 @qafny.auto.equality
 class QXOracle(QXExp):
 
-    def __init__(self, bindings: [QXBind], amp: QXAExp, kets: [QXKet], inverse: bool = False , line_number = None):
+    def __init__(self, bindings: [QXBind], phase: QXAExp, kets: [QXKet], inverse: bool = False , line_number = None):
          
         self._bindings = bindings
-        self._amp = amp
+        self._phase = phase
         self._kets = kets
         self._inverse = inverse
         self._line_number = line_number
@@ -1200,10 +1201,10 @@ class QXOracle(QXExp):
         return self._bindings
 
     def phase(self):
-        return self._amp
+        return self._phase
 
-    def amp(self):
-        return self._amp
+    # def amp(self):
+    #     return self._amp
 
     def vectors(self):
         return self._kets
@@ -1212,7 +1213,7 @@ class QXOracle(QXExp):
         return self._inverse
 
     def __repr__(self):
-        return f"QXOracle(bindings={self._bindings}, amp={self._amp}, kets={self._kets}, inverse={self._inverse})"
+        return f"QXOracle(bindings={self._bindings}, phase={self._phase}, kets={self._kets}, inverse={self._inverse})"
     
     def line_number(self):
         return self._line_number
@@ -1402,14 +1403,14 @@ class QXQAssign(QXStmt):
     Represents a quantum assignment operation.
     '''
 
-    def __init__(self, location: Union[list[QXQRange], str], expr : QXExp , line_number = None):
+    def __init__(self, location: Union[list[QXQRange], str], exp : QXExp , line_number = None):
         '''
         location - either a QXQRange or an identifier indicating the variable to transform.
         expr - the operation to apply to the variable
         '''
          
         self._location = location
-        self._expr = expr
+        self._exp = exp
         self._line_number = line_number
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -1423,10 +1424,10 @@ class QXQAssign(QXStmt):
         return self._location
 
     def exp(self):
-        return self._expr
+        return self._exp
 
     def __repr__(self):
-        return f"QXQAssign(location={self._location}, expr={self._expr})"
+        return f"QXQAssign(location={self._location}, exp={self._exp})"
     
     def line_number(self):
         return self._line_number

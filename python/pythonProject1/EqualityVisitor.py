@@ -97,7 +97,7 @@ class EqualityVisitor:
         )
 
     def visitNum(self, a, b):
-        return a.num() == b.num()
+        return a.val() == b.val()
 
     def visitReal(self, a, b):
         return a.real() == b.real()

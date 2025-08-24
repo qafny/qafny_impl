@@ -14,7 +14,7 @@ from CollectKind import CollectKind # usage: collecting the kind environment fro
 from TypeCollector import TypeCollector # usage: collecting the type environment from the qafny AST (see the README for a breakdown of types vs. kinds)
 from TypeChecker import TypeChecker # usage: type checking the parsed file
 from ProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one
-#from nProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one (new version)
+from nProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one (new version)
 from PrinterVisitor import PrinterVisitor # usage: outputting string text dafny code from a dafny (TargetProgrammer) AST
 from DafnyLibrary import DafnyLibrary # usage: generating template library functions for verification
 from CleanupVisitor import CleanupVisitor # usage: perforaming final cleanup operations before verifying such as convertiong x ^ y to powN(x, y)
@@ -48,12 +48,12 @@ DEFAULT_FILENAMES = [
 #    example_program("test1"),
 #    example_program("test2"),
     # example_program("test3"),
-    # example_program("test4"),
-    # example_program("test5"),
-    # example_program("test6"),
+#     example_program("test4"),
+#     example_program("test5"),
+#     example_program("test6"),
     # example_program("test7"),
      example_program("test8"),
-    #example_program("test9"),
+#    example_program("test9"),
     #example_program("test10"),
     # example_program("test11"),
     # example_program("test12"),

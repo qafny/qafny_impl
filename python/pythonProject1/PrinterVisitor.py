@@ -23,6 +23,7 @@ class PrinterVisitor(TargetProgramVisitor):
         print(f'\nVisiting method: {ctx}')
         bindings = ''
         for binding in ctx.bindings():
+            print(f'\nVisiting binding PrinterVisitor: {binding}')
             bindings += binding.ID() + (str(binding.num()) if binding.num() else '') + ': ' + binding.type().accept(self) + ', ' if binding.type() else '' 
         bindings = bindings[:-2]
 
@@ -100,7 +101,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return ctx.op() + '(' + ctx.next().accept(self) + ')'
 
     def visitBind(self, ctx: TargetProgrammer.DXBind):
-        print('\nvisitBind', ctx)
+#       print('\nvisitBind', ctx)
         return ctx.ID() + (str(ctx.num()) if ctx.num() else '')
 
     def visitNum(self, ctx: TargetProgrammer.DXNum):
@@ -160,7 +161,11 @@ class PrinterVisitor(TargetProgramVisitor):
         return 'if (' + ctx.cond().accept(self) + '){\n' + stmts + '}' + elsepart
 
     def visitIndex(self, ctx: TargetProgrammer.DXIndex):
-        return ctx.bind().accept(self) + '[' + ctx.index().accept(self) + ']'
+    #    print('\nvisitIndex', ctx)
+        if ctx.bind():
+            return ctx.bind().accept(self) + '[' + ctx.index().accept(self) + ']'
+        else:
+            return 'empty' + '[' + ctx.index().accept(self) + ']'
     
     def visitLength(self, ctx: TargetProgrammer.DXLength):
         return '|' + ctx.var().accept(self) + '|'

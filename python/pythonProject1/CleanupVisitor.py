@@ -79,6 +79,7 @@ class CleanupVisitor(TargetProgramVisitor):
 
         stmts = []
         for stmt in ctx.stmts():
+            print(f"\nVisiting stmt: {stmt}")
             stmts.append(stmt.accept(self))
 
         return DXMethod(id, axiom, bindings, returns, conds, stmts, line=ctx.line())
@@ -96,6 +97,7 @@ class CleanupVisitor(TargetProgramVisitor):
         return DXLogic(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line())
     
     def visitComp(self, ctx: TargetProgrammer.DXComp):
+        print('\n visitComp in Cleanup', ctx)
         return DXComp(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line())
     
     def visitNot(self, ctx: TargetProgrammer.DXNot):
@@ -116,6 +118,7 @@ class CleanupVisitor(TargetProgramVisitor):
         elif ctx.op() == '/' and isinstance(ctx.left(), DXNum) and ctx.left().val() == 1 and isinstance(ctx.right(), DXCall) and ctx.right().ID() == 'pow2':
             return DXBin('/',DXNum(1.0), DXCast(SType('real'), ctx.right()), line=ctx.line())
 
+        print(f"Visiting bin in Cleanup: {ctx}")
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line())
 
     def visitUni(self, ctx: TargetProgrammer.DXUni):
@@ -168,6 +171,7 @@ class CleanupVisitor(TargetProgramVisitor):
         cond =ctx.cond().accept(self)
 
         stmts = []
+        print(f"\nVisiting while: {ctx}")
         for s in ctx.stmts():
             stmts.append(s.accept(self))
 

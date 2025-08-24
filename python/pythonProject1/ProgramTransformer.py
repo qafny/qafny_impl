@@ -615,7 +615,7 @@ class ProgramTransformer(ExpVisitor):
             # else:
             #     condition = next_sum.condition()
 
-            return QXSum(sums, amp, next_sum.kets(), ctx,line_number=ctx.start.line)
+            return QXSum(sums, amp, next_sum.kets(), line_number=ctx.start.line)
         elif ctx.sumspec() is not None:
             # unwrap parentheses
             return self.visitSumspec(ctx.sumspec())
@@ -985,42 +985,42 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#absExpr.
     def visitAbsExpr(self, ctx: ExpParser.AbsExprContext):
-        return QXUni("abs", self.visitArithExpr(ctx.arithExpr()), ctx,line_number=ctx.start.line)
+        return QXUni("abs", self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#omegaExpr.
     def visitOmegaExpr(self, ctx: ExpParser.OmegaExprContext):
         params = []
         for param in ctx.arithExpr():
             params.append(self.visitArithExpr(param))
-        return QXCall("omega", params, parser_context=ctx, line_number=ctx.start.line)
+        return QXCall("omega", params, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#rotExpr.
     def visitRotExpr(self, ctx:ExpParser.RotExprContext):
-        return QXUni("rot", self.visitArithExpr(ctx.arithExpr()), ctx,line_number=ctx.start.line)
+        return QXUni("rot", self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#ketCallExpr.
     def visitKetCallExpr(self, ctx: ExpParser.KetCallExprContext):
-        return QXUni("ket", self.visitArithExpr(ctx.arithExpr()), ctx,line_number=ctx.start.line)
+        return QXUni("ket", self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#setInstance.
     def visitSetInstance(self, ctx: ExpParser.SetInstanceContext):
         aexps = []
         for untransformed_aexp in ctx.arithExpr():
             aexps.append(self.visitArithExpr(untransformed_aexp))
-        return QXSet(aexps, ctx,line_number=ctx.start.line)
+        return QXSet(aexps, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#memberAccess.
     def visitMemberAccess(self, ctx:ExpParser.MemberAccessContext):
-        return QXMemberAccess([str(id) for id in ctx.ID()], ctx,line_number=ctx.start.line)
+        return QXMemberAccess([str(id) for id in ctx.ID()], line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#expr.
     def visitExpr(self, ctx: ExpParser.ExprContext):
         if ctx.SHad() is not None:
-            return QXSingle("H", ctx,line_number=ctx.start.line)
+            return QXSingle("H", line_number=ctx.start.line)
         if ctx.SQFT() is not None:
-            return QXSingle("QFT", ctx,line_number=ctx.start.line)
+            return QXSingle("QFT", line_number=ctx.start.line)
         if ctx.RQFT() is not None:
-            return QXSingle("RQFT", ctx,line_number=ctx.start.line)
+            return QXSingle("RQFT", line_number=ctx.start.line)
         if ctx.lambdaT() is not None:
             return self.visitLambdaT(ctx.lambdaT())
         if ctx.dis() is not None:
@@ -1177,7 +1177,7 @@ class ProgramTransformer(ExpVisitor):
             #       Should a "SimplifyVisitor" be written to post-process the tree into a better format?
             #       Or should we attempt to catch all edge cases here?
             if isinstance(index, QXNum):
-                crange = QXCRange(index, QXNum(index.num() + 1, line_number=ctx.start.line), ctx.index(), line_number=ctx.start.line)
+                crange = QXCRange(index, QXNum(index.num() + 1, line_number=ctx.start.line), line_number=ctx.start.line)
             elif isinstance(index, QXBin) and index.op() in ['+', '-'] and isinstance(index.right(), QXNum):
                 next_num = None
                 if index.op() == '+':
@@ -1189,7 +1189,7 @@ class ProgramTransformer(ExpVisitor):
                     crange = QXCRange(index, QXBin(op, index.left(), QXNum(abs(next_num),line_number=ctx.start.line),line_number=ctx.start.line), ctx.index(),line_number=ctx.start.line)
                 else:
                     # for the second one (upper bound), we can ignore the summand
-                    crange = QXCRange(index, index.left(), ctx.index(),line_number=ctx.start.line)
+                    crange = QXCRange(index, index.left(),line_number=ctx.start.line)
             else:
                 crange = QXCRange(index, QXBin("+", index, QXNum(1),line_number=ctx.start.line), line_number=ctx.start.line)
 

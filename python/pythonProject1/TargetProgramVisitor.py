@@ -141,6 +141,7 @@ class TargetProgramVisitor(AbstractTargetVisitor):
         return ctx.next().accept(self)
 
     def visitComp(self, ctx: TargetProgrammer.DXComp):
+#        print('\nvisitComp', ctx)
         ctx.left().accept(self)
         ctx.right().accept(self)
 
@@ -178,5 +179,8 @@ class TargetProgramVisitor(AbstractTargetVisitor):
         return ctx.real()
 
     def visitCast(self, ctx: TargetProgrammer.DXCast):
-        ctx.aexp().accept(self)
         ctx.type().accept(self)
+        ctx.next().accept(self)
+    
+    def visitLength(self, ctx: TargetProgrammer.DXLength):
+        ctx.var().accept(self)
