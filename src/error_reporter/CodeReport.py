@@ -1,6 +1,5 @@
 from os import get_terminal_size
 from textwrap import wrap
-from colored import stylize, fore
 from .ErrorReport import ErrorReport
 
 class CodeReport(ErrorReport):
@@ -63,7 +62,7 @@ class CodeReport(ErrorReport):
             term_y -= gutter_size + 3 # the three extra spaces come from ' │ '
 
         for line_no, line in enumerate(lines):
-            gutter_str = stylize(str(line_no + 1).rjust(gutter_size), fore('dark_gray'))
+            gutter_str = str(line_no + 1).rjust(gutter_size), fore('dark_gray')
             # split long lines across multiple
             if len(line) > term_y:
                 for chunk_no, chunk in enumerate(wrap(line, term_y)):
@@ -79,4 +78,3 @@ class CodeReport(ErrorReport):
                 result += f'{line}\n'
 
         return result
-

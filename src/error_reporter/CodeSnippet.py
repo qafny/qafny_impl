@@ -1,8 +1,8 @@
 from enum import Enum
-from colored import fore, stylize
 from os import get_terminal_size
 from textwrap import wrap
 import bisect
+import rich
 
 from SyntaxHighlighter import QafnyHighlighter
 
@@ -64,7 +64,7 @@ class CodeSnippet:
                 msg = self._message
 
             if self._color is not None:
-                return stylize(msg, fore(self._color))
+                return f'[{self._color}]' + msg + '[/]'
             else:
                 return msg
 
@@ -123,8 +123,9 @@ class CodeSnippet:
         self._range = range(start, end + 1)
         return self
 
-    def __str__(self):
-        """Creates a string from this code report, presumably to print on the console"""
+    def __rich__(self) -> str:
+        """Returns a str renderable by any rich.print(...) method."""
+
         # stores the return value for this method
         result = ''
 
@@ -148,7 +149,7 @@ class CodeSnippet:
 
         identifier = ':'.join(id_parts)
         if identifier:
-            identifier = stylize(identifier, fore('yellow'))
+            identifier = f'[yellow]{identifier}[/]' # stylize(identifier, fore('yellow'))
             identifier = f'[{identifier}]'
             result += identifier + '\n'
         else:
@@ -178,7 +179,7 @@ class CodeSnippet:
         # for every requested line
         for line_no in self._range:
             line = lines[line_no]
-            gutter_str = stylize(str(line_no + 1).rjust(gutter_size), fore('dark_gray'))
+            gutter_str = '[bright_black]' + str(line_no + 1).rjust(gutter_size) + '[/]' # stylize(str(line_no + 1).rjust(gutter_size), fore('dark_gray'))
 
             chunks = []
             if self._highlight:
@@ -274,7 +275,8 @@ class CodeSnippet:
         return result
 
 if __name__ == '__main__':
-    print(CodeSnippet('''//Simple Had application
+
+    rich.print(CodeSnippet('''//Simple Had application
 method hadtest(n: nat, q: Q[n])
   requires { q[0, n) : nor ↦ |0⟩ }
   ensures  { q[0, n) : had ↦ ⊗ i ∈ [0,n) . |+⟩ }
@@ -291,4 +293,4 @@ method hadtest(n: nat, q: Q[n])
 //|-⟩ == 1/\\sqrt{2} (|0> - |1>)--> omega(1,2) == exp(2 pi i * 1/2)
 //(|0⟩)^n --->  x: seq<bv1>, x:[0,n) ---> [0,0,0,0]
 //|+⟩ --- 1/\\sqrt{2} (|0> + |1>) --> omega(0,2) == exp(2 pi i * 0/2) ===> exp(i x ) == cos x + i sin x
-''').withFilename('test1.qfy').withLineColumn(2, 1).limitToLines(0, 5).addContext(1, 0, 5, 'unknown keyword \'method\'', 'red'))
+''').withFilename('test1.qfy').withLineColumn(2, 1).limitToLines(0, 5).addContext(1, 0, 5, 'unknown keyword \'method\'', 'red').__rich__())

@@ -1,5 +1,4 @@
 from enum import Enum
-from colored import stylize, fore, back
 
 class TokenType(Enum):
     INVALID = 0
@@ -13,10 +12,10 @@ class TokenType(Enum):
     OPERATOR = 8
 
     def getForeground(self):
-        return [None, None, 'dark_gray', 'white', 'orange_1', 'blue', 'light_magenta', 'white', 'yellow'][int(self.value)]
+        return [None, None, 'bright_black', 'white', 'orange1', 'blue', 'bright_magenta', 'white', 'yellow'][int(self.value)] # these names are based on rich: https://rich.readthedocs.io/en/stable/appendix/colors.html
 
     def getBackground(self):
-        return [None, None, None, 'red', None, None, None, None, None][int(self.value)]
+        return [None, None, None, 'red', None, None, None, None, None][int(self.value)] # errors should be in red
 
 class Token:
     def __init__(self, text: str, type: TokenType):
@@ -35,13 +34,14 @@ class Token:
     def highlighted(self) -> str:
         style = ''
         if (color := self._type.getForeground()) is not None:
-            style += fore(color)
+            style += color
 
         if (color := self._type.getBackground()) is not None:
-            style += back(color)
+            style += f' on {color}'
 
         if len(style) > 0:
-            return stylize(self._text, style)
+            result = f'[{style}]' + self._text + '[/]'
+            return result
         else:
             return self._text
 
