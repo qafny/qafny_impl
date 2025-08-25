@@ -4,7 +4,10 @@ from textwrap import wrap
 import bisect
 import rich
 
-from SyntaxHighlighter import QafnyHighlighter
+if __name__ != '__main__':
+    from .SyntaxHighlighter import QafnyHighlighter
+else:
+    from SyntaxHighlighter import QafnyHighlighter
 
 class CodeSnippet:
     '''
@@ -68,7 +71,7 @@ class CodeSnippet:
             else:
                 return msg
 
-    def __init__(self, code: str, *, gutter: bool = True, highlight: bool = True, language: LanguageID = LanguageID.QAFNY, growth_with_context: bool = False):
+    def __init__(self, code: str, *, gutter: bool = True, highlight: bool = True, language: LanguageID = LanguageID.QAFNY, grow_with_context: bool = False):
         # A string representing the code in this file
         self._code = code
         # A flag indicating whether the gutter should be shown
@@ -88,7 +91,7 @@ class CodeSnippet:
         # empty dictionary of context
         self._context = {}
         # whether the displayed lines should match up with the additional context
-        self._growWithContext = growth_with_context
+        self._growWithContext = grow_with_context
 
     def shouldShowGutter(gutter: bool):
         self._gutter = gutter

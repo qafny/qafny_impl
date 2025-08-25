@@ -1,6 +1,12 @@
 from os import get_terminal_size
 from textwrap import wrap
-from .ErrorReport import ErrorReport
+
+if __name__ != '__main__':
+    from .ErrorReport import ErrorReport
+    from .CodeSnippet import CodeSnippet
+else:
+    from ErrorReport import ErrorReport
+    from CodeSnippet import CodeSnippet
 
 class CodeReport(ErrorReport):
     '''
