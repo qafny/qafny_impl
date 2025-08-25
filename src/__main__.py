@@ -143,7 +143,7 @@ if __name__ == "__main__":
         # abstract syntax tree
         ast = parser.program() # program is the root node in the tree as defined in Exp.g4
         if parser.getNumberOfSyntaxErrors() > 0:
-            print(f"Failed to parse: {blue_hr_filename}")
+            rich.print(f"Failed to parse: [blue]{human_readable_filename}[/]")
         else:
             # DEBUG
             # print out ast in lisp like format
@@ -199,7 +199,7 @@ if __name__ == "__main__":
             # debugging purposes, print out the generated dafny output
             if args.print_dafny:
                 print("Dafny:")
-                print(CodeReport(dafny_code))
+                rich.print(CodeReport(dafny_code))
             output_filename = None
             if args.output is not None:
                 # in the case of a default const (the argument was specified, but no filename provided)
