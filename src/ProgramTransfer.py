@@ -1770,7 +1770,6 @@ class ProgramTransfer(ProgramVisitor):
         return ctx.vector().accept(self)
 
     def visitTensor(self, ctx: Programmer.QXTensor):
-        print(self.qvars)
         tmp_current_qafny_line_number = self.current_qafny_line_number
         self.current_qafny_line_number = ctx.line()
         if ctx.ID() is None:
