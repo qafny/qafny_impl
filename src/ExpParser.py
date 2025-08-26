@@ -577,11 +577,11 @@ def serializedATN():
         buf.write("\3\2\2\2\u0492\u048b\3\2\2\2\u0492\u048c\3\2\2\2\u0492")
         buf.write("\u0491\3\2\2\2\u0493\u00a7\3\2\2\2\u0494\u049b\7G\2\2")
         buf.write("\u0495\u0496\7G\2\2\u0496\u0497\7\7\2\2\u0497\u0498\5")
-        buf.write("\u009eP\2\u0498\u0499\7\b\2\2\u0499\u049b\3\2\2\2\u049a")
-        buf.write("\u0494\3\2\2\2\u049a\u0495\3\2\2\2\u049b\u00a9\3\2\2\2")
-        buf.write("\u049c\u049d\t\7\2\2\u049d\u00ab\3\2\2\2\u049e\u049f\t")
-        buf.write("\b\2\2\u049f\u00ad\3\2\2\2\u04a0\u04a1\t\t\2\2\u04a1\u00af")
-        buf.write("\3\2\2\2\u04a2\u04a3\t\n\2\2\u04a3\u00b1\3\2\2\2q\u00b5")
+        buf.write("h\65\2\u0498\u0499\7\b\2\2\u0499\u049b\3\2\2\2\u049a\u0494")
+        buf.write("\3\2\2\2\u049a\u0495\3\2\2\2\u049b\u00a9\3\2\2\2\u049c")
+        buf.write("\u049d\t\7\2\2\u049d\u00ab\3\2\2\2\u049e\u049f\t\b\2\2")
+        buf.write("\u049f\u00ad\3\2\2\2\u04a0\u04a1\t\t\2\2\u04a1\u00af\3")
+        buf.write("\2\2\2\u04a2\u04a3\t\n\2\2\u04a3\u00b1\3\2\2\2q\u00b5")
         buf.write("\u00be\u00c5\u00cd\u00d4\u00db\u00e3\u00e8\u00ec\u00f3")
         buf.write("\u010d\u010f\u011a\u011c\u0122\u0135\u013e\u0142\u0148")
         buf.write("\u0159\u0161\u0172\u017b\u0183\u0185\u0192\u019b\u01a2")
@@ -8461,8 +8461,8 @@ class ExpParser ( Parser ):
         def AA(self):
             return self.getToken(ExpParser.AA, 0)
 
-        def qrange(self):
-            return self.getTypedRuleContext(ExpParser.QrangeContext,0)
+        def arithExpr(self):
+            return self.getTypedRuleContext(ExpParser.ArithExprContext,0)
 
 
         def getRuleIndex(self):
@@ -8506,7 +8506,7 @@ class ExpParser ( Parser ):
                 self.state = 1172
                 self.match(ExpParser.T__4)
                 self.state = 1173
-                self.qrange()
+                self.arithExpr(0)
                 self.state = 1174
                 self.match(ExpParser.T__5)
                 pass

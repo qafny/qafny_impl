@@ -417,7 +417,7 @@ class QXQTy(QXTop):
 class TyHad(QXQTy):
 
     # This is the default parent constructor, copied here in case future parameters are needed
-    '''def __init__(self, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None):
+    '''def __init__(self, **kwargs):
         super().__init__(**kwargs)'''
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -449,17 +449,21 @@ class TyEn(QXQTy):
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class TyAA(QXQTy):
-    def __init__(self, flag: QXAExp, qrange = None, **kwargs):
+    '''
+    Represents an amplitude amplification type declaration.
+
+    Example:
+    aa(p[0, n))
+
+    flag() returns the inner QXAExp { p[0, n) }
+    '''
+
+    def __init__(self, flag: QXAExp, **kwargs):
         super().__init__(**kwargs)
         self._flag = flag
-        self._qrange = qrange
         
-
     def flag(self):
         return self._flag
-
-    def qrange(self):
-        return self._qrange
 
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitAA(self)
@@ -473,7 +477,7 @@ class TyAA(QXQTy):
 class TyNor(QXQTy):
 
     # This is the default parent constructor, copied here in case future parameters are needed
-    '''def __init__(self, parser_context: Optional[Union[antlr4.ParserRuleContext, antlr4.TerminalNode, QXTop]] = None):
+    '''def __init__(self, **kwargs):
         super().__init__(**kwargs)'''
 
     def accept(self, visitor: AbstractProgramVisitor):

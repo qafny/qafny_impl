@@ -1290,10 +1290,9 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#aaType.
     def visitAaType(self, ctx: ExpParser.AaTypeContext):
-        # TODO: fill out flag in TyAA. This requires editing Exp.g4 to enforce a flag.
-        if ctx.qrange() is not None:
-            return TyAA(None, self.visitQrange(ctx.qrange()), parser_context=ctx)
-        return TyAA(None, parser_context=ctx)
+        if ctx.arithExpr() is not None:
+            return TyAA(self.visitArithExpr(ctx.arithExpr()), parser_context=ctx)
+        return TyAA(QXNum(1, parser_context=ctx), parser_context=ctx)
 
     # Visit a parse tree produced by ExpParser#additiveOp.
     def visitAdditiveOp(self, ctx: ExpParser.AdditiveOpContext):
