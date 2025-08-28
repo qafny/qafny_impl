@@ -7,11 +7,27 @@ from SubstDAExp import SubstDAExp
 from BindCollector import BindCollector
 from TypeChecker import TypeChecker, subLocusGen, compareType
 from EqualityChecker import EqualityVisitor
+from LocusCollector import LocusCollector   
+from UpdateVars import UpdateVars
+
+class StackFactor:
+    pass
+
+class EnFactor(StackFactor):
+    def __init__(self, condition: (str, DXAExp, DXAExp)):
+        self._condition = condition
+
+    def condition(self):
+        return self._condition
+
 
 # ==============================================================================
 # == Helper Functions for Locus and Type Manipulation
 # ==============================================================================
-
+def eqQRange(q1: QXQRange, q2: QXQRange):
+    """Checks for exact equality between two quantum ranges."""
+    return (str(q1.location()) == str(q2.location()) and compareAExp(q1.crange().left(),q2.crange().left())
+            and compareAExp(q1.crange().right(),q2.crange().right()))
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
     """Checks if two quantum ranges refer to the same variable and start at the same index."""
@@ -34,6 +50,26 @@ def compareRangeLocus(q1: QXQRange, qs: [QXQRange]):
                                                 qs[i].crange().line_number()), qs[i].line_number())]
                         + (qs[i+1:len(qs)]))
         vs = vs + [qs[i]]
+    return None
+
+def compareSingle(q1: QXQRange, qs: [([QXQRange], QXQTy, dict)]):
+
+    vs = []
+    for i in range(len(qs)):
+        loc, qty, vars = qs[i]
+        v = loc[0]
+        if q1.location() == v.location():
+            if compareAExp(q1.crange().left(), v.crange().left()):
+                if compareAExp(q1.crange().right(), v.crange().right()): #(exactmatch, vs, [])
+                    qv = []
+                    vs += (qs[i+1:len(qs)])
+                    return (q1, vars, vs)
+                else: #(matched_qxrange, vs, [remaining_qxrange])
+                    qv = [QXQRange(q1.location(),crange=QXCRange(q1.crange().right(), v.crange().right()))] 
+                    vs += (qs[i+1:len(qs)])
+                    return (q1, vars, qv + vs)
+        vs += [v]
+
     return None
 
 #compareLocus and return the reminder locus
@@ -69,6 +105,72 @@ def findPos(q1: QXQRange, qs: [QXQRange]):
         if compareQRange(q1,qs[i]):
             return i
     return -1
+
+# def findHadRange(q2 : QXQRange, qs: [([QXQRange], QXQTy, dict)]):
+
+#     vs = []
+#     for i in range(len(qs)):
+#         loc, qty, vars = qs[i]
+#         if isinstance(qty, TyHad):
+#             v = compareRangeLocus(q2, loc)
+#             if v is not None:
+#                 vs += [(v, qty, vars)]+qs[i+1:]
+#                 return q2, vars, vs
+#             else:
+#                 return None
+#         vs += [qs[i]]
+#     return None
+
+
+def meetType(t1: QXQTy, t2: QXQTy):
+    if isinstance(t1, TyNor) and not isinstance(t2, TyHad):
+        return t2
+    if isinstance(t2, TyNor) and not isinstance(t1, TyHad):
+        return t1
+    if isinstance(t1, TyHad) and not isinstance(t2, TyNor):
+        return t2
+    if isinstance(t2, TyHad) and not isinstance(t1, TyNor):
+        return t1
+    if isinstance(t1, TyEn) and isinstance(t2, TyEn):
+        if t1.flag() < t2.flag():
+            return t2
+        else:
+            return t1
+    if isinstance(t1, TyEn) and isinstance(t2, TyAA):
+        if t1.flag() < t2.flag():
+            return t2
+        else:
+            return TyAA(t1.flag(), t2.qrange(), t2.line_number())
+    if isinstance(t1, TyAA) and isinstance(t2, TyEn):
+        if t1.flag() < t2.flag():
+            return TyAA(t2.flag(), t1.qrange(), t1.line_number())
+        else:
+            return t1
+    else:
+        if t1.flag() < t2.flag():
+            return t2
+        else:
+            return t1
+def computeType(self, q2: [QXQRange]):
+        """
+        Calculates the "meet" or the most general type required to unify a set of
+        qubit ranges 'q2'. It determines the current type of each range and then
+        uses the 'meetType' helper to find their least upper bound.
+        """
+        tmp = None
+        for elem in q2:
+            loc, qty, vars = subLocus([elem], self.varnums)
+            if tmp is None:
+                tmp = qty
+            else:
+                tmp = meetType(tmp, qty)
+        return tmp
+def findHadLocus(q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
+
+    for i in range(len(q2)):
+        v = compareSingle(q2[i], qs)
+        if v is not None:
+            return v
 
 def gen_nested_seq_type(n: int, t: DXType):
     """Generates a nested Dafny sequence type of depth n."""
@@ -178,24 +280,22 @@ class ProgramTransfer(ProgramVisitor):
                     raw_predicates.extend(p for p in preds_list if p is not None and not (isinstance(p, DXBoolValue) and p.value() is True))
         
         # --- Remove Redundant Predicates ---
-        unique_predicates = []
-        for pred in raw_predicates:
-            is_duplicate = any(EqualityVisitor().visit(pred, up) for up in unique_predicates)
-            if not is_duplicate:
-                unique_predicates.append(pred)
-        
-        
-        
+        # unique_predicates = []
+        # for pred in raw_predicates:
+        #     is_duplicate = any(EqualityVisitor().visit(pred, up) for up in unique_predicates)
+        #     if not is_duplicate:
+        #         unique_predicates.append(pred)
+
         self.final_requires = [DXRequires(p, line=self.current_line) for p in raw_predicates]
         self.working_predicate = copy.deepcopy(raw_predicates)
+        print(f"\n final_requires: {self.final_requires}    ")
 
         # --- Prepare for Postcondition Translation ---
         out_tenv = self.tenv.get(self.fvar)[1]
-        self.counter += 1
-        return_counter = self.counter
         self.outvarnums = []
         for locus, q_type in out_tenv:
-            var_map = make_dafny_vars_for_locus(locus, q_type, return_counter)
+            self.counter += 1        
+            var_map = make_dafny_vars_for_locus(locus, q_type, self.counter)
             self.outvarnums.append((locus, q_type, var_map))
 
         # --- Translate Method Body ---
@@ -312,11 +412,7 @@ class ProgramTransfer(ProgramVisitor):
 #        print(f"\n target_vars_id before amp: {target_vars_id}")
         if not (isinstance(oracle.phase().exps()[0], QXNum) and oracle.phase().exps()[0].num() == 0):
             target_vars_id.add('amp')
-#         binds, vectors = oracle.accept(self)
-# #        print(f"\n binds: {binds}, vectors: {vectors}")
-#         if EqualityVisitor().visit(binds, vectors):
-#              for l in ctx.locus():
-#                 target_vars_id.remove(l.location())
+
         target_old_vars = {k: v for k, v in old_vars.items() if k in target_vars_id}
         target_new_vars = {k: v for k, v in new_vars.items() if k in target_vars_id}
         
@@ -559,61 +655,7 @@ class ProgramTransfer(ProgramVisitor):
     #     ensures_clauses.append(DXEnsures(final_forall))
 
 
-    def _get_final_assignments_and_mapping(self):
-        """
-        Generates assignments from the final state variables to the return variables
-        and returns the mapping between them for predicate substitution. This version
-        is driven by the method's public return signature.
-        """
-        assignments = []
-        mapping = {} # Maps final state var ID to return var object
-        
-        for locus, return_qty, return_vars_map in self.outvarnums:
-            # Find the corresponding final state in the running environment
-            final_state_tuple = subLocus(locus, self.varnums)
-     #       print(f"\nMapping for locus {locus}: found final state tuple {final_state_tuple}")
-            
-            if final_state_tuple:
-                _, final_qty, final_vars_map = final_state_tuple
-#                print(f"\nFinal qty: {final_qty}, Return qty: {return_qty}")
-                
-                # Check if the types match before creating the assignment
-                if compareType(final_qty, return_qty):
-                    final_vars = sorted(final_vars_map.values(), key=lambda v: v.ID())
-                    return_vars = sorted(return_vars_map.values(), key=lambda v: v.ID())
-#                    print(f"\nFinal vars: {final_vars}, Return vars: {return_vars}")
 
-                    if final_vars and return_vars:
-                        assignments.append(DXAssign(return_vars, final_vars, line=self.current_line))
-                        for i in range(len(final_vars)):
-                            mapping[final_vars[i].ID()] = return_vars[i]
-        print(f"\nFinal assignments: {assignments}")                    
-        return assignments, mapping
-
-    def _update_working_predicate_after_oracle(self, ghost_method, old_vars, new_vars):
-        """Replaces old predicates with the new state defined by the ghost method."""
-        new_predicates = []
-        affected_var_ids = {v.ID() for v in old_vars.values()}
-        
-        for pred in self.working_predicate:
-            collector = BindCollector()
-            collector.visit(pred)
-            if not affected_var_ids.intersection(collector.renv):
-                new_predicates.append(pred)
-
-        ghost_returns = sorted(ghost_method.returns(), key=lambda v: v.ID())
-        current_state_vars = sorted(new_vars.values(), key=lambda v: v.ID())
-
-        for ensure_clause in ghost_method.conds():
-            if isinstance(ensure_clause, DXEnsures):
-                pred = ensure_clause.spec()
-                transformed_pred = pred
-                for i in range(len(ghost_returns)):
-                    subst = SubstDAExp(ghost_returns[i].ID(), current_state_vars[i])
-                    transformed_pred = subst.visit(transformed_pred)
-                new_predicates.append(transformed_pred)
-
-        self.working_predicate = new_predicates
 
     # def _update_state_for_locus(self, target_locus: list, new_qty: QXQTy, new_vars: dict):
     #     """Updates self.varnums by replacing an old locus with its new version."""
@@ -677,160 +719,167 @@ class ProgramTransfer(ProgramVisitor):
         # Each would have its own transformation logic.
         return [] # Placeholder
 
-
     def visitIf(self, ctx: Programmer.QXIf):
-        """
-        Translates a classical if-then-else or a quantum conditional statement.
-        """
-        # Case 1: Quantum Conditional `if (q[i]) { ... }`
-        if isinstance(ctx.bexp(), QXQBool):
-            # A quantum conditional is a pure predicate transformation.
-            # It modifies the `working_predicate` directly and returns no statements.
-            
-            # 1. Setup: Find the locus and create new state variables
-            if not ctx.stmts() or not isinstance(ctx.stmts()[0], QXQAssign):
-                raise Exception("Quantum conditional body must be a single oracle assignment.")
-            
-            q_assign = ctx.stmts()[0]
-            control_qubit = ctx.bexp()
-            control_locus_name = control_qubit.ID()
-            target_locus_names = {r.location() for r in q_assign.locus()}
-            
-            loc_tuple = None
-            for l, qty, var_map in self.varnums:
-                names_in_locus = {r.location() for r in l}
-                if control_locus_name in names_in_locus and target_locus_names.issubset(names_in_locus):
-                    loc_tuple = (l, qty, var_map)
-                    break
-            
-            if not loc_tuple:
-                raise Exception("Control and target for quantum conditional must be in the same entangled locus.")
+        #deal with classical boolean expression
+        if isinstance(ctx.bexp(), QXBool):
+            bex = ctx.bexp().accept(self)
 
-            loc, qty, old_vars = loc_tuple
-            self.counter += 1
-            new_vars = {k: v.newBind(self.counter) for k, v in old_vars.items()}
+            tmpMap = deepcopy(self.varnums)
+            terms = []
+            for elem in ctx.stmts():
+                terms += elem.accept(self)
 
-            # 2. Build the new predicates that define the transformed state
-            new_predicates = self._get_shape_preservation_predicates(old_vars, new_vars)
-            
-            # Define the RHS logic for the conditional's `if-then-else` expression
-            oracle = q_assign.exp()
-            target_loc_pos = [min(findPos(r, loc), qty.flag().num()-1) for r in q_assign.locus()]
-            
-            qubit_vars = {k: v for k, v in old_vars.items() if k != 'amp'}
-            rep_type = next(iter(qubit_vars.values())).type()
-            num_iterators = self._get_total_nesting_depth(rep_type) - 1
-            iterators = [DXBind(f"k{i}", SType("nat")) for i in range(num_iterators)]
+            self.varnums = tmpMap
+            elses = []
+            for elem in ctx.else_stmts():
+                elses += elem.accept(self)
 
-            then_logic = self._get_transformation_logic(oracle, old_vars, iterators, target_loc_pos)
+            return [DXIf(bex, terms, elses, line=ctx.line_number())]
 
-            def rhs_generator(var_name, old_bind, iterators):
-                indexed_old = self._create_indexed_var(old_bind, iterators)
-                control_var_old = old_vars[control_qubit.ID()]
-                indexed_control_var = self._create_indexed_var(control_var_old, iterators)
-                control_bit = DXIndex(indexed_control_var, control_qubit.exp().accept(self))
-                self.libFuns.add('castBVInt')
-                condition = DXComp("==", DXCall("castBVInt", [control_bit]), DXNum(1))
-                then_expr = then_logic.get(var_name, indexed_old)
-                return DXIf(condition, then_expr, indexed_old, line=self.current_line)
-
-            # Build the final `forall` clause using the generic helper
-            transformation_pred = self._get_transformation_predicate(old_vars, new_vars, rhs_generator)
-            new_predicates.append(transformation_pred)
-
-            # 3. Update the main working predicate and state
-            old_var_ids = {v.ID() for v in old_vars.values()}
-            unaffected_predicates = [p for p in self.working_predicate if not old_var_ids.intersection(BindCollector().visit(p).renv)]
-            self.working_predicate = unaffected_predicates + new_predicates
-            self._update_state_for_locus(loc, qty, new_vars)
-            
-            return [] # Return no statements
+#        if isinstance(ctx.bexp(), QXQRange):
+#            return self._transform_for_quantum_conditional(ctx)
         
-    # # ==========================================================================
-    # # == Transformation Logic for Specific Operations
-    # # ==========================================================================
+        lc = LocusCollector()
+        lc.visit(ctx.bexp())
+        for stmt in ctx.stmts():
+            lc.visit(stmt)
+        print('\n QIf locus collector:', lc.renv)
+        for elem in lc.renv:
+            print('\n check type', subLocus([elem], self.varnums))
+        #includeIfLocus provides a final locus, type, and num, as well as the result lib function call in Dafny in tres
+        tres, nLoc, nqty, nnum = self.includeIfLocus(lc.renv)
+        print('\n QIf tres:', tres, nLoc, nqty, nnum)
 
-    # # ==========================================================================
-    # # == Helper Methods for Method Translation
-    # # ==========================================================================
 
-    # def _initialize_method_state(self, ctx: QXMethod):
-    #     """Sets up the visitor's state for a new method."""
-    #     self.fvar = str(ctx.ID())
-    #     self.current_line = ctx.line_number()
+        if isinstance(ctx.bexp(), QXQIndex):
+            bres = ctx.bexp().accept(self)
+            changeVar = UpdateVars(nnum, self.counter)
+            changeVar.visit(bres)
+            self.currLocus = nLoc, nqty, changeVar.vars()
+            self.currLocus = changeVar.counter()
+            self.conStack += [EnFactor(('==', bres, DXNum(1)))]
+            ifexp = []
+        else:
+            ifexp = ctx.bexp().accept(self)
         
-    #     # Create initial varnums from the type environment
-    #     self.varnums = []
-    #     tenvp = self.tenv.get(self.fvar)[0]
-    #     for locus, q_type in tenvp:
+        result = ifexp
+
+        for stmt in ctx.stmts():
+            tmp = stmt.accept(self)
+            if tmp is None:
+                return None
+            else:
+                result += [tmp]
+
+        return result
+
+
+
+
+    # def visitIf(self, ctx: Programmer.QXIf):
+    #     """
+    #     Translates a classical if-then-else or a quantum conditional statement.
+    #     """
+    #     # Case 1: Quantum Conditional `if (q[i]) { ... }`
+    #     if isinstance(ctx.bexp(), QXQRange):
+    #         # A quantum conditional is a pure predicate transformation.
+    #         # It modifies the `working_predicate` directly and returns no statements.
+            
+    #         # 1. Setup: Find the locus and create new state variables
+    #         if not ctx.stmts() or not isinstance(ctx.stmts()[0], QXQAssign):
+    #             raise Exception("Quantum conditional body must be a single oracle assignment.")
+            
+    #         q_assign = ctx.stmts()[0]
+    #         control_qubit = ctx.bexp()
+    #         control_locus_name = control_qubit.location()
+    #         target_locus_names = {r.location() for r in q_assign.locus()}
+            
+    #         loc_tuple = None
+    #         for l, qty, var_map in self.varnums:
+    #             names_in_locus = {r.location() for r in l}
+    #             if control_locus_name in names_in_locus and target_locus_names.issubset(names_in_locus):
+    #                 loc_tuple = (l, qty, var_map)
+    #                 break
+            
+    #         if not loc_tuple:
+    #             raise Exception("Control and target for quantum conditional must be in the same entangled locus.")
+
+    #         loc, qty, old_vars = loc_tuple
     #         self.counter += 1
-    #         var_map = make_dafny_vars_for_locus(locus, q_type, self.counter)
-    #         self.varnums.append((locus, q_type, var_map))
+    #         new_vars = {k: v.newBind(self.counter) for k, v in old_vars.items()}
 
-    # def _translate_method_arguments(self, ctx: QXMethod):
-    #     """Generates Dafny arguments from classical and quantum inputs."""
-    #     args = []
-    #     for bindelem in ctx.bindings():
-    #         tmpv = bindelem.accept(self) 
-    #         if tmpv is not None:
-    #             args.append(tmpv)
-    #     for _, _, var_map in self.varnums:
-    #         args.extend(var_map.values())
-    #     print(f"\nTranslated method arguments: {args}")
-    #     return args
+    #         # 2. Build the new predicates that define the transformed state
+    #         new_predicates = self._get_shape_preservation_predicates(old_vars, new_vars)
+            
+    #         # Define the RHS logic for the conditional's `if-then-else` expression
+    #         oracle = q_assign.exp()
+    #         target_loc_pos = [min(findPos(r, loc), qty.flag().num()-1) for r in q_assign.locus()]
+            
+    #         qubit_vars = {k: v for k, v in old_vars.items() if k != 'amp'}
+    #         rep_type = next(iter(qubit_vars.values())).type()
+    #         num_iterators = self._get_total_nesting_depth(rep_type) - 1
+    #         iterators = [DXBind(f"k{i}", SType("nat")) for i in range(num_iterators)]
 
-    # def _translate_and_store_preconditions(self, ctx: QXMethod):
-    #     """Parses requires clauses and initializes the predicate state."""
-    #     # Store original preconditions
-    #     self.final_requires = []
-    #     for cond in ctx.conds():
-    #         if isinstance(cond, QXRequires):
-    #             self.current_line = cond.line_number()
-    #             preds = cond.accept(self)
-    #             # Ensure preds is a list
-    #             preds_list = preds if isinstance(preds, list) else [preds]
-    #             self.final_requires.extend([DXRequires(p, line=self.current_line) for p in preds_list])
-        
-    #     # Initialize working predicate as a deep copy
-    #     self.working_predicate = copy.deepcopy([r.spec() for r in self.final_requires])
+    #         then_logic = self._get_transformation_logic(oracle, old_vars, iterators, target_loc_pos)
 
-    # def _assign_final_state_to_returns(self):
-    #     """Generates assignments from the final state variables to the return variables."""
-    #     assignments = []
-    #     out_tenv = self.tenv.get(self.fvar)[1]
-        
-    #     # Create a map for the output variables
-    #     out_varnums = []
-    #     for locus, q_type in out_tenv:
-    #         self.counter += 1
-    #         var_map = make_dafny_vars_for_locus(locus, q_type, self.counter)
-    #         out_varnums.append((locus, q_type, var_map))
+    #         def rhs_generator(var_name, old_bind, iterators):
+    #             indexed_old = self._create_indexed_var(old_bind, iterators)
+    #             control_var_old = old_vars[control_qubit.ID()]
+    #             indexed_control_var = self._create_indexed_var(control_var_old, iterators)
+    #             control_bit = DXIndex(indexed_control_var, control_qubit.exp().accept(self))
+    #             self.libFuns.add('castBVInt')
+    #             condition = DXComp("==", DXCall("castBVInt", [control_bit]), DXNum(1))
+    #             then_expr = then_logic.get(var_name, indexed_old)
+    #             return DXIf(condition, then_expr, indexed_old, line=self.current_line)
 
-    #     # Find matching loci and create assignments
-    #     for out_loc, _, out_vars in out_varnums:
-    #         final_state = subLocus(out_loc, self.varnums)
-    #         if final_state:
-    #             _, _, final_vars = final_state
-    #             # Sort to ensure deterministic order
-    #             return_vars_list = sorted(out_vars.values(), key=lambda v: v.ID())
-    #             final_vars_list = sorted(final_vars.values(), key=lambda v: v.ID())
-    #             assignments.append(DXAssign(return_vars_list, final_vars_list, line=self.current_line))
-    #     return assignments
+    #         # Build the final `forall` clause using the generic helper
+    #         transformation_pred = self._get_transformation_predicate(old_vars, new_vars, rhs_generator)
+    #         new_predicates.append(transformation_pred)
 
-    # def _translate_method_returns(self, ctx: QXMethod):
-    #     """Generates the list of Dafny return variables."""
-    #     returns = [r.accept(self) for r in ctx.returns() if r.accept(self) is not None]
-        
-    #     out_tenv = self.tenv.get(self.fvar)[1]
-    #     for locus, q_type in out_tenv:
-    #         self.counter += 1
-    #         var_map = make_dafny_vars_for_locus(locus, q_type, self.counter)
-    #         returns.extend(var_map.values())
-    #     return returns
+    #         # 3. Update the main working predicate and state
+    #         old_var_ids = {v.ID() for v in old_vars.values()}
+    #         unaffected_predicates = [p for p in self.working_predicate if not old_var_ids.intersection(BindCollector().visit(p).renv)]
+    #         self.working_predicate = unaffected_predicates + new_predicates
+    #         self._update_state_for_locus(loc, qty, new_vars)
+            
+    #         return [] # Return no statements
+    
 
     # ==========================================================================
     # == Helper Methods for State Management
     # ==========================================================================
+
+    def _get_final_assignments_and_mapping(self):
+        """
+        Generates assignments from the final state variables to the return variables
+        and returns the mapping between them for predicate substitution. This version
+        is driven by the method's public return signature.
+        """
+        assignments = []
+        mapping = {} # Maps final state var ID to return var object
+        
+        for locus, return_qty, return_vars_map in self.outvarnums:
+            # Find the corresponding final state in the running environment
+            final_state_tuple = subLocus(locus, self.varnums)
+     #       print(f"\nMapping for locus {locus}: found final state tuple {final_state_tuple}")
+            
+            if final_state_tuple:
+                _, final_qty, final_vars_map = final_state_tuple
+#                print(f"\nFinal qty: {final_qty}, Return qty: {return_qty}")
+                
+                # Check if the types match before creating the assignment
+                if compareType(final_qty, return_qty):
+                    final_vars = sorted(final_vars_map.values(), key=lambda v: v.ID())
+                    return_vars = sorted(return_vars_map.values(), key=lambda v: v.ID())
+#                    print(f"\nFinal vars: {final_vars}, Return vars: {return_vars}")
+
+                    if final_vars and return_vars:
+                        assignments.append(DXAssign(return_vars, final_vars, line=self.current_line))
+                        for i in range(len(final_vars)):
+                            mapping[final_vars[i].ID()] = return_vars[i]
+        print(f"\nFinal assignments: {assignments}")                    
+        return assignments, mapping
+
 
     def _update_state_for_locus(self, target_locus: list, new_qty: QXQTy, new_vars: dict):
         """Updates self.varnums by replacing an old locus with its new version."""
@@ -846,15 +895,6 @@ class ProgramTransfer(ProgramVisitor):
                 new_varnums.append((loc, _, _))
         self.varnums = new_varnums
 
-
-    def _create_post_oracle_predicate(self, new_vars):
-        """Creates a simplified predicate after an oracle call."""
-        # A simple predicate could just assert the norm is preserved.
-#        amp_var = new_vars.get('amp')
-#        if amp_var:
-#            self.libFuns.add("Norm")
-#            return [DXComp("==", DXCall("Norm", [amp_var]), DXNum(1.0))]
-        return []
 
     # ==========================================================================
     # == Specification and Expression Visitors
@@ -973,49 +1013,61 @@ class ProgramTransfer(ProgramVisitor):
         """
         Translates a QXTensor specification into Dafny assertions.
         This is used for simple, non-superposition states (TyNor and TyHad).
-        """          
+        """
+        # A tensor product applies a single ket state to a range of qubits.
+        if len(ctx.kets()) != 1:
+            raise Exception("Tensor product specification must have exactly one ket state.")
+        
+        if len(loc) != 1:
+            raise Exception("Tensor product specification is expected on a single locus.")
+
+        predicates = []
+        elem = loc[0]
+        dvar = varbind.get(elem.location())
+        if not dvar:
+            return []
+
+        # Define the iterator for the forall loop
         if ctx.ID() is None:
-            x = DXBind("i", SType("nat"))
+            iterator = DXBind("i", SType("nat"))
         else:
-            x = DXBind(str(ctx.ID()), SType("nat"))
+            iterator = DXBind(str(ctx.ID()), SType("nat"))
 
-        tmp = []
-
-        #shape predicates
+        # --- Shape Predicates ---
+        left = elem.crange().left().accept(self)
+        right = elem.crange().right().accept(self)
         
-        for elem in loc:
-            dvar = varbind.get(elem.location())
-            if dvar:             
-                qcount = elem.crange().right().accept(self)
-                if not self.t_ensures:
-                    tmp.append(DXComp(">", qcount, DXNum(0), line=ctx.line_number()))
-                tmp.append(DXComp("==", DXLength(dvar), qcount, line=ctx.line_number()))
+        # The length of the Dafny sequence should match the length of the Qafny range.
+        if isinstance(left, DXNum) and left.val() == 0:
+            range_len_expr = right
+        else:
+            range_len_expr = DXBin("-", right, left)
+        predicates.append(DXComp("==", DXLength(dvar), range_len_expr, line=ctx.line_number()))
+
+        if not self.t_ensures:
+            predicates.append(DXComp(">", right, left, line=ctx.line_number()))
                 
-        #value predicates 
-        for i, ket in enumerate(ctx.kets()):
-            var = loc[i].location()
-            dvar = varbind.get(var)
-            if not dvar: continue
-
-            ket_val = ket.accept(self)
-            qcount = loc[i].crange().right().accept(self)
-            drange = DXInRange(x, DXNum(0), qcount, line=ctx.line_number())
-
-            body = DXComp("==", DXIndex(dvar, x), ket_val, line=ctx.line_number())
-
-            if body:
-                tmp.append(DXAll(x, DXLogic("==>", drange, body), line=ctx.line_number()))    
+        # --- Value Predicate ---
+        ket_val = ctx.kets()[0].accept(self)
         
-        return tmp
+        # The range for the forall loop, e.g., 0 <= i < |dvar|
+        drange = DXInRange(iterator, DXNum(0), DXLength(dvar), line=ctx.line_number())
+        body = DXComp("==", DXIndex(dvar, iterator), ket_val, line=ctx.line_number())
+        predicates.append(DXAll(iterator, DXLogic("==>", drange, body), line=ctx.line_number()))    
+        
+        return predicates
 
     def visitBin(self, ctx: Programmer.QXBin):
         left = ctx.left().accept(self)
         right = ctx.right().accept(self)
 #        print(f"\nVisiting bin: {ctx} with left {left} and right {right}")
-        if ctx.op() == '^' and isinstance(left, DXNum) and left.val() == 2:
-            self.libFuns.add('pow2')
-            return DXCall('pow2',[ctx.right().accept(self)], line=ctx.line_number())
-
+        if ctx.op() == '^':
+            if isinstance(left, DXNum) and left.val() == 2:
+                self.libFuns.add('pow2')
+                return DXCall('pow2',[right], line=ctx.line_number())
+            else:
+                self.libFuns.add('powN')
+                return DXCall('powN',[left, right], line=ctx.line_number())
 
         if ctx.op() == '/' and isinstance(left, DXNum) and left.val() == 1.0:
 #            print('\ntransfer', DXBin(ctx.op(),  DXNum(1), right, line=ctx.line_number()))
@@ -1064,9 +1116,288 @@ class ProgramTransfer(ProgramVisitor):
         v = ctx.next().accept(self)
         return DXNot(v, line=ctx.line_number())
 
+    def visitHad(self, ctx: Programmer.QXHad):
+        # ensure omega is in our list of library functions
+        self.libFuns.add('omega')
+        if ctx.state() == "+":
+            return DXCall("omega", [DXNum(0), DXNum(2)], line=ctx.line_number())
+        else:
+            return DXCall("omega", [DXNum(1), DXNum(2)], line=ctx.line_number())
+        
     # ==========================================================================
-    # == Refactored Helper Methods for Predicate Generation
+    # == Core Logic for Conditional Transformation
     # ==========================================================================
+    def _transform_for_quantum_conditional(self, ctx: Programmer.QXIf):
+        """
+        Handles the predicate transformation for a quantum conditional.
+        This is a pure logical transformation; it does not generate executable statements.
+        """
+        # 1. Setup: Find the relevant locus and create new state variables
+        if not ctx.stmts() or not isinstance(ctx.stmts()[0], QXQAssign): #Need to adjust for nested ifs
+            raise Exception("Quantum conditional body must be a single oracle assignment.")
+        
+        q_assign = ctx.stmts()[0]
+        control_qubit = ctx.bexp()
+        control_locus_name = control_qubit.location()
+        target_locus_names = {r.location() for r in q_assign.locus()}
+        
+        loc_tuple = None
+        for l, qty, var_map in self.varnums:
+            names_in_locus = {r.location() for r in l}
+            if control_locus_name in names_in_locus and target_locus_names.issubset(names_in_locus):
+                print('\n lets check locus', subLocus([control_qubit], self.varnums))
+                loc_tuple = (l, qty, var_map)
+                break
+        
+        if not loc_tuple:
+            raise Exception("Control and target for quantum conditional must be in the same entangled locus.")
+
+        loc, qty, old_vars = loc_tuple
+        self.counter += 1
+        new_vars = {k: v.newBind(self.counter) for k, v in old_vars.items()}
+
+        # 2. Build the new predicates that define the transformed state
+        new_predicates = self._get_shape_preservation_predicates(old_vars, new_vars)
+        
+        # Define the RHS logic for the conditional's `if-then-else` expression
+        oracle = q_assign.exp()
+        target_loc_pos = [min(findPos(r, loc), qty.flag().num()-1) for r in q_assign.locus()]
+        
+        qubit_vars = {k: v for k, v in old_vars.items() if k != 'amp'}
+        rep_type = next(iter(qubit_vars.values())).type()
+        num_iterators = self._get_total_nesting_depth(rep_type) - 1
+        iterators = [DXBind(f"k{i}", SType("nat")) for i in range(num_iterators)]
+
+        then_logic = self._get_transformation_logic(oracle, old_vars, iterators, target_loc_pos)
+
+        def rhs_generator(var_name, old_bind, iterators):
+            indexed_old = self._create_indexed_var(old_bind, iterators)
+            control_var_old = old_vars[control_qubit.ID()]
+            indexed_control_var = self._create_indexed_var(control_var_old, iterators)
+            control_bit = DXIndex(indexed_control_var, control_qubit.exp().accept(self))
+            self.libFuns.add('castBVInt')
+            condition = DXComp("==", DXCall("castBVInt", [control_bit]), DXNum(1))
+            then_expr = then_logic.get(var_name, indexed_old)
+            return DXIf(condition, then_expr, indexed_old, line=self.current_line)
+
+        # Build the final `forall` clause using the generic helper
+        transformation_pred = self._get_transformation_predicate(old_vars, new_vars, rhs_generator)
+        new_predicates.append(transformation_pred)
+
+        # 3. Update the main working predicate and state
+        old_var_ids = {v.ID() for v in old_vars.values()}
+        unaffected_predicates = [p for p in self.working_predicate if not old_var_ids.intersection(BindCollector().visit(p).renv)]
+        self.working_predicate = unaffected_predicates + new_predicates
+        self._update_state_for_locus(loc, qty, new_vars)
+        
+        return [] # Return no statements
+
+    def genHadEnCastPred(self, vars: dict, qty: QXQTy, line_number: int):
+        """
+        Generates the Dafny AST for casting a TyHad state to a TyEn state.
+        This involves creating new Dafny variables for the TyEn representation and
+        generating a call to the 'hadEn' library function.
+        """
+        newvars = self.upVarsType(vars, qty)
+        result = [DXInit(x, line=line_number) for x in newvars.values()]
+        newampvar = [x for x in newvars.values() if x.ID() == 'amp']
+        othervars = [x for x in newvars.values() if x.ID() != 'amp']
+        result += [DXAssign(newampvar + othervars, DXCall("hadEn", vars.values(), line=line_number),
+                            line=line_number)]
+        self.libFuns.add('hadEn')
+        return newvars, result
+
+    def genEnNorExtendPred(self, x:DXBind, y:DXBind, qty:QXQTy, line_number: int):
+        """
+        Generates the Dafny AST for extending an existing TyEn locus by merging a
+        classical (TyNor) qubit into it. It generates a call to the 'mergeBitEn'
+        library function.
+        """
+        self.libFuns.add('mergeBitEn') #well, this is not from Nor type but Had type
+        v = DXAssign([y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
+                         DXCall('mergeBitEn',
+                                [DXLength(x), y]),True, line=line_number)
+        self.counter += 1
+        return v
+
+    #TODO: need to modify the meaning of duplicateMergeBitEn to be a AA type choice,
+    #the number of elements in seq will not change, but we will have case for y == 0 and y == 1
+    def genEnHadAASeqPred(self, vars: dict, y:DXBind, qty:QXQTy, line_number: int):
+        """
+        Generates the Dafny AST for the complex operation of merging a TyHad control
+        qubit with a TyEn target locus. This results in a TyAA state, representing
+        the two branches of the quantum conditional.
+        """
+        x = vars.values()[0]
+        res = []
+
+        yleft = y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)
+        res += DXAssign([y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
+                         DXNum(0),True, line=line_number)
+        self.counter += 1
+
+        yright = y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)
+        res += DXAssign([y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
+                         DXNum(1),True, line=line_number)
+        self.counter += 1
+
+        self.libFuns.add('duplicateMergeBitEn')
+        self.libFuns.add('mergeAmpEn')
+        self.libFuns.add('omega')
+        half = DXBin('/', QXNum(1), DXUni('sqrt', 2))
+        omega = DXCall('omega', [DXNum(1),DXNum(2)], True, line=self.current_line)
+        for elem in vars.values():
+            if elem.ID() != 'amp':
+                #the duplicateMergeBitEn will simply copy the same result from the old elem to be a new one
+                #and perform y == 0 ==> duplicate as well as y == 1 ==> duplicate
+                res += [DXAssign([DXBind(elem.ID(), genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
+                     DXCall('duplicateMergeBitEn',  [yleft, DXNum(0), DXLength(x), elem]),
+                     True, line=line_number)]
+                self.counter += 1
+                res += [DXAssign([DXBind(elem.ID(), genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
+                     DXCall('duplicateMergeBitEn',  [yright, DXNum(1), DXLength(x), elem]),
+                     True, line=line_number)]
+                self.counter += 1
+            else:
+                res += [DXAssign([DXBind('amp', genType(qty.flag(), (SType("real"))), self.counter)],
+                     DXCall('mergeAmpEn', [yleft, DXNum(0), DXLength(x), elem, half]),
+                     True, line=line_number)]
+                self.counter += 1
+                res += [DXAssign([DXBind('amp', genType(qty.flag(), (SType("real"))), self.counter)],
+                     DXCall('mergeAmpEn', [yleft, DXNum(0), DXLength(x), elem,
+                                           DXBin('*', half, DXBin('*', omega, y))]),
+                     True, line=line_number)]
+                self.counter += 1
+
+
+    def superLocus(self, q2: [QXQRange], ty:QXQTy):
+        """
+        Searches the current state (self.varnums) to find a component that overlaps
+        with the target locus 'q2' and matches the target type 'ty'.
+        """
+        vs = []
+        for i in range(len(self.varnums)):
+            loc, qty, vars = self.varnums[i]
+            if ty == qty:
+                # A more robust overlap check:
+                # Does any part of the existing locus 'loc' appear in the required locus 'q2'?
+                is_loc_in_q2 = any(compareLocus([l_part], q2) is not None for l_part in loc)
+                # Does any part of the required locus 'q2' appear in the existing locus 'loc'?
+                is_q2_in_loc = any(compareLocus([q2_part], loc) is not None for q2_part in q2)
+
+                if is_loc_in_q2 or is_q2_in_loc:
+                    # We found an overlapping component.
+                    # The remainder is the parts of q2 that are NOT covered by loc.
+                    rem = [r for r in q2 if compareLocus([r], loc) is None]
+                    
+                    # Return the remainder, the found component, and the rest of the state.
+                    return rem, loc, qty, vars, (vs + self.varnums[i+1:])
+            vs += [self.varnums[i]]
+        return None
+
+    def computeType(self, q2: [QXQRange]):
+        """
+        Calculates the "meet" or the most general type required to unify a set of
+        qubit ranges 'q2'. It determines the current type of each range and then
+        uses the 'meetType' helper to find their least upper bound.
+        """
+        tmp = None
+        for elem in q2:
+            loc, qty, vars = subLocus([elem], self.varnums)
+            if tmp is None:
+                tmp = qty
+            else:
+                tmp = meetType(tmp, qty)
+        return tmp
+
+    def includeIfLocus(self, q2: [QXQRange]):
+        v = subLocus(q2, self.varnums)
+        print(f"\n includeIfLocus: looking for locus {q2}, found: {v}")
+        if v is not None:
+            return [], v
+
+        ty = self.computeType(q2)
+        rt = self.superLocus(q2, ty)
+
+        print(f"\n includeIfLocus: computed type {ty} for locus {q2}, super locus result: {rt}")
+
+        if rt is not None:
+            remind, loc, qty, vars, tmpVarNums = rt
+            if isinstance(ty, TyHad):
+                _, pred = self.genHadEnCastPred(vars, qty, loc[0].line_number())
+                qty = TyEn(QXNum(1), qty.line_number())
+                norRe, norVars, tmpVarNumsa = self.collectNorLocus(remind, tmpVarNums)
+                loc = loc + norRe
+                for v in norVars.values():
+                    pred += [self.genEnNorExtendPred(vars.values()[0], v, qty, loc[0].line_number())]
+                vars.update({k:v for k,v in norVars.items()})
+                self.varnums = ([(loc, qty, vars)]) + tmpVarNumsa
+                return pred, loc, qty, vars
+
+            if isinstance(ty, TyEn):
+                print('\n includeIfLocus en-en:', loc, qty, vars)
+                print('\n includeIfLocus en-en remind:', remind, tmpVarNums)
+                norRe, norVars, tmpVarNumsa = self.collectNorLocus(remind, tmpVarNums)
+                print('\n includeIfLocus en-en norRe:', norRe, norVars, tmpVarNumsa)
+                loc = loc + norRe
+                pred = []
+                for v in norVars.values():
+                    pred += [self.genEnNorExtendPred(vars.values()[0], v, qty, loc[0].line_number())]
+                vars.update({k:v for k,v in norVars.items()})
+                vb = findHadLocus(remind, tmpVarNumsa)
+                print('\n includeIfLocus en-en vb:', vb)
+                if vb is not None:
+                    qa, oldVars, tmpVarNumsb = vb
+                    pred += self.genEnHadAASeqPred(vars, oldVars.values()[0], ty, loc[0].line_number())
+                    qty = TyEn(qty.flag(), qa, loc[0].line_number())
+                self.varnums = ([(loc, qty, vars)]) + tmpVarNumsa
+                return pred, loc, qty, vars
+        return None
+
+
+    def collectNorLocus(self, q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
+        """
+        A helper function that finds and collects all TyNor typed loci from a list of states 'qs'
+        that are specified in the target range 'q2'. It returns the collected loci, their
+        variables, and the remaining states.
+        """
+        qv = []
+        vs = []
+        for elem in q2:
+            for i in range(len(qs)):
+                loc, qty, vars = qs[i]
+                if isinstance(qty, TyNor):
+                    if EqualityVisitor().visit(elem, loc[0]):
+                        vs += [(loc, qty, vars)]
+                    else:
+                        reLoc = compareRangeLocus(elem, loc)
+                        qv += [(reLoc, qty, vars)]
+
+                        vs += [(elem, qty, self.upVars(vars))]
+                else:
+                    qv += [(loc, qty, vars)]
+
+        newVars = dict()
+        va = []
+        for loc, qty, vars in vs:
+            va += loc
+            newVars.update({k:v for k,v in vars.items()})
+
+        return va, newVars, qv
+    
+    def upVars(self, v: dict):
+        """Updates Dafny variables with incremented counters."""
+        tmp = dict()
+        for key in v.keys():
+            tmp.update({key: v.get(key).newBind(self.counter)})
+            self.counter += 1
+
+        return tmp
+
+    # ==========================================================================
+    # == Core Logic for ORACLE Transformation
+    # ==========================================================================
+
     def _get_transformation_logic(self, oracle, old_vars, iterators, target_loc_pos):
         """
         Helper to generate the right-hand side of the transformation equalities for an oracle.
@@ -1127,8 +1458,35 @@ class ProgramTransfer(ProgramVisitor):
                 logic_map[var_name] = final_expr
                 ket_idx += 1
         return logic_map
-
     
+    def _update_working_predicate_after_oracle(self, ghost_method, old_vars, new_vars):
+        """Replaces old predicates with the new state defined by the ghost method."""
+        new_predicates = []
+        affected_var_ids = {v.ID() for v in old_vars.values()}
+        
+        for pred in self.working_predicate:
+            collector = BindCollector()
+            collector.visit(pred)
+            if not affected_var_ids.intersection(collector.renv):
+                new_predicates.append(pred)
+
+        ghost_returns = sorted(ghost_method.returns(), key=lambda v: v.ID())
+        current_state_vars = sorted(new_vars.values(), key=lambda v: v.ID())
+
+        for ensure_clause in ghost_method.conds():
+            if isinstance(ensure_clause, DXEnsures):
+                pred = ensure_clause.spec()
+                transformed_pred = pred
+                for i in range(len(ghost_returns)):
+                    subst = SubstDAExp(ghost_returns[i].ID(), current_state_vars[i])
+                    transformed_pred = subst.visit(transformed_pred)
+                new_predicates.append(transformed_pred)
+
+        self.working_predicate = new_predicates
+    
+    # ==========================================================================
+    # == Helper Methods for Predicate Generation
+    # ==========================================================================
     @staticmethod
     def _get_total_nesting_depth(var_type: DXType):
         """Calculates the total number of sequence levels."""

@@ -311,10 +311,10 @@ class ProgramTransfer(ProgramVisitor):
     def genEnNorExtendPred(self, x:DXBind, y:DXBind, qty:QXQTy, line_number: int):
         """
         Generates the Dafny AST for extending an existing TyEn locus by merging a
-        classical (TyNor) qubit into it. It generates a call to the 'mergeBitEn'
+        separable qubit into it. It generates a call to the 'mergeBitEn'
         library function.
         """
-        self.libFuns.add('mergeBitEn')
+        self.libFuns.add('mergeBitEn') 
         v = DXAssign([y.newBindType(genType(qty.flag(), SeqType(SType("bv1"))), self.counter)],
                          DXCall('mergeBitEn',
                                 [DXLength(x), y]),True, line=line_number)
@@ -377,7 +377,7 @@ class ProgramTransfer(ProgramVisitor):
         of the target locus 'q2' and matches the target type 'ty'.
 
         """
-        print(f"\nsuperLocus: searching for super locus of {q2} with type {ty} in varnums: {self.varnums}")
+        print(f"\n superLocus: searching for super locus of {q2} with type {ty} in varnums: {self.varnums}")
         vs = []
         for i in range(len(self.varnums)):
             loc, qty, vars = self.varnums[i]

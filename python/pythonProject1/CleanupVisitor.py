@@ -97,7 +97,7 @@ class CleanupVisitor(TargetProgramVisitor):
         return DXLogic(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line())
     
     def visitComp(self, ctx: TargetProgrammer.DXComp):
-        print('\n visitComp in Cleanup', ctx)
+#        print('\n visitComp in Cleanup', ctx)
         return DXComp(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line())
     
     def visitNot(self, ctx: TargetProgrammer.DXNot):

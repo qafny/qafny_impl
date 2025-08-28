@@ -380,6 +380,8 @@ class DXBoolValue(DXBool):
     
     def line(self):
         return self._line
+    
+
 
 class DXList(DXAExp):
 
@@ -744,3 +746,25 @@ class DXProgram(DXTop):
     
     def line(self):
         return self._line
+    
+class DXSeqComp(DXAExp):
+    def __init__(self, size: DXLength|DXBind, idx: DXBind, spec: DXRequires | None, lambd: DXIf | DXIndex):
+        self._size = size
+        self._idx = idx
+        self._spec = spec
+        self._lambd = lambd
+    
+    def size(self):
+        return self._size
+    
+    def idx(self):
+        return self._idx
+    
+    def spec(self):
+        return self._spec
+    
+    def lambd(self):
+        return self._lambd
+    
+    def __repr__(self):
+        return f'Seq(length={self._size}, value={self._lambd})'

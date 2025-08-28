@@ -64,6 +64,8 @@ class TargetProgramVisitor(AbstractTargetVisitor):
                 return self.visitRequires(ctx)
             case DXEnsures():
                 return self.visitEnsures(ctx)
+            case DXSeqComp():
+                return self.visitSeqComp(ctx)
             case _:
                 raise NotImplementedError(f"No visit method defined for {type(ctx)}")
 
@@ -184,3 +186,10 @@ class TargetProgramVisitor(AbstractTargetVisitor):
     
     def visitLength(self, ctx: TargetProgrammer.DXLength):
         ctx.var().accept(self)
+
+    def visitSeqComp(self, ctx: DXSeqComp):
+        ctx.size().accept(self)
+        ctx.idx().accept(self)
+        ctx.spec().accept(self) if ctx.spec() is not None else None
+        ctx.lambd().accept(self)
+

@@ -20,10 +20,10 @@ class PrinterVisitor(TargetProgramVisitor):
     
     def visitMethod(self, ctx: TargetProgrammer.DXMethod):
         # visit all attributes of method, append the resultant strings to create a method
-        print(f'\nVisiting method: {ctx}')
+#        print(f'\nVisiting method: {ctx}')
         bindings = ''
         for binding in ctx.bindings():
-            print(f'\nVisiting binding PrinterVisitor: {binding}')
+#            print(f'\nVisiting binding PrinterVisitor: {binding}')
             bindings += binding.ID() + (str(binding.num()) if binding.num() else '') + ': ' + binding.type().accept(self) + ', ' if binding.type() else '' 
         bindings = bindings[:-2]
 
@@ -94,7 +94,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return res
 
     def visitBin(self, ctx: TargetProgrammer.DXBin):
-        print('\nvisitBin', ctx)
+     #   print('\nvisitBin', ctx)
         return '(' + ctx.left().accept(self) + ' ' + ctx.op() + ' ' + ctx.right().accept(self) + ')'
 
     def visitUni(self, ctx: TargetProgrammer.DXUni):
@@ -194,3 +194,10 @@ class PrinterVisitor(TargetProgramVisitor):
     
     def visitCast(self, ctx: TargetProgrammer.DXCast):
         return '(' + ctx.next().accept(self) + ' as ' + ctx.type().type() + ')'
+    
+    def visitSeqComp(self, ctx: DXSeqComp):
+        size_str = ctx.size().accept(self) if ctx.size() is not None else ''
+        idx_str = ctx.idx().accept(self) if ctx.idx() is not None else ''
+        spec_str = ctx.spec().accept(self) if ctx.spec() is not None else ''
+        lambd_str = ctx.lambd().accept(self) if ctx.lambd() is not None else ''
+        return f'seq({size_str}, {idx_str}{spec_str}=>{lambd_str})'

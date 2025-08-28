@@ -48,7 +48,7 @@ DEFAULT_FILENAMES = [
 #    example_program("test1"),
 #    example_program("test2"),
     # example_program("test3"),
-#     example_program("test4"),
+     example_program("test4"),
 #     example_program("test5"),
 #     example_program("test6"),
     # example_program("test7"),
