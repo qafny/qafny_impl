@@ -2,7 +2,7 @@
 // https://arxiv.org/abs/1103.3017
 
 method HSP (q : Q[n], p : Q[1], n: nat, f : nat -> bool, g: nat -> bool, s: nat) returns (b: nat, y: nat, prob: real)
-  requires { q[0 , n) : nor ↦ |0⟩ }
+  requires { q[0, n) : nor ↦ |0⟩ }
   requires { p[0] : nor ↦ |0⟩ }
   requires forall x :: 0 <= x < 2^n ==> g(x) == f(x+s)
   ensures prob == 1 - 1/q

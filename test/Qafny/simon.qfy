@@ -5,8 +5,8 @@ method Simon(n: nat, q: Q[n], p: Q[n], f: nat -> nat, s: nat) returns (y: nat, p
   requires forall k :: 0 <= k < 2^(n - 1) ==> f(b2n(k)) == f(s xor (k+2^(n - 1))) //we can assume that structure of f, because the two pairs in f are k and k+2^n.
   requires s != 0
     // we can assume that all elements in the function are lined up with, without losing generality, since we do not rely on the structure
-  requires { q[0 , n) : nor ↦ |0⟩ }
-  requires { p[0 , n) : nor ↦ |0⟩ }
+  requires { q[0, n) : nor ↦ |0⟩ }
+  requires { p[0, n) : nor ↦ |0⟩ }
   //we should have a way of only specifying basis.
   //but we also care about amplitudes here.
   ensures n2b(s)*n2b(y) == 1 ==> prob == 0

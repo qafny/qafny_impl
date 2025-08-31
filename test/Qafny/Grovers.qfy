@@ -1,7 +1,7 @@
 //This is the Grovers algorithm file. 
 
 method {:axiom} Diff(n: nat, q: Q[n], f: nat -> bool, v: real, phi: real)
-  requires phi == sqrt(sumFun(f,2^n) / 2^n)
+  requires phi == sqrt(sumFun(f, 2^n) / 2^n)
   requires { q[0, n) : aa ↦ part(n, f, sin(v), cos(v)) }
   ensures { q[0, n) : aa ↦ part(n, f, sin(v + 2 * phi), cos(v + 2 * phi)) }
 
@@ -32,11 +32,11 @@ method Grovers(n: nat, q: Q[n], f: nat -> bool, m: nat, N: nat) returns (y: nat,
 
   for i in [0, N)
     invariant {
-      q[0,n) : aa ↦ part(n, f, sin ((2 * i + 1) * sqrt(sumFun(f, 2^n) / 2^n)), cos((2 * i + 1) * sqrt(sumFun(f, 2^n) / 2^n)))
+      q[0, n) : aa ↦ part(n, f, sin ((2 * i + 1) * sqrt(sumFun(f, 2^n) / 2^n)), cos((2 * i + 1) * sqrt(sumFun(f, 2^n) / 2^n)))
     }
   {
     //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
-    Diff(n, q, f, (2 * i + 1) * sqrt(sumFun(f,2^n) / 2^n), sqrt(sumFun(f,2^n) / 2^n)); //this performs phase kick-back. only allowed operation (read from f and f is a function answers yes or no). 
+    Diff(n, q, f, (2 * i + 1) * sqrt(sumFun(f, 2^n) / 2^n), sqrt(sumFun(f, 2^n) / 2^n)); //this performs phase kick-back. only allowed operation (read from f and f is a function answers yes or no). 
                                   //to correctly represent the data-base searching, we might implement phase kick-back
                                   //where we need to asusme there is a second register p[0], and p[0] is in |-⟩.
      //this amplitude value will increase the amplitude of f(k) == 1 group while describing the amplitude of f(k) == 0 group.

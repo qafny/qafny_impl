@@ -1,13 +1,13 @@
 //r is the order, this function is to do analysis, not the computation. We need to analysis that the shor's algorithm can produce r.
-method Shors(n:nat, q : Q[n], p : Q[n], N : nat, base : nat, r:nat , c:nat) returns (y:nat, py : real)
+method Shors(n: nat, q: Q[n], p: Q[n], N: nat, base: nat, r: nat , c: nat) returns (y: nat, py: real)
   //requires 1 < base
   requires 1 < base < N
-  requires gcd(base,N) == 1
+  requires gcd(base, N) == 1
   //requires N <= 2 ^ n //if we do not want allow this syntax, fine.
   //requires gcd(base,N) == 1
   //requires order(base,N) == r //define order function
-  requires { q[0 , n) : nor ↦ |0⟩ }
-  requires { p[0 , n) : nor ↦ |0⟩ }
+  requires { q[0, n) : nor ↦ |0⟩ }
+  requires { p[0, n) : nor ↦ |0⟩ }
   //we should have a way of only specifying basis.
   //but we also care about amplitudes here.
   ensures y == c * 2^n / r
@@ -21,7 +21,7 @@ method Shors(n:nat, q : Q[n], p : Q[n], N : nat, base : nat, r:nat , c:nat) retu
       q[0, i), p[0, n) : en ↦ ∑ k ∈ [0, 2^i) . 1/sqrt(2^i) | k ⟩ | (base ^ k) % N ⟩
   }
   invariant {
-      q [i , n) : had ↦ |+⟩
+      q [i, n) : had ↦ |+⟩
   }
  {
     //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
@@ -34,13 +34,13 @@ method Shors(n:nat, q : Q[n], p : Q[n], N : nat, base : nat, r:nat , c:nat) retu
   }
   // var v: nat;
   // var prob: real;
-  var v, prob *= measure(p[0,n));//we do not care about the v and prob value here. only the partial measurement of p
+  var v, prob *= measure(p[0, n));//we do not care about the v and prob value here. only the partial measurement of p
   //assert { q[0, n) : en ↦ ∑ k ∈ [0, 2^n / r) . 1 / sqrt(2^n / r) |v + r * k⟩ }; //we can keep the format of sqrt(2^n / r), and I think the case is general in any algorithm
-  q[0,n) *= QFT;
+  q[0, n) *= QFT;
   //we need to have a way of dealing with 2^n / r, the sum actually does not matter, we need to say 2^n/r as nat is 2^n/r round to bottom nat
   //in the following ω (v * x + r * k * x, 2^n) can be break down ω (v * x) * ω (r * k * x, 2^n), and the first one is one since it can be moved out of the sum k.
   //assert { q[0, n) : en(1) ↦ ∑ x ∈ [0, 2^n) . ∑ k ∈ [0, 2 ^ n / r) . 1 / sqrt(2^n / r) * 1 / sqrt(2^n) * ω (v * x + r * k * x, 2^n) |x⟩ };
-  y,py *= measure(q[0,n), c*2^n/r); //what is c*2^n/r?
+  y, py *= measure(q[0, n), c*2^n/r); //what is c*2^n/r?
   //will need to support a lemma (does not need proof), to show that ∑ k ∈ [0 .. 2^n / r] . ω (r * k * x, 2^n) is 4 / (pi * pi * r) when y = c * 2^n / r
 }  
 
