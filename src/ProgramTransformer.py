@@ -333,14 +333,13 @@ class ProgramTransformer(ExpVisitor):
             for i, qspec in enumerate(qspecs):
                 if isinstance(qspec, QXTensor):
                     # the same tensor with the amplitude multiplied in (if it already has an amplitude)
-                    # TODO: how to handle line:column information here?
                     if qspec.amp() is not None:
                         qspecs[i] = QXTensor(qspec.kets(), qspec.ID(), qspec.range(), QXBin('*', amplitude, qspec.amp(), parser_context=ctx), parser_context=ctx)
                     else:
                         qspecs[i] = QXTensor(qspec.kets(), qspec.ID(), qspec.range(), amplitude, parser_context=ctx)
                 elif isinstance(qspec, QXSum):
                     # the same sum with the amplitude multiplied in
-                    qspecs[i] = QXSum(qspec.sums(), QXBin('*', amplitude, qspec.amp(), parser_context=ctx), qspec.kets(), parser_context=ctx) # TODO: how to handle line:column information here?
+                    qspecs[i] = QXSum(qspec.sums(), QXBin('*', amplitude, qspec.amp(), parser_context=ctx), qspec.kets(), parser_context=ctx)
                 else:
                     raise ValueError(f"[UNREACHABLE] All qspecs are expected to be either a QXTensor or a QXSum, but a {type(qspec)} was found!")
         return (type, qspecs)
@@ -399,7 +398,7 @@ class ProgramTransformer(ExpVisitor):
                 amplitude = spec.amp()
                 if amplitude is not None:
                     if next.amplitude() is not None:
-                        amplitude = QXBin("*", amplitude, next.amp(), parser_context=amplitude) # TODO: how to attach line:col?
+                        amplitude = QXBin("*", amplitude, next.amp(), parser_context=amplitude)
                 else:
                     amplitude = next.amp()
                 # combine kets
@@ -408,10 +407,10 @@ class ProgramTransformer(ExpVisitor):
                 # combine the conditions (and)
                 # condition = spec.condition()
                 # if condition is not None and next.condition() is not None:
-                #     condition = QXLogic('&&', condition, next.condition(), parser_context=condition) # TODO: attach line:col
+                #     condition = QXLogic('&&', condition, next.condition(), parser_context=condition)
                 # else:
                 #     condition = next.condition()
-                spec = QXSum(sums, amplitude, kets, parser_context=spec) # TODO: how to attach line:col
+                spec = QXSum(sums, amplitude, kets, parser_context=spec)
             elif isinstance(spec, QXTensor) and isinstance(next, QXTensor):
                 # combine tensors
                 raise NotImplementedError("Combining two tensors")
@@ -714,7 +713,7 @@ class ProgramTransformer(ExpVisitor):
                         raise ValueError('UNREACHABLE')
 
                     bind = QXBind(assign_to[i].ID(), type, parser_context=assign_to[i])
-                    stmts.append(QXInit(bind, parser_context=assign_to[i])) # todo: attach line:col information
+                    stmts.append(QXInit(bind, parser_context=assign_to[i]))
 
         
         locus = self.visitLocus(ctx.locus())
@@ -745,8 +744,8 @@ class ProgramTransformer(ExpVisitor):
                     else:
                         raise ValueError('UNREACHABLE')
 
-                    bind = QXBind(assign_to[i].ID(), type, assign_to[i])
-                    stmts.append(QXInit(bind, assign_to[i])) # todo: attach line:col information
+                    bind = QXBind(assign_to[i].ID(), type, parser_context=assign_to[i])
+                    stmts.append(QXInit(bind, assign_to[i], parser_context=bind))
 
         locus = self.visitLocus(ctx.locus())
 

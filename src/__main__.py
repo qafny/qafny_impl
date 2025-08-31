@@ -19,9 +19,9 @@ from DafnyLibrary import DafnyLibrary # usage: generating template library funct
 from CleanupVisitor import CleanupVisitor # usage: perforaming final cleanup operations before verifying such as convertiong x ^ y to powN(x, y)
 from QafnyPP import QafnyPP
 import subprocess # usage: calling dafny to verify generated code
-import re # to extract the error line number from dafny output
+import re # usage: to extract the error line number from dafny output
 
-from error_reporter.CodeReport import CodeReport
+from error_reporter.CodeSnippet import CodeSnippet
 
 #######################################
 # Qafny Options (a.k.a. Defines)
@@ -199,7 +199,7 @@ if __name__ == "__main__":
             # debugging purposes, print out the generated dafny output
             if args.print_dafny:
                 print("Dafny:")
-                rich.print(CodeReport(dafny_code))
+                rich.print(CodeSnippet(dafny_code))
             output_filename = None
             if args.output is not None:
                 # in the case of a default const (the argument was specified, but no filename provided)
@@ -219,8 +219,10 @@ if __name__ == "__main__":
             dafny_result = None
             if not args.skip_verify:
                 if output_filename is not None:
+                    # run from a file
                     dafny_result = subprocess.run(["dafny", "verify", "--allow-warnings", "--verification-time-limit=60", output_filename])
-                else:
+                else: 
+                    # run with a pipe
                     dafny_result = subprocess.run(
                         ["dafny", "verify", "--stdin", "--allow-warnings", "--verification-time-limit=60"],
                         input=dafny_code, text=True, capture_output=True
@@ -228,12 +230,18 @@ if __name__ == "__main__":
 
                 if dafny_result.returncode != 0: 
                     error_message = dafny_result.stdout
-                    pattern = r"<stdin>\((?P<line>\d+),.*?\): Error:"
+                    pattern = r"<stdin>\((?P<line>\d+),(?P<col>\d+)\): Error:"
                     match = re.search(pattern, error_message)
                     if match:
                         line_number = int(match.group('line'))
+                        col = int(math.group('col'))
                         if line_number in target_printer_visitor.line_mapping:
                             print('Estimated qafny error line number', target_printer_visitor.line_mapping[line_number].qafny_line_number())
+
+                            # generate a CodeSnippet based on this line number
+                            report = CodeSnippet(file_stream)
+                            report.limitToLines(line_number - 1, line_number + 1)
+                            rich.print(report)
                         else:
                             print('Could not find qafny line number')
                             print(error_message)

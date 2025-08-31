@@ -39,7 +39,7 @@ class qafny:
             def do_replace(cls: Type[TypeVar("T")]) -> Type[TypeVar("T")]:
                 '''Actual function that replaces the member functions of a class, could be returned as a partial from rich_repr'''
                 def auto_repr(self: TypeVar("T")) -> str:
-                    '''Create repr string from __rich_repr__'''
+                    '''Creates a repr string from __rich_repr__'''
                     repr_str: List[str] = []
                     append = repr_str.append
                     for arg in self.__rich_repr__():  # type: ignore[attr-defined]
@@ -57,35 +57,43 @@ class qafny:
                         else:
                             append(repr(arg))
                     return f"{self.__class__.__name__}({', '.join(repr_str)})"
+                # end auto_repr
 
                 def auto_rich_repr(self: Type[TypeVar("T")]) -> rich.repr.Result:
-                    '''Auto generate __rich_rep__ from signature of __init__'''
+                    '''Auto generates __rich_repr__ from the signature of __init__'''
                     try:
+                        def is_acceptable_member_variable(obj: T, name: str) -> bool:
+                            if hasattr(obj, '__IGNORE_MEMBERS_oGiHKHnSCvOLx50N__') and name in obj.__IGNORE_MEMBERS_oGiHKHnSCvOLx50N__:
+                                return False
+                            return hasmembervariable(obj, name)
+
                         signature = inspect.signature(self.__init__)
                         for name, param in signature.parameters.items():
                             if param.kind == param.POSITIONAL_ONLY:
-                                if hasmembervariable(self, name):
+                                if is_acceptable_member_variable(self, name):
                                     yield getattr(self, name)
-                                elif hasmembervariable(self, '_' + name):
+                                elif is_acceptable_member_variable(self, '_' + name):
                                     yield getattr(self, '_' + name)
                             elif param.kind in (
                                 param.POSITIONAL_OR_KEYWORD,
                                 param.KEYWORD_ONLY,
                             ):
                                 if param.default is param.empty:
-                                    if hasmembervariable(self, param.name):
+                                    if is_acceptable_member_variable(self, param.name):
                                         yield getattr(self, param.name)
-                                    elif hasmembervariable(self, '_' + param.name):
+                                    elif is_acceptable_member_variable(self, '_' + param.name):
                                         yield getattr(self, '_' + param.name)
                                 else:
-                                    if hasmembervariable(self, param.name):
+                                    if is_acceptable_member_variable(self, param.name):
                                         yield param.name, getattr(self, param.name), param.default
-                                    elif hasmembervariable(self, '_' + param.name):
+                                    elif is_acceptable_member_variable(self, '_' + param.name):
                                         yield param.name, getattr(self, '_' + param.name), param.default
                     except Exception as error:
                         raise ValueError(
                             f"Failed to auto generate __rich_repr__; {error}"
                         ) from None
+                # end auto_rich_repr
+
                 if not hasattr(cls, "__rich_repr__"):
                     auto_rich_repr.__doc__ = "Build a rich repr"
                     cls.__rich_repr__ = auto_rich_repr  # type: ignore[assignment]
@@ -93,13 +101,15 @@ class qafny:
                     auto_repr.__doc__ = "Return repr(self)"
                     cls.__repr__ = auto_repr  # type: ignore[assignment]
                 return cls
+            # end do_replace
+
             if cls is None:
                 return partial(do_replace)
             else:
                 return do_replace(cls)
 
-        # A decorator to mark certain values as unnecessary for the auto-equality decorator
-        def equality_ignore(*args: str) -> Union[Type[T], Callable[[Type[T]], Type[T]]]:
+        # A decorator to mark certain values as unnecessary for the auto-equality decorator and the auto-repr decorator
+        def ignore_members(*args: str) -> Union[Type[T], Callable[[Type[T]], Type[T]]]:
             # collect all arguments into an array
             ignored_cases = args
 
@@ -107,9 +117,9 @@ class qafny:
                 def do_insert(cls: Type[T]) -> Type[T]:
                     '''The actual function that inserts information on the class'''
                     if not hasattr(cls, '__EQ_IGNORE_MEMBERS_oGiHKHnSCvOLx50N__'):
-                        cls.__EQ_IGNORE_MEMBERS_oGiHKHnSCvOLx50N__ = ignored_cases
+                        cls.__IGNORE_MEMBERS_oGiHKHnSCvOLx50N__ = ignored_cases
                     else:
-                        cls.__EQ_IGNORE_MEMBERS_oGiHKHnSCvOLx50N__.append(ignored_cases)
+                        cls.__IGNORE_MEMBERS_oGiHKHnSCvOLx50N__.append(ignored_cases)
 
                     return cls
 
@@ -134,9 +144,9 @@ class qafny:
 
                     # go through every property (unless marked with skip (i.e. source location information))
                     try:
-                        def is_acceptable_member_variable(obj: T, name: str):
+                        def is_acceptable_member_variable(obj: T, name: str) -> bool:
                             # check if this obj has member variables marked as ignored
-                            if hasattr(obj, '__EQ_IGNORE_MEMBERS_oGiHKHnSCvOLx50N__') and name in obj.__EQ_IGNORE_MEMBERS_oGiHKHnSCvOLx50N__:
+                            if hasattr(obj, '__IGNORE_MEMBERS_oGiHKHnSCvOLx50N__') and name in obj.__IGNORE_MEMBERS_oGiHKHnSCvOLx50N__:
                                 return False
                             return not callable(getattr(obj, name)) and not (name.startswith('__') and name.endswith('__'))
 
@@ -177,7 +187,7 @@ def coerceStr(obj):
 
 # ────────── Qafny's AST ──────────
 
-@qafny.auto.equality_ignore('_line', '_col', '_range')
+@qafny.auto.ignore_members('_line', '_col', '_range')
 class QXTop:
     '''
     Parent class of all Qafny tree nodes.
@@ -430,6 +440,14 @@ class TyHad(QXQTy):
 @qafny.auto.rich_repr
 @qafny.auto.equality
 class TyEn(QXQTy):
+    '''
+    Represents an entanglement type declaration.
+
+    Example:
+    en(2)
+
+    flag() returns the inner QXAExp
+    '''
 
     def __init__(self, flag: QXAExp, **kwargs):
         super().__init__(**kwargs)
