@@ -154,6 +154,10 @@ If you use Qafny in your work, please cite our papers:
 ```
 
 ### Embedding Quantum Program Verification into Dafny
-When this paper is published, the citation BibTeX will be inserted here.
+```latex
+@InProceedings {cheng_et_al:
+    doi       = {10.1145/3763157},
+}
+```
 
 Alternatively, you can cite our repository using the information in [CITATION.cff](CITATION.cff).
