@@ -10,7 +10,7 @@ lemma {:axiom} pow2add()
                       ensures forall k : nat :: pow2(k) * 2 == pow2(k + 1)
 
 
-      function {:axiom} samebit(x: seq<bv1>, y: seq<bv1>, n :nat) : bool
+      predicate {:axiom} samebit(x: seq<bv1>, y: seq<bv1>, n :nat)
           requires |x| >= n
           requires |y| >= n
           ensures samebit(x, y, n) == forall k :: 0 <= k < n ==> x[k] == y[k]
@@ -20,8 +20,8 @@ method {:axiom} mergeBitEn(x: seq<seq<bv1>>, n : nat) returns (x1: seq<seq<bv1>>
           requires forall k :: 0 <= k < |x| ==> |x[k]| == n
           ensures |x1| == |x| * 2
           ensures forall k :: 0 <= k < |x1| ==> |x1[k]| == n + 1
-          ensures forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k][0..n], n)
-          ensures forall k :: |x| <= k < |x1| ==> samebit(x[k-|x|], x1[k][0..n], n)
+          ensures forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k], n)
+          ensures forall k :: |x| <= k < |x1| ==> samebit(x[k-|x|], x1[k], n)
           ensures forall k :: 0 <= k < |x| ==> x1[k][n] == 0
           ensures forall k :: |x| <= k < |x1| ==> x1[k][n] == 1
 
@@ -71,8 +71,8 @@ lemma {:axiom} mergeBitTrigger(x: seq<seq<bv1>>, x1: seq<seq<bv1>>, n:nat)
           //requires forall k :: 0 <= k < |x| ==> castBVInt(x[k]) == k
           requires |x1| == |x| * 2
           requires forall k :: 0 <= k < |x1| ==> |x1[k]| == n + 1
-          requires forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k][0..n], n)
-          requires forall k :: |x| <= k < |x1| ==> samebit(x[k-|x|], x1[k][0..n], n)
+          requires forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k], n)
+          requires forall k :: |x| <= k < |x1| ==> samebit(x[k-|x|], x1[k], n)
           requires forall k :: 0 <= k < |x| ==> x1[k][n] == 0
           requires forall k :: |x| <= k < |x1| ==> x1[k][n] == 1
           ensures forall k :: 0 <= k < |x1| ==> castBVInt(x1[k]) == k
@@ -166,6 +166,9 @@ else {
   triggerSqrtMul();
   pow2mul();
   omega0();
+  // assert |p9| == pow2(i + 1);
+  // assert forall k :: 0 <= k < |p9| ==> |p9[k]| == n;
+  // assert forall k :: 0 <= k < |p9| ==> castBVInt(p9[k]) == (powN(base, k) % N);
   q10 := q5;
   q11, p11, amp11 := q9, p9, amp9;
 }

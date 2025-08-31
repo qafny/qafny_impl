@@ -58,6 +58,8 @@ class CleanupVisitor(TargetProgramVisitor):
                 return self.visitIndex(ctx)
             case DXNum():
                 return self.visitNum(ctx)
+            case DXSeqComp():
+                return self.visitSeqComp(ctx)
     
     def visitProgram(self, ctx: TargetProgrammer.DXProgram):
         methods = []
@@ -79,10 +81,9 @@ class CleanupVisitor(TargetProgramVisitor):
 
         stmts = []
         for stmt in ctx.stmts():
-            print(f"\nVisiting stmt: {stmt}")
             stmts.append(stmt.accept(self))
 
-        return DXMethod(id, axiom, bindings, returns, conds, stmts, line=ctx.line())
+        return DXMethod(id, axiom, bindings, returns, conds, stmts, ctx.is_function(), line=ctx.line())
 
     def visitRequires(self, ctx: TargetProgrammer.DXRequires):
         return DXRequires(ctx.spec().accept(self), line=ctx.line())
@@ -118,7 +119,7 @@ class CleanupVisitor(TargetProgramVisitor):
         elif ctx.op() == '/' and isinstance(ctx.left(), DXNum) and ctx.left().val() == 1 and isinstance(ctx.right(), DXCall) and ctx.right().ID() == 'pow2':
             return DXBin('/',DXNum(1.0), DXCast(SType('real'), ctx.right()), line=ctx.line())
 
-        print(f"Visiting bin in Cleanup: {ctx}")
+#        print(f"Visiting bin in Cleanup: {ctx}")
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line())
 
     def visitUni(self, ctx: TargetProgrammer.DXUni):
@@ -145,9 +146,9 @@ class CleanupVisitor(TargetProgramVisitor):
             return DXIndex(ctx.exps()[0], ctx.exps()[1], line=ctx.line())
         
         exps = []
-#        print(f"Visiting call: {ctx} with arguments:")
+        print(f"Visiting call: {ctx} with arguments:")
         for exp in ctx.exps():
-#            print(f"Visiting call argument: {exp}")
+#            print(f"Visiting call argument in CV: {exp}")
             exps.append(exp.accept(self))
         
         return DXCall(ctx.ID(), exps, ctx.end(), line=ctx.line())
@@ -171,7 +172,6 @@ class CleanupVisitor(TargetProgramVisitor):
         cond =ctx.cond().accept(self)
 
         stmts = []
-        print(f"\nVisiting while: {ctx}")
         for s in ctx.stmts():
             stmts.append(s.accept(self))
 
@@ -217,3 +217,10 @@ class CleanupVisitor(TargetProgramVisitor):
     
     def visitSType(self, ctx: TargetProgrammer.SType):
         return ctx
+    
+    def visitSeqComp(self, ctx: TargetProgrammer.DXSeqComp):
+        size = ctx.size().accept(self) if ctx.size() is not None else None
+        idx = ctx.idx().accept(self) if ctx.idx() is not None else None
+        spec = ctx.spec().accept(self) if ctx.spec() is not None else None
+        lambd = ctx.lambd().accept(self) if ctx.lambd() is not None else None
+        return TargetProgrammer.DXSeqComp(size, idx, spec, lambd)

@@ -693,13 +693,14 @@ class DXAssign(DXStmt):
 
 class DXMethod(DXTop):
 
-    def __init__(self, id: str, axiom: bool, bindings: [DXBind], returns : [DXBind], conds: [DXConds], stmts: [DXStmt], line: int = None):
+    def __init__(self, id: str, axiom: bool, bindings: [DXBind], returns : [DXBind], conds: [DXConds], stmts: [DXStmt], is_function: False, line: int = None):
         self._id = id
         self._axiom = axiom
         self._bindings = bindings
         self._returns = returns
         self._conds = conds
         self._stmts = stmts
+        self._is_function = is_function
         self._line = line
 
     def accept(self, visitor : AbstractTargetVisitor):
@@ -722,9 +723,15 @@ class DXMethod(DXTop):
 
     def stmts(self):
         return self._stmts
+    
+    def is_function(self):
+        return self._is_function
 
     def __repr__(self):
-        return f'DXMethod(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, returns={self._returns}, conds={self._conds}, stmts={self._stmts})'
+        if self._is_function:
+            return f'DXFunction(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, returns={self._returns}, conds={self._conds}, stmts={self._stmts})'
+        else:
+            return f'DXMethod(id={self._id}, axiom={self._axiom}, bindings={self._bindings}, returns={self._returns}, conds={self._conds}, stmts={self._stmts})'
     
     def line(self):
         return self._line
@@ -754,6 +761,9 @@ class DXSeqComp(DXAExp):
         self._spec = spec
         self._lambd = lambd
     
+    def accept(self, visitor):
+        return visitor.visitSeqComp(self)
+
     def size(self):
         return self._size
     
@@ -767,4 +777,4 @@ class DXSeqComp(DXAExp):
         return self._lambd
     
     def __repr__(self):
-        return f'Seq(length={self._size}, value={self._lambd})'
+        return f'DXSeqComp(length={self._size}, value={self._lambd})'

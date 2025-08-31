@@ -20,20 +20,27 @@ class PrinterVisitor(TargetProgramVisitor):
     
     def visitMethod(self, ctx: TargetProgrammer.DXMethod):
         # visit all attributes of method, append the resultant strings to create a method
-#        print(f'\nVisiting method: {ctx}')
+
         bindings = ''
         for binding in ctx.bindings():
-#            print(f'\nVisiting binding PrinterVisitor: {binding}')
             bindings += binding.ID() + (str(binding.num()) if binding.num() else '') + ': ' + binding.type().accept(self) + ', ' if binding.type() else '' 
         bindings = bindings[:-2]
 
-        returns = 'returns ('
-        for rbinding in ctx.returns():
-            returns += rbinding.ID() + (str(rbinding.num()) if rbinding.num() else '') + ': ' + rbinding.type().accept(self) + ', ' if rbinding.type() else '' 
+        # Build returns string
+        if ctx.is_function():
+            returns = ': ('
+            for rbinding in ctx.returns():
+                returns += rbinding.ID() + (str(rbinding.num()) if rbinding.num() else '') + ': ' + rbinding.type().accept(self) + ', ' if rbinding.type() else ''
+            returns = (returns[:-2] + ')\n') if len(ctx.returns()) > 0 else '\n'
+        else:
+            returns = 'returns ('
+            for rbinding in ctx.returns():
+                returns += rbinding.ID() + (str(rbinding.num()) if rbinding.num() else '') + ': ' + rbinding.type().accept(self) + ', ' if rbinding.type() else ''
+            returns = (returns[:-2] + ')\n') if len(ctx.returns()) > 0 else '\n'
 
-        returns = (returns[:-2] + ')\n') if len(ctx.returns()) > 0 else '\n'
         self.line_mapping[self.current_line] = ctx
         self.current_line += 1
+        
         conds = ''
         for cond in ctx.conds():
             r = cond.accept(self)
@@ -43,8 +50,9 @@ class PrinterVisitor(TargetProgramVisitor):
                 self.current_line += 1
 
         self.current_line += 1
+        method_type = 'function ' if ctx.is_function() else 'method '
         if ctx.axiom():
-            method = 'method {:axiom} ' + ctx.ID() + '(' + bindings + ') ' + returns + conds
+            method = method_type + '{:axiom} ' + ctx.ID() + '(' + bindings + ') ' + returns + conds
             return method
         
         stmts = ''
@@ -52,8 +60,8 @@ class PrinterVisitor(TargetProgramVisitor):
             stmts += '  ' + stmt.accept(self) + '\n'
             self.line_mapping[self.current_line] = stmt
             self.current_line += 1
-
-        method = 'method ' + ctx.ID() + '(' + bindings + ') ' + returns + conds + '{\n' + stmts + '}'
+        
+        method = method_type + ctx.ID() + '(' + bindings + ') ' + returns + conds + '{\n' + stmts + '}'
 
         return method
         
@@ -74,6 +82,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return 'var ' + ctx.binding().ID() + (str(ctx.binding().num()) if ctx.binding().num() else '') + ' := ' + ctx.exp().accept(self) + ';' if ctx.exp() else  'var ' + ctx.binding().ID() + (str(ctx.binding().num()) if ctx.binding().num() else '') + (':' + ctx.binding().type().accept(self) if ctx.binding().type() else '') + ';'
 
     def visitAssign(self, ctx: TargetProgrammer.DXAssign):
+     #   print('\nctx in PV', ctx)
         ids = ''
         res = ''
         for id in ctx.ids():
@@ -86,6 +95,7 @@ class PrinterVisitor(TargetProgramVisitor):
             exp = exp[:-2]
             res = ids + ' := ' + exp + ';'
         else:
+        #    print('\n Assign in VP', ctx.exp())
             res = ids + ' := ' + ctx.exp().accept(self) + ';'
 
         if ctx.init():
@@ -195,9 +205,9 @@ class PrinterVisitor(TargetProgramVisitor):
     def visitCast(self, ctx: TargetProgrammer.DXCast):
         return '(' + ctx.next().accept(self) + ' as ' + ctx.type().type() + ')'
     
-    def visitSeqComp(self, ctx: DXSeqComp):
+    def visitSeqComp(self, ctx: TargetProgrammer.DXSeqComp):
         size_str = ctx.size().accept(self) if ctx.size() is not None else ''
         idx_str = ctx.idx().accept(self) if ctx.idx() is not None else ''
         spec_str = ctx.spec().accept(self) if ctx.spec() is not None else ''
-        lambd_str = ctx.lambd().accept(self) if ctx.lambd() is not None else ''
-        return f'seq({size_str}, {idx_str}{spec_str}=>{lambd_str})'
+        lambd_str = ctx.lambd().accept(self) if ctx.lambd() is not None else ''       
+        return f'seq({size_str}, {idx_str} {spec_str} => {lambd_str})'

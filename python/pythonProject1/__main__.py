@@ -48,7 +48,7 @@ DEFAULT_FILENAMES = [
 #    example_program("test1"),
 #    example_program("test2"),
     # example_program("test3"),
-     example_program("test4"),
+#     example_program("test4"),
 #     example_program("test5"),
 #     example_program("test6"),
     # example_program("test7"),
@@ -191,7 +191,9 @@ if __name__ == "__main__":
 
             # this is required to print out the generated lambda functions
             for i in dafny_transfer.addFuns:
+                print('\n fun:', i)
                 ci = cleanup.visit(i)
+                print('\n addFuns', ci)
                 dafny_code += target_printer_visitor.visitMethod(ci) + "\n"
 
             # now, add the actual code
