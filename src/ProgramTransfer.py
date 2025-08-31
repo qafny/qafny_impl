@@ -278,7 +278,7 @@ class ProgramTransfer(ProgramVisitor):
         self.current_qafny_line_number = None
 
     #add DX functions to cast types
-    def joinIfLocus(self, q: QXQRange, aLocus :[QXQRange], aTy: QXQTy, aVars: dict,
+    def joinIfLocus(self, q: QXQRange, aLocus: [QXQRange], aTy: QXQTy, aVars: dict,
                        bLocus: [QXQRange], bTy: QXQTy, bVars: dict):
 
         #case when bTy is TyEn
