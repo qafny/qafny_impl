@@ -4,7 +4,7 @@
 import argparse  # usage: parsing cli arguments, printing help
 import os  # usage: getting relative paths and directoy names
 import rich # usage: console ui
-# from colored import stylize, fore # console ui styling
+from colored import stylize, fore # console ui styling
 
 from antlr4 import FileStream, CommonTokenStream  # usage: reading in a file and creating a token stream
 from ExpLexer import ExpLexer  # usage: lexing the file stream
