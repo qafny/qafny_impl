@@ -239,9 +239,9 @@ class ProgramTransfer(ProgramVisitor):
         self.current_line = ctx.line_number()
         self.varnums = []
         tenvp = self.tenv.get(self.fvar)[0]
-        for locus, q_type in tenvp:
-            self.counter += 1
+        for locus, q_type in tenvp:     
             var_map = make_dafny_vars_for_locus(locus, q_type, self.counter)
+            self.counter += 1
             self.varnums.append((locus, q_type, var_map))
 
         # --- Translate Arguments ---
@@ -264,9 +264,9 @@ class ProgramTransfer(ProgramVisitor):
         # --- Prepare for Postcondition Translation ---
         out_tenv = self.tenv.get(self.fvar)[1]  
         self.outvarnums = []
-        for locus, q_type in out_tenv:
-            self.counter += 1
+        for locus, q_type in out_tenv:         
             var_map = make_dafny_vars_for_locus(locus, q_type, self.counter)
+            self.counter += 1
             self.outvarnums.append((locus, q_type, var_map))
 
         # --- Translate Method Body ---
@@ -490,17 +490,33 @@ class ProgramTransfer(ProgramVisitor):
             lc.visit(stmt)
         
         # Unify the state, generating statements for the unification process.
-        unification_stmts, unified_locus, unified_qty, unified_vars, remaining_vars = self._imperative_unify_state(lc.renv)
+        unification_stmts, unified_locus, unified_qty, unified_vars, remaining_vars = self.includeIfLocus(lc.renv)
+
+        print(f"\n unification_stmts: {unification_stmts}, \n unified_locus: {unified_locus}, \
+              \n unified_qty: {unified_qty}, \n unified_vars: {unified_vars}, \n remaining_vars: {remaining_vars}")
         
         # Generate the imperative transformation loop
         comprehension_stmts, final_vars = self._sequence_comprehension_transform(ctx, unified_locus, unified_qty, unified_vars)
+
+        lemma_stmts = []
+
+        if unification_stmts:
+            lemma_map = {
+                "powN": "powNTimesMod",
+                "sqrt": "triggerSqrtMul",
+                "mergeAmpEn": "pow2mul"
+            }
+            for lib_func, lemma_name in lemma_map.items():
+                if lib_func in self.libFuns:
+                    lemma_stmts.append(DXCall(lemma_name, [], True, line=self.current_line))
+                    self.libFuns.add(lemma_name)
         
         # Update the main state
         self.varnums = [(unified_locus, unified_qty, final_vars)] + remaining_vars
 
         #handle the rest of the stmts
         
-        return unification_stmts + comprehension_stmts
+        return unification_stmts + comprehension_stmts + lemma_stmts
 
     # ==========================================================================
     # == Helper Methods for State Management
@@ -784,6 +800,334 @@ class ProgramTransfer(ProgramVisitor):
     # ==========================================================================
     # == Core Logic for Conditional Transformation
     # ==========================================================================
+    def _gen_had_to_en_cast_stmts(self, vars_map: dict, line_number: int):
+        """
+        Generates imperative statements to "promote" a TyHad state to a TyEn state.
+        Returns the new variables and the list of statements.
+        """
+        stmts = []
+        new_vars = self._upVars(vars_map)
+        
+        # Assuming hadEn returns (amp, q)
+        new_amp_var = new_vars.get('amp')
+        # Correctly get a representative qubit variable without assuming its name
+        qubit_var_name = next(k for k in new_vars.keys() if k != 'amp')
+        new_q_var = new_vars[qubit_var_name]
+        
+        if not new_amp_var: # Need to create one
+            self.counter += 1
+            new_amp_var = DXBind("amp", gen_nested_seq_type(1, SType("real")), self.counter)
+            new_vars['amp'] = new_amp_var
+
+        call = DXCall("hadEn", list(vars_map.values()), line=line_number)
+        # Use DXAssign with init=True to generate 'var ... :='
+        stmts.append(DXAssign([new_amp_var, new_q_var], call, True, line=line_number))
+        self.libFuns.add('hadEn')
+        
+        return stmts, new_vars
+
+    def _gen_en_nor_extend_stmts(self, en_vars: dict, nor_var: DXBind, line_number: int):
+        """
+        Generates imperative statements to merge a TyNor state into an existing TyEn state.
+        """
+        stmts = []
+        new_vars = self._upVars(en_vars)
+        
+        for name, var in en_vars.items():
+            call = DXCall('mergeBitEn', [var, nor_var], line=line_number)
+            stmts.append(DXAssign([new_vars[name]], call, True, line=line_number))
+        
+        self.libFuns.add('mergeBitEn')
+        return stmts, new_vars
+
+
+    def _gen_en_had_merge_stmts(self, en_vars: dict, had_var: DXBind, ctrl_loc: QXQRange, line_number: int):
+        """
+        Generates imperative statements to merge a TyHad state (had_var) with a
+        TyEn state (en_vars).
+        """
+
+        print(f"\n en_vars: {en_vars} \n had_var: {had_var}")
+        stmts = []
+        new_vars = {}
+        
+        # 1. Split the Had variable into its leftover part and the control bit
+        
+        org_name = had_var.ID()
+        q_leftover = DXBind(org_name, had_var.type(), self.counter)
+        stmts.append(DXAssign([q_leftover], DXCall("cutHad", [had_var]), True, line=line_number))
+        self.libFuns.add("cutHad")
+        self.counter += 1
+
+        q_control_bit = DXBind(org_name, had_var.type().type(), self.counter)
+        stmts.append(DXAssign([q_control_bit], DXIndex(had_var, DXNum(0)), True, line=line_number))
+        self.counter += 1
+        
+        # 2. Merge each component of the En state
+        self.libFuns.add('mergeBitEn')
+        self.libFuns.add('duplicateMergeBitEn')
+        self.libFuns.add('mergeAmpEn')
+        self.libFuns.add('triggerSqrtMul')
+
+        ctrl_reg_name = ctrl_loc.location()
+        ctrl_idx = ctrl_loc.crange().left().accept(self)
+        original_q_var = None
+        
+        for name, var in en_vars.items():
+            new_var_bind = DXBind(name, var.type(), self.counter) # Simplified type
+            
+            if name == 'amp':               
+                call = DXCall('mergeAmpEn', [var, q_control_bit], line=line_number)
+            elif name == ctrl_reg_name: 
+                original_q_var = var             
+                call = DXCall('mergeBitEn', [var, ctrl_idx], line=line_number)
+            else:
+                call = DXCall('duplicateMergeBitEn', [var], line=line_number)             
+            stmts.append(DXAssign([new_var_bind], call, True, line=line_number))
+            new_vars[name] = new_var_bind
+        self.counter += 1
+
+        # 3. Add calls to helper lemmas
+        stmts.append(DXCall("omega0", [], True, line=line_number))
+        self.libFuns.add("omega0")
+        if original_q_var:
+             stmts.append(DXCall("mergeBitTrigger", [original_q_var, new_vars[ctrl_reg_name], DXLength(DXIndex(original_q_var, DXNum(0)))], True, line=line_number))
+             stmts.append(DXCall('pow2add', [], True, line=line_number))
+             self.libFuns.add("mergeBitTrigger")
+             self.libFuns.add('pow2add')
+
+        print(f"\n stmts: {stmts} \n new_vars: {new_vars} \n q_leftover: {q_leftover}")
+            
+        return stmts, new_vars, q_leftover
+
+
+    def collectNorLocus(self, q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
+        """
+        A helper function that finds and collects all TyNor typed loci from a list of states 'qs'
+        that are specified in the target range 'q2'. It returns the collected loci, their
+        variables, and the remaining states.
+        """
+        qv = []
+        vs = []
+        for elem in q2:
+            for i in range(len(qs)):
+                loc, qty, vars = qs[i]
+                if isinstance(qty, TyNor):
+                    if eqQRange(elem, loc[0]):
+                        vs += [(loc, qty, vars)]
+                    else:
+                        reLoc = compareRangeLocus(elem, loc)
+                        qv += [(reLoc, qty, vars)]
+
+                        vs += [(elem, TyNor, self._update_vars(vars))]
+                else:
+                    qv += [(loc, qty, vars)]
+
+        newVars = dict()
+        va = []
+        for loc, qty, vars in vs:
+            va += loc
+            newVars.update({k:v for k,v in vars.items()})
+
+        return va, newVars, qv
+    
+    def _update_vars(self, v: dict):
+        """Updates Dafny variables with incremented counters."""
+        tmp = dict()
+        for key in v.keys():
+            tmp.update({key: v.get(key).newBind(self.counter)})
+            self.counter += 1
+
+        return tmp
+
+    def _update_vars_sub(self, v: dict, qs:set):
+        tmp = dict()
+        for key in v.keys():
+            if key in qs:
+                tmp.update({key: v.get(key).newBind(self.counter)})
+                self.counter += 1
+            else:
+                tmp.update({key: v.get(key)})
+        return tmp
+
+    #create new DXBind with TyNor and TyHad type Only
+    #and for TyEn, we increment the type to 1
+    def _update_vars_type(self, v: dict, t: QXQTy):
+        tmp = dict()
+        for key in v.keys():
+            print('upVarsType', key, v.get(key), t)
+            if isinstance(t, TyNor):
+                tmp.update({key: v.get(key).newBindType(SeqType(SType("bv1")), self.counter)})
+            elif isinstance(t, TyHad):
+                tmp.update({key: v.get(key).newBindType(SeqType(SType("real")), self.counter)})
+            elif isinstance(t, TyEn):              
+                if not 'amp' in tmp:
+                    tmp['amp'] = DXBind('amp', gen_nested_seq_type(1, SType("real")), self.counter)
+                    tmp.update({key: v.get(key).newBindType(gen_nested_seq_type(1, SeqType(SType("bv1"))), self.counter)})
+                else:
+                    tmp.update({key: v.get(key).newBindType(SeqType(v.get(key).type()), self.counter)})
+            print('\nupVarsType en amp var', key, tmp.get(key))
+        self.counter += 1
+
+        return tmp
+
+    def superLocus(self, q2: [QXQRange], ty:QXQTy):
+        """
+        Searches the current state (self.varnums) to find a component that overlaps
+        with the target locus 'q2' and matches the target type 'ty'. This is more
+        robust than a simple sub-locus check.
+        """
+#        print(f"\n superLocus: searching for super locus of {q2} with type {ty} in varnums: {self.varnums}")
+        vs = []
+        for i in range(len(self.varnums)):
+            loc, qty, vars = self.varnums[i]
+            if EqualityVisitor().visit(ty, qty):
+                # Check for any overlap by seeing if any component of one locus
+                # is a sub-locus of the other.
+                has_overlap = any(compareLocus([l_part], q2) is not None for l_part in loc) or \
+                              any(compareLocus([q2_part], loc) is not None for q2_part in q2)
+
+                if has_overlap:
+                    # We found a component. Now calculate the remainder of q2.
+                    # The remainder is the parts of q2 that are NOT covered by loc.
+                    rem = [r for r in q2 if compareLocus([r], loc) is None]
+                    
+                    # Return the remainder, the found component, and the rest of the state.
+                    return rem, loc, qty, vars, (vs + self.varnums[i+1:])
+            vs += [self.varnums[i]]
+        return None
+
+    def computeType(self, q2: [QXQRange]):
+        """
+        Calculates the "meet" or the most general type required to unify a set of
+        qubit ranges 'q2'. It determines the current type of each range and then
+        uses the 'meetType' helper to find their least upper bound.
+        """
+        tmp = None
+        for elem in q2:
+            loc, qty, vars = subLocus([elem], self.varnums)
+            if tmp is None:
+                tmp = qty
+            else:
+                tmp = meetType(tmp, qty)
+        return tmp
+
+    def compareSingle(self, q1: QXQRange, qs: [([QXQRange], QXQTy, dict)]):
+        """
+        Searches for a separable locus 'q1' in the list of states 'qs'.
+        Handles both exact and partial (prefix) matches, correctly partitioning the state list.
+        Returns a tuple: (original_var, matched_locus, matched_vars, remaining_states) or None.
+        The 'original_var' is returned only on a partial match to signal that slicing is needed.
+        """
+        for i in range(len(qs)):
+            loc, qty, vars_map = qs[i]
+            
+            if len(loc) != 1 or not (isinstance(qty, TyHad) or isinstance(qty, TyNor)):
+                continue
+            
+            existing_locus = loc[0]
+            
+            if q1.location() == existing_locus.location():
+                is_left_match = compareAExp(q1.crange().left(), existing_locus.crange().left())
+                is_right_match = compareAExp(q1.crange().right(), existing_locus.crange().right())
+
+                # Case 1: Exact Match.
+                if is_left_match and is_right_match:
+                    remaining_states = qs[:i] + qs[i+1:]
+                    return (None, [q1], vars_map, remaining_states)
+                
+                # Case 2: Partial Match.
+                if is_left_match:
+                    original_var = next(iter(vars_map.values()))
+                    
+                    # For a partial match, we don't create new variables for the remainder here.
+                    # The original var map is used, but with a new range.
+                    # The caller (`includeIfLocus`) is responsible for generating slicing statements.
+                    new_left_bound = q1.crange().right()
+                    remaining_range = QXQRange(q1.location(), 
+                                               crange=QXCRange(new_left_bound, existing_locus.crange().right()))
+                    
+                    remaining_state_tuple = ([remaining_range], qty, vars_map) # Use original vars_map
+                    remaining_states = qs[:i] + [remaining_state_tuple] + qs[i+1:]
+                    
+                    # Return the original var to signal a split, the matched locus, the original vars, and the new remaining states.
+                    return ([q1], vars_map, remaining_states)
+
+    def findHadLocus(self, q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
+        """
+        Iterates through a list of required loci 'q2' and searches for the first one
+        that exists as a separable (Had or Nor) state in the list of available states 'qs'.
+        """
+        for i in range(len(q2)):
+            v = self.compareSingle(q2[i], qs)
+            if v is not None:
+                return v
+        return None
+    
+    def includeIfLocus(self, q2: [QXQRange]):
+        v = subLocus(q2, self.varnums)
+        if v is not None:
+            l, q, vs = v
+            remaining = [s for s in self.varnums if s is not v]
+            return [], l, q, vs, remaining
+
+        ty = self.computeType(q2)
+        rt = self.superLocus(q2, ty)
+        #remainder from q2
+        if rt is not None:
+            rem, loc, qty, vars, tmpVarNums = rt
+            
+            if isinstance(ty, TyHad):
+                stmts, new_vars = self._gen_had_to_en_cast_stmts(vars, loc[0].line_number())
+                qty = TyEn(QXNum(1))
+                
+                nor_remind, nor_vars, remaining_after_nor = self.collectNorLocus(rem, tmpVarNums)
+                for nor_locus, nor_var_map in nor_vars.items():
+                    nor_var = next(iter(nor_var_map.values()))
+                    merge_stmts, new_vars = self._gen_en_nor_extend_stmts(new_vars, nor_var, loc[0].line_number())
+                    stmts.extend(merge_stmts)
+
+                self.varnums = ([(loc, qty, new_vars)]) + remaining_after_nor
+                return stmts, loc, qty, new_vars, remaining_after_nor
+
+            if isinstance(ty, TyEn):
+                current_stmts = []
+                current_vars = vars             
+                # Merge Nor loci first
+                nor_rem, nor_vars_map, remaining_after_nor = self.collectNorLocus(rem, tmpVarNums)
+                for nor_loc, nor_var_map in nor_vars_map.items():
+                    nor_var = next(iter(nor_var_map.values()))
+                    merge_stmts, new_vars = self._gen_en_nor_extend_stmts(current_vars, nor_var, loc[0].line_number())
+                    current_stmts.extend(merge_stmts)
+                    current_vars = new_vars
+                    loc = loc + nor_loc
+
+                # Then merge Had loci
+                vb = self.findHadLocus(rem, remaining_after_nor)
+                print(f"\n vb {vb}")
+                if vb is not None:
+                    had_locus, had_vars, remaining_after_had = vb
+                    
+                    # The specific splitting of the had_var is handled inside _gen_en_had_merge_stmts
+                    had_var = next(iter(had_vars.values()))
+                    ctrl_loc = had_locus[0]
+                    merge_stmts, new_vars, q_leftover = self._gen_en_had_merge_stmts(current_vars, had_var, ctrl_loc, loc[0].line_number())                 
+                    current_stmts.extend(merge_stmts)
+                    current_vars = new_vars
+                    loc = loc + had_locus
+                    
+
+                    for i in range(len(remaining_after_had)):
+                        rem_loc, rem_qty, rem_vars = remaining_after_had[i]
+                        if rem_loc[0].location() == q_leftover.ID():
+                            new_rem_var = {q_leftover.ID(): q_leftover}
+                            remaining_after_had[i] = (rem_loc, rem_qty, new_rem_var) 
+                            break
+           
+                self.varnums = ([(loc, qty, current_vars)]) + remaining_after_had
+                return current_stmts, loc, qty, current_vars, remaining_after_had
+                
+        return None, None, None, None, self.varnums
 
     def _sequence_comprehension_transform(self, ctx, unified_locus, unified_qty, unified_vars):
         """
@@ -815,7 +1159,7 @@ class ProgramTransfer(ProgramVisitor):
 
         # 2. Create the sequence comprehension for the target variables
         target_names = {l.location() for l in q_assign.locus()}
-        print(f"\n target_names: {target_names}")
+#        print(f"\n target_names: {target_names}")
         if is_phase_oracle:
             target_names.add('amp') # Phase oracles also transform the amplitude
        
@@ -836,15 +1180,16 @@ class ProgramTransfer(ProgramVisitor):
             # Build the expression inside the comprehension
             if is_conditional:
                 control_qubit = ctx.bexp()
-                control_var = unified_vars[control_qubit.ID()]
+                control_var = unified_vars[control_qubit.location()]
                 indexed_control = self._create_indexed_var(control_var, iterators)
-                control_bit = DXIndex(indexed_control, control_qubit.exp().accept(self))
+                control_bit = DXIndex(indexed_control, control_qubit.crange().left().accept(self))
                 condition = DXComp("==", control_bit, DXNum(1))
+                print(f"\n condition {condition}")
                 
                 then_call_args = [self._create_indexed_var(unified_vars[n], iterators) for n in sorted(target_names)] + self.classical_args
                 then_expr = DXCall(lambda_func.ID(), then_call_args)
                 else_expr = self._create_indexed_var(var, iterators)
-                comprehension_body = DXIf(condition, then_expr, else_expr)
+                comprehension_body = DXIfExp(condition, then_expr, else_expr)
             else: # Standard oracle
                 call_args = [self._create_indexed_var(unified_vars[n], iterators) for n in sorted(target_names)] + self.classical_args
 #                print(f"\n call_args: {call_args}")
@@ -864,11 +1209,13 @@ class ProgramTransfer(ProgramVisitor):
     #        stmts.append(DXAssign([new_var], comprehension))
             new_vars[name] = new_var
 
+
         # Handle unchanged variables
         for name, var in unified_vars.items():
             if name not in new_vars:
                 new_vars[name] = var # Simply pass through the old variable
         print(f"\n stmts, new_vars, {stmts}, \n{new_vars}")
+
         return stmts, new_vars
     
     def _create_lambda_method(self, q_assign: QXQAssign, unified_vars: dict):
@@ -899,7 +1246,7 @@ class ProgramTransfer(ProgramVisitor):
         else:
             args += [DXBind(f"{name}", self._get_element_type(unified_vars[name].type())) for name in sorted(target_names)]
             returns = [DXBind(f"{name}_out", self._get_element_type(unified_vars[name].type())) for name in sorted(target_names)]
-        print(f"\n args: {args} \n{returns}")
+#       print(f"\n args: {args} \n{returns}")
         
         # if len(returns) > 1:
         #     returns = [DXTup(returns)]
@@ -950,7 +1297,7 @@ class ProgramTransfer(ProgramVisitor):
                             replace = DXCall("castBVInt", [lambda_input_vars[in_name]])
                             subst = SubstDAExp(binder.ID(), replace)
                             ket_expr = subst.visit(ket_expr)
-                    print(f"\n ket_expr: {ket_expr}")
+    #                print(f"\n ket_expr: {ket_expr}")
                     ensures.append(DXEnsures(DXComp("==", DXCall("castBVInt", [out_var]), ket_expr)))
                     self.libFuns.add("castBVInt")
                     ket_idx += 1

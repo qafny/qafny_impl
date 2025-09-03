@@ -237,7 +237,7 @@ class QXTop:
 
     def range(self) -> Tuple[int, int]:
         '''Returns the index of the first and last character associated with this AST node in the original source string.'''
-        return self._range
+        return self._crange
 
     def setRange(self, range: Tuple[int, int]):
         '''A setter for the range property.'''

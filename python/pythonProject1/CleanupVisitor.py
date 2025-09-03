@@ -123,6 +123,7 @@ class CleanupVisitor(TargetProgramVisitor):
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line())
 
     def visitUni(self, ctx: TargetProgrammer.DXUni):
+#        print(f"\n visitUni in CV: {ctx}")
         return DXUni(ctx.op(), ctx.next().accept(self), line=ctx.line())
 
     def visitNum(self, ctx: TargetProgrammer.DXNum):
@@ -146,7 +147,7 @@ class CleanupVisitor(TargetProgramVisitor):
             return DXIndex(ctx.exps()[0], ctx.exps()[1], line=ctx.line())
         
         exps = []
-        print(f"Visiting call: {ctx} with arguments:")
+#        print(f"Visiting call: {ctx} with arguments:")
         for exp in ctx.exps():
 #            print(f"Visiting call argument in CV: {exp}")
             exps.append(exp.accept(self))
@@ -165,6 +166,7 @@ class CleanupVisitor(TargetProgramVisitor):
         ctx.right().accept(self), line=ctx.line())
 
     def visitLength(self, ctx: TargetProgrammer.DXLength):
+#        print(f"\n visitingLength in CV: {ctx}")
         return DXLength(ctx.var().accept(self), line=ctx.line())
 
     def visitWhile(self, ctx: TargetProgrammer.DXWhile):

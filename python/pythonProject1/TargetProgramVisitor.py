@@ -188,7 +188,7 @@ class TargetProgramVisitor(AbstractTargetVisitor):
         ctx.var().accept(self)
 
     def visitSeqComp(self, ctx: DXSeqComp):
-        print('\n okay, lets see TPV', ctx)
+#        print('\n okay, lets see TPV', ctx)
         ctx.size().accept(self)
         ctx.idx().accept(self)
         ctx.spec().accept(self) if ctx.spec() is not None else None

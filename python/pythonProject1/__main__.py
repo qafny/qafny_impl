@@ -177,7 +177,7 @@ if __name__ == "__main__":
             # Pass the result through a Cleanup Visitor to perform final cleanup operations
             cleanup = CleanupVisitor()
             dafny_ast = cleanup.visitProgram(dafny_ast)
-
+#            print(dafny_ast)
             dafny_code = ''
 
             # add library functions
@@ -191,9 +191,9 @@ if __name__ == "__main__":
 
             # this is required to print out the generated lambda functions
             for i in dafny_transfer.addFuns:
-                print('\n fun:', i)
+#                print('\n fun:', i)
                 ci = cleanup.visit(i)
-                print('\n addFuns', ci)
+#                print('\n addFuns', ci)
                 dafny_code += target_printer_visitor.visitMethod(ci) + "\n"
 
             # now, add the actual code

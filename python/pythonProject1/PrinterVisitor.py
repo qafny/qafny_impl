@@ -151,6 +151,7 @@ class PrinterVisitor(TargetProgramVisitor):
     
     def visitIf(self, ctx: TargetProgrammer.DXIf):
         stmts = ''
+#        print(f"\n visitIf in PV: {ctx}")
         for stmt in ctx.left():
             self.line_mapping[self.current_line] = stmt
             self.current_line += 1
@@ -171,7 +172,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return 'if (' + ctx.cond().accept(self) + '){\n' + stmts + '}' + elsepart
 
     def visitIndex(self, ctx: TargetProgrammer.DXIndex):
-    #    print('\nvisitIndex', ctx)
+        print('\nvisitIndex in PV', ctx)
         if ctx.bind():
             return ctx.bind().accept(self) + '[' + ctx.index().accept(self) + ']'
         else:
@@ -193,6 +194,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return 'seq<' + ctx.type().accept(self) + ">"
 
     def visitIfExp(self, ctx: TargetProgrammer.DXIfExp):
+        print(f"f\n visitIfExp in PV: {ctx}")
         return 'if ' + ctx.bexp().accept(self) + ' then ' + ctx.left().accept(self) + ' else ' + ctx.right().accept(self)
     
     def visitList(self, ctx: TargetProgrammer.DXList):
