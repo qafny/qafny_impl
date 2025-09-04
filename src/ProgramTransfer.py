@@ -1800,7 +1800,7 @@ class ProgramTransfer(ProgramVisitor):
                     tmp += [DXAll(x, DXLogic("==>", DXInRange(x, DXNum(0), right), DXComp("==", DXIndex(self.qvars[i], x), v)), transformed_from=ctx)]
                 if not self.t_ensures:
                     if isinstance(qty, TyNor) and isinstance(v, DXNum) and v.num() == 0:
-                        tmp += [DXAll(x, DXLogic("==>", DXInRange(x, DXNum(0), right), DXComp("==", DXIndex(self.qvars[i], x), v)), transformed_from=ctx)]
+                        tmp += [DXAll(x, DXLogic("==>", DXInRange(x, DXNum(0), right), DXComp("==", DXIndex(self.qvars[self.locus[i].location()], x), v)), transformed_from=ctx)]
                     elif isinstance(qty, TyNor):
                         pass
                     else:
