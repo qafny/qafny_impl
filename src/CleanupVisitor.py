@@ -78,7 +78,8 @@ class CleanupVisitor(TargetProgramVisitor):
 
         stmts = []
         for stmt in ctx.stmts():
-            stmts.append(stmt.accept(self))
+            if stmt is not None:
+                stmts.append(stmt.accept(self))
 
         return DXMethod(id, axiom, bindings, returns, conds, stmts, transformed_from=ctx)
 
