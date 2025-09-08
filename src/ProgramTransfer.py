@@ -79,7 +79,7 @@ def makeVars(locus: [QXQRange], t: QXQTy, n: int):
     
     elif isinstance(t, TyHad):
         for elem in locus:
-            tmp.update({elem.location(), DXBind(elem.location(), SeqType(SType("real")), n)})
+            tmp.update({elem.location(): DXBind(elem.location(), SeqType(SType("real")), n)})
 
     return tmp
 
