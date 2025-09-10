@@ -632,7 +632,7 @@ class ProgramTransformer(ExpVisitor):
     def visitCasting(self, ctx: ExpParser.CastingContext):
         qty = self.visitQty(ctx.qty())
         locus = self.visitLocus(ctx.locus())
-        return QXCast(qty, locus, ctx,line_number=ctx.start.line)
+        return QXCast(qty, locus, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#varcreate.
     def visitVarcreate(self, ctx: ExpParser.VarcreateContext):

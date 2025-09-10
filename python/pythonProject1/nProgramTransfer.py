@@ -317,13 +317,19 @@ class ProgramTransfer(ProgramVisitor):
         # Dispatch to the correct transformation logic
         if isinstance(ctx.exp(), QXOracle):
             stmts, final_vars = self._sequence_comprehension_transform(ctx, loc, qty, old_vars)
+            new_qty = qty
         elif isinstance(ctx.exp(), QXSingle):
-            pass
+            if isinstance(qty, TyEn):
+                stmts, new_qty, final_vars = self._hadamard_on_entangled_transform(ctx, loc, qty, old_vars)
+            else:
+                # A gate on a separable state is a simple direct call
+                stmts, new_qty, final_vars = self._direct_call_transform(ctx, loc, qty, old_vars)
         else:
             return [] # Unsupported operation type
 
         # Update the main state
-        self._update_state_for_locus(loc, qty, final_vars)
+        self._update_state_for_locus(loc, new_qty, final_vars)
+        
         return stmts
 
     def visitOracle(self, ctx: QXOracle):
@@ -796,6 +802,28 @@ class ProgramTransfer(ProgramVisitor):
             return DXCall("omega", [DXNum(0), DXNum(2)], line=ctx.line_number())
         else:
             return DXCall("omega", [DXNum(1), DXNum(2)], line=ctx.line_number())
+    
+    def visitCast(self, ctx: Programmer.QXCast):
+        """Handles explicit type casting of a quantum state."""
+        print('\ncheckpoint')
+        loc_tuple = subLocus(ctx.locus(), self.varnums)
+        print(f'\nloc_tuple, {loc_tuple}, \nself.varnums {self.varnums}')
+        
+        if loc_tuple is not None:
+            loc, qty, old_vars = loc_tuple
+            
+            # Check if the cast is for an entire, existing locus
+            remainder = compareLocus(ctx.locus(), loc)
+            if not remainder: # Exact match
+                # Handle specific, supported casts
+                if isinstance(qty, TyHad) and isinstance(ctx.qty(), TyEn):
+                    stmts, new_vars = self._gen_had_to_en_cast_stmts(old_vars, ctx.line_number())
+                    print(f"\n stmts: {stmts} \n new_vars: {new_vars}")
+                    self._update_state_for_locus(loc, ctx.qty(), new_vars)
+                    return stmts
+        
+        # Return empty list if no valid cast was performed
+        return []
         
     # ==========================================================================
     # == Core Logic for Conditional Transformation
@@ -806,7 +834,7 @@ class ProgramTransfer(ProgramVisitor):
         Returns the new variables and the list of statements.
         """
         stmts = []
-        new_vars = self._upVars(vars_map)
+        new_vars = self._update_vars(vars_map)
         
         # Assuming hadEn returns (amp, q)
         new_amp_var = new_vars.get('amp')
@@ -815,7 +843,7 @@ class ProgramTransfer(ProgramVisitor):
         new_q_var = new_vars[qubit_var_name]
         
         if not new_amp_var: # Need to create one
-            self.counter += 1
+#            self.counter += 1
             new_amp_var = DXBind("amp", gen_nested_seq_type(1, SType("real")), self.counter)
             new_vars['amp'] = new_amp_var
 
@@ -936,7 +964,7 @@ class ProgramTransfer(ProgramVisitor):
         tmp = dict()
         for key in v.keys():
             tmp.update({key: v.get(key).newBind(self.counter)})
-            self.counter += 1
+        self.counter += 1
 
         return tmp
 
@@ -1379,6 +1407,155 @@ class ProgramTransfer(ProgramVisitor):
                 logic_map[var_name] = final_expr
                 ket_idx += 1
         return logic_map
+    
+    # ==========================================================================
+    # == Helper Methods for Single Operations
+    # ==========================================================================
+
+
+    def _direct_call_transform(self, ctx: QXQAssign, loc, qty, old_vars):
+        """
+        Generates a direct call to a library function for a single-register operation
+        and determines the resulting quantum type.
+        """
+        stmts = []
+        new_vars = self._update_vars(old_vars)
+
+        op = ctx.exp().op()
+
+        if op == "H":
+            if isinstance(qty, TyNor):
+                lib_func_name = "hadNorHad"
+                new_qty = TyHad()
+            elif isinstance(qty, TyHad):
+                lib_func_name = "hadHad"
+                new_qty = TyNor()
+            elif isinstance(qty, TyEn):
+                lib_func_name = "hadEn"
+                new_qty = qty
+            else:
+                raise Exception(f"Hadamard operation not supported on type {type(qty)}")
+        else:
+            raise Exception(f"Single gate operation '{op}' not supported.")
+        
+        self.libFuns.add(lib_func_name)
+        
+        sorted_old_vars = sorted(old_vars.values(), key=lambda v: v.ID())
+        sorted_new_vars = sorted(new_vars.values(), key=lambda v: v.ID())
+        
+        call = DXCall(lib_func_name, sorted_old_vars, line=ctx.line_number())
+        
+        stmts.append(DXAssign(sorted_new_vars, call, True, line=ctx.line_number()))
+        
+        return stmts, new_qty, new_vars
+    
+    def _hadamard_on_entangled_transform(self, ctx: QXQAssign, loc, qty, old_vars):
+        """
+        Handles H on an entangled state by generating imperative sequence comprehensions
+        that directly construct the new, transformed state, based on the user's logic.
+        """
+        stmts = []
+        
+        # 1. Define the new, deeper quantum state
+        input_depth = qty.flag().num()
+        output_depth = input_depth + 1
+        new_qty = TyEn(QXNum(output_depth))
+        new_vars = make_dafny_vars_for_locus(loc, new_qty, self.counter)
+        self.counter += 1
+
+        # 2. Setup: Iterators and variable names
+        target_name = ctx.locus()[0].location()
+        reg_names = [l.location() for l in loc if l.location() != 'amp']
+        target_pos = reg_names.index(target_name)
+        other_names = [name for name in reg_names if name != target_name]
+
+        # Correctly create and partition the iterators with sequential names
+        all_iterators_new = [DXBind(f"k{i}", SType("nat")) for i in range(output_depth)]
+        iterator_new = all_iterators_new[target_pos]
+        iterators_old = [it for it in all_iterators_new if it != iterator_new]
+
+        target_locus_range = ctx.locus()[0].crange()
+        right = self.visit(target_locus_range.right())
+        left = self.visit(target_locus_range.left())
+        if isinstance(left, DXNum) and left.val() == 0: 
+            size_of_operated_reg = right
+        else:
+            size_of_operated_reg = DXBin("-", self.visit(target_locus_range.right()), self.visit(target_locus_range.left()))
+        
+        # 3. Build comprehensions for each new variable
+        for name, new_var in new_vars.items():
+            old_var = old_vars.get(name)
+            
+            # Build the expression inside the comprehension from the inside out.
+            comprehension_body = self._build_hadamard_comprehension_body(name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new, ctx)
+            
+            # Wrap in nested comprehensions
+            comprehension = comprehension_body
+            rep_old_var = next(iter(old_vars.values()))
+            for i in range(len(all_iterators_new) - 1, -1, -1):
+                iterator = all_iterators_new[i]
+                
+                outer_iterators = all_iterators_new[:i]
+                temp_old_iters = [it for it in outer_iterators if it in iterators_old]
+                
+                if iterator == iterator_new:
+                    # The range for the new dimension is based on the size of the target locus from the AST.
+
+                    comp_range = DXCall("pow2", [size_of_operated_reg])
+                else:
+                    range_var = self._create_indexed_var(rep_old_var, temp_old_iters)
+                    comp_range = DXLength(range_var)
+
+                spec = DXRequires(DXInRange(iterator, DXNum(0), comp_range))
+                comprehension = DXSeqComp(comp_range, iterator, spec, comprehension)
+
+            stmts.append(DXAssign([new_var], comprehension, True))
+            
+            if name == target_name:
+                assertion_body = DXComp("==", self._create_indexed_var(new_var, all_iterators_new), comprehension_body)
+                wrapped_assertion = self._wrap_in_forall(assertion_body, all_iterators_new, new_var)
+                stmts.append(DXAssert(wrapped_assertion, line=ctx.line_number()))
+
+        # 4. Add helper lemma calls
+        stmts.append(DXCall("triggerSqrtMul", [], True, line=ctx.line_number()))
+        stmts.append(DXCall("ampeqtrigger", [], True, line=ctx.line_number()))
+        stmts.append(DXCall("pow2mul", [], True, line=ctx.line_number()))
+        stmts.append(DXCall("pow2sqrt", [], True, line=ctx.line_number()))
+        self.libFuns.update(["triggerSqrtMul", "ampeqtrigger", "pow2mul", "pow2sqrt"])
+        
+        return stmts, new_qty, new_vars
+    
+    def _build_hadamard_comprehension_body(self, name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new, ctx):
+        """
+        Helper to build the innermost expression for the Hadamard transformation comprehension.
+        """
+        old_var = old_vars.get(name)
+        
+        if name == 'amp':
+            old_amp_slice = self._create_indexed_var(old_var, iterators_old)
+            
+            pow2_size = DXCall("pow2", [size_of_operated_reg])
+            self.libFuns.add("pow2")
+            scaling_factor = DXBin("/", DXNum(1.0), DXCall("sqrt", [DXCast(SType("real"), pow2_size)]))
+            self.libFuns.add("sqrt")
+
+            target_reg_val = DXCall("castBVInt", [self._create_indexed_var(old_vars[target_name], iterators_old)])
+            phase_term = DXBin("*", iterator_new, target_reg_val)
+            self.libFuns.add("castBVInt")
+            
+            phase = DXCall("omega", [phase_term, DXNum(2)])
+            self.libFuns.add("omega")
+
+            return DXBin("*", old_amp_slice, DXBin("*", scaling_factor, phase))
+            
+        elif name == target_name:
+            # The TARGET register's value becomes the new iterator's value.
+            self.libFuns.add("castIntBV")
+            return DXCall("castIntBV", [iterator_new, size_of_operated_reg])
+
+        else: # Non-target registers
+            # The NON-TARGET register's value is preserved from the outer loop.
+            return self._create_indexed_var(old_var, iterators_old)
     
     # ==========================================================================
     # == Helper Methods for Predicate Generation

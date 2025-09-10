@@ -23,7 +23,11 @@ class DafnyLibrary:
                 requires a > 0.0
                 ensures sqrt(a) > 0.0''',
     'castBVInt': '''function {:axiom} castBVInt(x : seq<bv1>) : nat
-                ensures castBVInt(x) >= 0''',
+                ensures castBVInt(x) >= 0
+                ensures castBVInt(x) < pow2(|x|) ''',
+    'castIntBV': '''function {:axiom} castIntBV(x: nat, n: nat) : seq<bv1>
+                ensures castBVInt(castIntBV(x, n)) == x
+                ensures |castIntBV(x, n)| == n ''',
     'pow2': '''function {:axiom} pow2(N:nat): int
                   ensures pow2(N) > 0''',
     'abs' : '''function {:axiom} abs(n : int) : nat
