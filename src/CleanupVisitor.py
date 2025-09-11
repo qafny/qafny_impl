@@ -193,8 +193,9 @@ class CleanupVisitor(TargetProgramVisitor):
 
     def visitAssign(self, ctx: TargetProgrammer.DXAssign):
         ids = []
+        print(f"HERE ctx.ids():{ctx.ids}")
         for i in ctx.ids():
-            ids.append(i.accept(self))
+            ids.append(i.accept(self) if hasattr(i, 'accept') else i)
 
         exp = None
         if isinstance(ctx.exp(), list):
@@ -202,7 +203,7 @@ class CleanupVisitor(TargetProgramVisitor):
             for i in ctx.exp():
                 exp.append(i.accept(self))
         else:      
-            exp = ctx.exp().accept(self)
+            exp = ctx.exp().accept(self) if hasattr(ctx.exp(), 'accept') else ctx.exp()
 
         return DXAssign(ids, exp, ctx.init(), transformed_from=ctx)
     
