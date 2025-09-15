@@ -184,6 +184,7 @@ class CleanupVisitor(TargetProgramVisitor):
         return DXWhile(cond, stmts, invs, line=ctx.line())
 
     def visitIf(self, ctx: TargetProgrammer.DXIf):
+        print(f"\n ctx {ctx}")
         cond = ctx.cond().accept(self)
 
         left = []

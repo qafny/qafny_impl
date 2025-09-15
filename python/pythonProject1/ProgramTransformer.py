@@ -426,7 +426,7 @@ class ProgramTransformer(ExpVisitor):
             return self.visitTensorall(ctx.tensorall())
         if ctx.manyketpart() is not None:
             if ctx.arithExpr() is not None:
-                return QXTensor(self.visitManyketpart(ctx.manyketpart()), None, None, self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
+                return QXTensor(self.visitManyketpart(ctx.manyketpart()), None, self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
             else:
                 return QXTensor(self.visitManyketpart(ctx.manyketpart()), line_number=ctx.start.line)
         if ctx.sumspec() is not None:

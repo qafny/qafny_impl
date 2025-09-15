@@ -28,8 +28,11 @@ class DafnyLibrary:
     'castIntBV': '''function {:axiom} castIntBV(x: nat, n: nat) : seq<bv1>
                 ensures castBVInt(castIntBV(x, n)) == x
                 ensures |castIntBV(x, n)| == n ''',
-    'pow2': '''function {:axiom} pow2(N:nat): int
-                  ensures pow2(N) > 0''',
+    'pow2': '''function pow2(n:nat): nat
+              {
+                if n == 0 then 1
+                else 2 * pow2(n-1)
+              }''',
     'abs' : '''function {:axiom} abs(n : int) : nat
                 ensures abs(n) == if n >= 0 then n else -n''',
 
