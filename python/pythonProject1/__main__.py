@@ -52,7 +52,7 @@ DEFAULT_FILENAMES = [
 #     example_program("test5"),
 #     example_program("test6"),
 #     example_program("test7"),
-#     example_program("test8"),
+     example_program("test8"),
     example_program("test9"),
     #example_program("test10"),
 #     example_program("test11"),

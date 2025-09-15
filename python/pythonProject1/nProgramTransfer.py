@@ -368,91 +368,6 @@ class ProgramTransfer(ProgramVisitor):
             ket_vectors.append(arg.accept(self))
         return bindings, ket_vectors
     
-    # ==========================================================================
-    # == Core Logic for Oracle Transformation
-    # ==========================================================================
-
-    def _get_shape_preservation_predicates(self, old_vars, new_vars):
-        """
-        Returns a list of predicates for preserving the shape of all dimensions.
-        """
-        if not old_vars: return []
-        
-        predicates = []
-        max_depth = max(self._get_total_nesting_depth(v.type()) for v in old_vars.values())
-    
-        for i in range(max_depth):
-            iterators = [DXBind(f"k{j}", SType("nat")) for j in range(i)]
-            length_comps = []
-            
-            for var_name, old_bind in old_vars.items():
-                if self._get_total_nesting_depth(old_bind.type()) > i:
-                    new_bind = new_vars[var_name]
-                    old_indexed = self._create_indexed_var(old_bind, iterators)
-                    new_indexed = self._create_indexed_var(new_bind, iterators)
-                    comparison = DXComp("==", DXLength(new_indexed), DXLength(old_indexed), line=self.current_line)
-                    length_comps.append(comparison)
-
-            if not length_comps: continue
-
-            body = length_comps[0]
-            if len(length_comps) > 1:
-                body = DXComp("==", length_comps[0], length_comps[1], line=self.current_line)
-                for k in range(2, len(length_comps)):
-                    body = DXComp("==", body, length_comps[k], line=self.current_line)
-            
-            final_predicate = body
-            if iterators:
-                representative_var = next(v for v in old_vars.values() if self._get_total_nesting_depth(v.type()) > i)
-                final_predicate = self._wrap_in_forall(body, iterators, representative_var)
-            
-            predicates.append(final_predicate)
-        return predicates
-
-    def _get_transformation_predicate(self, old_vars, new_vars, rhs_generator):
-        """
-        A generic helper to build and return the main transformation predicate.
-        """
-        qubit_vars = {k: v for k, v in old_vars.items() if k != 'amp'}
-        if not qubit_vars: return DXBoolValue(True)
-
-        rep_type = next(iter(qubit_vars.values())).type()
-        num_iterators = self._get_total_nesting_depth(rep_type) - 1
-        iterators = [DXBind(f"k{i}", SType("nat")) for i in range(num_iterators)]
-
-        all_equalities = []
-        for var_name, old_bind in sorted(old_vars.items()):
-            new_bind = new_vars[var_name]
-            indexed_new = self._create_indexed_var(new_bind, iterators)
-            
-            rhs_expr = rhs_generator(var_name, old_bind, iterators)
-            
-            if rhs_expr:
-                lhs_expr = indexed_new
-                indexed_old = self._create_indexed_var(old_bind, iterators)
-                if var_name != 'amp' and not EqualityVisitor().visit(rhs_expr, indexed_old):
-                    lhs_expr = DXCall("castBVInt", [indexed_new])
-                    self.libFuns.add('castBVInt')
-                
-                all_equalities.append(DXComp("==", lhs_expr, rhs_expr))
-
-        if not all_equalities: return DXBoolValue(True)
-
-        combined_body = self._join_predicates(all_equalities)
-        return self._wrap_in_forall(combined_body, iterators, next(iter(qubit_vars.values())))
-
-    def _join_predicates(self, predicates: list):
-        """Joins a list of predicates with '&&'."""
-        if not predicates:
-            return None
-        if len(predicates) == 1:
-            return predicates[0]
-        
-        joined = DXLogic("&&", predicates[0], predicates[1])
-        for i in range(2, len(predicates)):
-            joined = DXLogic("&&", joined, predicates[i])
-        return joined
-
     def visitSingle(self, ctx: QXSingle):
         """
         Transforms the state for a single-locus operation like a Hadamard gate.
@@ -557,6 +472,92 @@ class ProgramTransfer(ProgramVisitor):
         return unification_stmts + comprehension_stmts + lemma_stmts
 
     # ==========================================================================
+    # == Core Logic for Oracle Transformation
+    # ==========================================================================
+
+    def _get_shape_preservation_predicates(self, old_vars, new_vars):
+        """
+        Returns a list of predicates for preserving the shape of all dimensions.
+        """
+        if not old_vars: return []
+        
+        predicates = []
+        max_depth = max(self._get_total_nesting_depth(v.type()) for v in old_vars.values())
+    
+        for i in range(max_depth):
+            iterators = [DXBind(f"k{j}", SType("nat")) for j in range(i)]
+            length_comps = []
+            
+            for var_name, old_bind in old_vars.items():
+                if self._get_total_nesting_depth(old_bind.type()) > i:
+                    new_bind = new_vars[var_name]
+                    old_indexed = self._create_indexed_var(old_bind, iterators)
+                    new_indexed = self._create_indexed_var(new_bind, iterators)
+                    comparison = DXComp("==", DXLength(new_indexed), DXLength(old_indexed), line=self.current_line)
+                    length_comps.append(comparison)
+
+            if not length_comps: continue
+
+            body = length_comps[0]
+            if len(length_comps) > 1:
+                body = DXComp("==", length_comps[0], length_comps[1], line=self.current_line)
+                for k in range(2, len(length_comps)):
+                    body = DXComp("==", body, length_comps[k], line=self.current_line)
+            
+            final_predicate = body
+            if iterators:
+                representative_var = next(v for v in old_vars.values() if self._get_total_nesting_depth(v.type()) > i)
+                final_predicate = self._wrap_in_forall(body, iterators, representative_var)
+            
+            predicates.append(final_predicate)
+        return predicates
+
+    def _get_transformation_predicate(self, old_vars, new_vars, rhs_generator):
+        """
+        A generic helper to build and return the main transformation predicate.
+        """
+        qubit_vars = {k: v for k, v in old_vars.items() if k != 'amp'}
+        if not qubit_vars: return DXBoolValue(True)
+
+        rep_type = next(iter(qubit_vars.values())).type()
+        num_iterators = self._get_total_nesting_depth(rep_type) - 1
+        iterators = [DXBind(f"k{i}", SType("nat")) for i in range(num_iterators)]
+
+        all_equalities = []
+        for var_name, old_bind in sorted(old_vars.items()):
+            new_bind = new_vars[var_name]
+            indexed_new = self._create_indexed_var(new_bind, iterators)
+            
+            rhs_expr = rhs_generator(var_name, old_bind, iterators)
+            
+            if rhs_expr:
+                lhs_expr = indexed_new
+                indexed_old = self._create_indexed_var(old_bind, iterators)
+                if var_name != 'amp' and not EqualityVisitor().visit(rhs_expr, indexed_old):
+                    lhs_expr = DXCall("castBVInt", [indexed_new])
+                    self.libFuns.add('castBVInt')
+                
+                all_equalities.append(DXComp("==", lhs_expr, rhs_expr))
+
+        if not all_equalities: return DXBoolValue(True)
+
+        combined_body = self._join_predicates(all_equalities)
+        return self._wrap_in_forall(combined_body, iterators, next(iter(qubit_vars.values())))
+
+    def _join_predicates(self, predicates: list):
+        """Joins a list of predicates with '&&'."""
+        if not predicates:
+            return None
+        if len(predicates) == 1:
+            return predicates[0]
+        
+        joined = DXLogic("&&", predicates[0], predicates[1])
+        for i in range(2, len(predicates)):
+            joined = DXLogic("&&", joined, predicates[i])
+        return joined
+
+
+    # ==========================================================================
     # == Helper Methods for State Management
     # ==========================================================================
 
@@ -590,7 +591,6 @@ class ProgramTransfer(ProgramVisitor):
                             mapping[final_vars[i].ID()] = return_vars[i]
 #        print(f"\nFinal assignments: {assignments}")                    
         return assignments, mapping
-
 
     def _update_state_for_locus(self, target_locus: list, new_qty: QXQTy, new_vars: dict):
         """Updates self.varnums by replacing an old locus with its new version."""
@@ -905,7 +905,6 @@ class ProgramTransfer(ProgramVisitor):
         
         return stmts, new_vars
 
-
     def _gen_en_had_merge_stmts(self, en_vars: dict, had_var: DXBind, ctrl_loc: QXQRange, line_number: int):
         """
         Generates imperative statements to merge a TyHad state (had_var) with a
@@ -964,7 +963,6 @@ class ProgramTransfer(ProgramVisitor):
         print(f"\n stmts: {stmts} \n new_vars: {new_vars} \n q_leftover: {q_leftover}")
             
         return stmts, new_vars, q_leftover
-
 
     def collectNorLocus(self, q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
         """
@@ -1219,9 +1217,6 @@ class ProgramTransfer(ProgramVisitor):
             (len(operation.vectors()) == len(operation.bindings()) and \
              all(EqualityVisitor().visit(operation.vectors()[i].vector(), operation.bindings()[i]) for i in range(len(operation.vectors()))))
 
-
-
-
         # 1. Create the helper function for the lambda expression
         lambda_func = self._create_lambda_method(q_assign, unified_vars)
         self.addFuns.append(lambda_func)
@@ -1256,8 +1251,9 @@ class ProgramTransfer(ProgramVisitor):
                 control_qubit = ctx.bexp()
                 control_var = unified_vars[control_qubit.location()]
                 indexed_control = self._create_indexed_var(control_var, iterators)
-                control_bit = DXIndex(indexed_control, control_qubit.crange().left().accept(self))
-                condition = DXComp("==", control_bit, DXNum(1))
+    #            control_bit = DXIndex(indexed_control, control_qubit.crange().left().accept(self))
+                condition = DXComp(">=", DXCall("castBVInt", [indexed_control]), DXCall("pow2", [control_qubit.crange().left().accept(self)]))
+#                condition = DXComp("==", control_bit, DXNum(1))
                 print(f"\n condition {condition}")
                 
                 else_expr = self._create_indexed_var(var, iterators)
@@ -1679,7 +1675,7 @@ class ProgramTransfer(ProgramVisitor):
             indexed_control = self._create_indexed_var(control_var, iterators_old)
             print(f"\n indexed_control {indexed_control}")
     #        control_bit = DXIndex(indexed_control, control_qubit.crange().left().accept(self))
-            condition = DXComp("==", DXCall("castBVInt", [indexed_control]), DXNum(1))
+            condition = DXComp(">=", DXCall("castBVInt", [indexed_control]), DXCall("pow2", [control_qubit.crange().left().accept(self)]))
             self.libFuns.add("castBVInt")
             
             # The body of the innermost comprehension is the conditional
@@ -1711,7 +1707,6 @@ class ProgramTransfer(ProgramVisitor):
         
         return stmts, new_qty, new_vars
     
-
     def _build_controlled_hadamard_body(self, name, unified_vars, target_name, iterators, q_assign):
         """
         Builds the expression for the 'then' branch of a controlled Hadamard.
@@ -1742,8 +1737,6 @@ class ProgramTransfer(ProgramVisitor):
 
         else: # Other registers are unchanged
             return self._create_indexed_var(unified_vars[name], iterators)
-
-
 
     def _build_hadamard_comprehension_body(self, name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new):
         """

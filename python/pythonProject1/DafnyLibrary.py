@@ -29,10 +29,11 @@ class DafnyLibrary:
                 ensures castBVInt(castIntBV(x, n)) == x
                 ensures |castIntBV(x, n)| == n ''',
     'pow2': '''function pow2(n:nat): nat
-              {
-                if n == 0 then 1
-                else 2 * pow2(n-1)
-              }''',
+            ensures pow2(n) > 0
+            {
+              if n == 0 then 1
+              else 2 * pow2(n-1)
+            }''',
     'abs' : '''function {:axiom} abs(n : int) : nat
                 ensures abs(n) == if n >= 0 then n else -n''',
 
