@@ -229,7 +229,7 @@ class ProgramTransformer(ExpVisitor):
             right = self.visitArithExpr(ctx.arithExpr(1))
             op = self.visitComOp(ctx.comOp())
             index = self.visitIdindex(ctx.idindex())
-            return QXQComp(op, left, right, index, ctx,line_number=ctx.start.line)
+            return QXQComp(op, left, right, index, line_number=ctx.start.line)
         if ctx.locus() is not None:
             raise NotImplementedError("Using loci in qbools is not currently implemented.")
         return self.visitQrange(ctx.qrange())

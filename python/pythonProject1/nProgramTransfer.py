@@ -26,7 +26,7 @@ class EnFactor(StackFactor):
 # ==============================================================================
 def eqQRange(q1: QXQRange, q2: QXQRange):
     """Checks for exact equality between two quantum ranges."""
-    return (str(q1.location()) == str(q2.location()) and compareAExp(q1.crange().left(),q2.crange().left())
+    return (q1.location() == q2.location() and compareAExp(q1.crange().left(),q2.crange().left())
             and compareAExp(q1.crange().right(),q2.crange().right()))
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
@@ -964,35 +964,39 @@ class ProgramTransfer(ProgramVisitor):
             
         return stmts, new_vars, q_leftover
 
-    def collectNorLocus(self, q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
+    def collectNorLocus(self, q2: list[QXQRange], qs: list[tuple[list[QXQRange], QXQTy, dict]]):
         """
-        A helper function that finds and collects all TyNor typed loci from a list of states 'qs'
-        that are specified in the target range 'q2'. It returns the collected loci, their
-        variables, and the remaining states.
+        Find *all* Nor-typed loci in `qs` that match any target in `q2`, using compareSingle.
+        Returns:
+        - found_loci: flat list of matched QXQRange (order of discovery)
+        - vars_merged: merged vars map from all matched entries (first-wins on conflicts)
+        - remaining: updated `qs` after carving out the matched Nor parts (non-Nor unchanged)
         """
-        qv = []
-        vs = []
-        for elem in q2:
-            for i in range(len(qs)):
-                loc, qty, vars = qs[i]
-                if isinstance(qty, TyNor):
-                    if eqQRange(elem, loc[0]):
-                        vs += [(loc, qty, vars)]
-                    else:
-                        reLoc = compareRangeLocus(elem, loc)
-                        qv += [(reLoc, qty, vars)]
+        # Work on Nor-only pool; pass non-Nor through unchanged
+        remaining_nor = [x for x in qs if isinstance(x[1], TyNor)]
+        passthrough   = [x for x in qs if not isinstance(x[1], TyNor)]
 
-                        vs += [(elem, TyNor, self._update_vars(vars))]
-                else:
-                    qv += [(loc, qty, vars)]
+        found_loci: list[QXQRange] = []
+        vars_merged: dict = {}
 
-        newVars = dict()
-        va = []
-        for loc, qty, vars in vs:
-            va += loc
-            newVars.update({k:v for k,v in vars.items()})
+        for target in q2:
+            while True:
+                res = self.compareSingle(target, remaining_nor)
+                if res is None:
+                    break
+                _orig_var, matched_locus, matched_vars, remaining_nor = res
 
-        return va, newVars, qv
+                # matched_locus is a list (e.g., [target]); extend the flat list
+                found_loci.extend(matched_locus)
+
+                # merge vars (keep first value on key conflicts; tweak if you prefer last-wins)
+                for k, v in matched_vars.items():
+                    if k not in vars_merged:
+                        vars_merged[k] = v
+
+        remaining = passthrough + remaining_nor
+        return found_loci, vars_merged, remaining
+
     
     def _update_vars(self, v: dict):
         """Updates Dafny variables with incremented counters."""
@@ -1074,46 +1078,62 @@ class ProgramTransfer(ProgramVisitor):
                 tmp = meetType(tmp, qty)
         return tmp
 
-    def compareSingle(self, q1: QXQRange, qs: [([QXQRange], QXQTy, dict)]):
+    def compareSingle(
+        self,
+        q1: QXQRange,
+        qs: list[tuple[list[QXQRange], QXQTy, dict]]
+    ) -> "None | tuple[str | None, list[QXQRange], dict, list[tuple[list[QXQRange], QXQTy, dict]]]":
         """
-        Searches for a separable locus 'q1' in the list of states 'qs'.
-        Handles both exact and partial (prefix) matches, correctly partitioning the state list.
-        Returns a tuple: (original_var, matched_locus, matched_vars, remaining_states) or None.
-        The 'original_var' is returned only on a partial match to signal that slicing is needed.
+        Searches for a separable locus `q1` in `qs`.
+        Handles:
+        - Exact match: returns (None, [q1], vars_map, remaining_states)
+        - Left-prefix match: returns (original_var, [q1], vars_map, remaining_states)
+            where `original_var` indicates slicing is needed upstream.
+        Returns None if no match is found.
         """
         for i in range(len(qs)):
-            loc, qty, vars_map = qs[i]
-            
-            if len(loc) != 1 or not (isinstance(qty, TyHad) or isinstance(qty, TyNor)):
-                continue
-            
-            existing_locus = loc[0]
-            
-            if q1.location() == existing_locus.location():
-                is_left_match = compareAExp(q1.crange().left(), existing_locus.crange().left())
-                is_right_match = compareAExp(q1.crange().right(), existing_locus.crange().right())
+            locs, qty, vars_map = qs[i]
 
-                # Case 1: Exact Match.
-                if is_left_match and is_right_match:
-                    remaining_states = qs[:i] + qs[i+1:]
-                    return (None, [q1], vars_map, remaining_states)
-                
-                # Case 2: Partial Match.
-                if is_left_match:
-                    original_var = next(iter(vars_map.values()))
-                    
-                    # For a partial match, we don't create new variables for the remainder here.
-                    # The original var map is used, but with a new range.
-                    # The caller (`includeIfLocus`) is responsible for generating slicing statements.
-                    new_left_bound = q1.crange().right()
-                    remaining_range = QXQRange(q1.location(), 
-                                               crange=QXCRange(new_left_bound, existing_locus.crange().right()))
-                    
-                    remaining_state_tuple = ([remaining_range], qty, vars_map) # Use original vars_map
-                    remaining_states = qs[:i] + [remaining_state_tuple] + qs[i+1:]
-                    
-                    # Return the original var to signal a split, the matched locus, the original vars, and the new remaining states.
-                    return ([q1], vars_map, remaining_states)
+            # We only handle a single-locus TyHad/TyNor entry as per your spec
+            if len(locs) != 1 or not (isinstance(qty, TyHad) or isinstance(qty, TyNor)):
+                continue
+
+            existing = locs[0]
+            if q1.location() != existing.location():
+                continue
+
+            # Equality checks you already use
+            left_eq  = compareAExp(q1.crange().left(),  existing.crange().left())
+            right_eq = compareAExp(q1.crange().right(), existing.crange().right())
+
+            # Case 1: exact match -> remove this entry from qs
+            if left_eq and right_eq:
+                remaining_states = qs[:i] + qs[i+1:]
+                # matched_locus must be a list
+                return (None, [q1], vars_map, remaining_states)
+
+            # Case 2: left-prefix match -> slice "existing" to its right remainder
+            # (We assume caller ensured q1.right <= existing.right syntactically;
+            if left_eq:
+                # Keep the same vars_map for the remainder (you said caller will slice)
+                new_left = q1.crange().right()
+                remainder = QXQRange(
+                    q1.location(),
+                    crange=QXCRange(new_left, existing.crange().right())
+                )
+                remaining_tuple = ([remainder], qty, vars_map)
+
+                remaining_states = qs[:i] + [remaining_tuple] + qs[i+1:]
+
+                # Signal to caller which original var to slice: use the VAR NAME (key), not value
+                # Pick a stable key; if you have a canonical name, use that instead.
+                original_var = next(iter(vars_map.keys())) if vars_map else None
+
+                return (original_var, [q1], vars_map, remaining_states)
+
+        # No match found
+        return None
+
 
     def findHadLocus(self, q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
         """
@@ -1138,8 +1158,8 @@ class ProgramTransfer(ProgramVisitor):
         rt = self.superLocus(q2, ty)
         #remainder from q2 after superLocus, super locus and remains in env
         if rt is not None:
-            print(f"\n rt {rt}")
             rem, loc, qty, vars, tmpVarNums = rt
+            print(f"\n rem: {rem} \n loc qty vars{loc}, \n {qty} \n {vars}, \n tmpVarNums {tmpVarNums}")
             
             if isinstance(ty, TyHad):
                 stmts, new_vars = self._gen_had_to_en_cast_stmts(vars, loc[0].line_number())
@@ -1161,39 +1181,41 @@ class ProgramTransfer(ProgramVisitor):
             elif isinstance(ty, TyEn):
                 current_stmts = []
                 current_vars = vars             
-              #  Merge Nor loci first
-                nor_rem, nor_vars_map, remaining_after_nor = self.collectNorLocus(rem, tmpVarNums)
-                for nor_loc, nor_var_map in nor_vars_map.items():
-                    nor_var = next(iter(nor_var_map.values()))
-                    merge_stmts, new_vars = self._gen_en_nor_extend_stmts(current_vars, nor_var, loc[0].line_number())
-                    current_stmts.extend(merge_stmts)
-                    current_vars = new_vars
-                    loc = loc + nor_loc
+                nor_locs, nor_vars, rem_env = self.collectNorLocus(rem, tmpVarNums)
+                for nor_loc in nor_locs:
+                    loc_name = nor_loc.location()
+                    if loc_name in nor_vars: 
+                        nor_var_map = nor_vars[loc_name]            
+         #               merge_stmts, new_vars = self._gen_en_nor_extend_stmts(new_vars, nor_var_map, loc[0].line_number())
+         #               stmts.extend(merge_stmts)
+                        merged_loc = loc.append(nor_loc)
+                        current_vars[loc_name] = nor_var_map
 
                 # Then merge Had loci
-                vb = self.findHadLocus(rem, tmpVarNums)
-                print(f"\n vb {vb}")
-                if vb is not None:
-                    had_locus, had_vars, remaining_after_had = vb
-                    
-                    # The specific splitting of the had_var is handled inside _gen_en_had_merge_stmts
-                    had_var = next(iter(had_vars.values()))
-                    ctrl_loc = had_locus[0]
-                    merge_stmts, new_vars, q_leftover = self._gen_en_had_merge_stmts(current_vars, had_var, ctrl_loc, loc[0].line_number())                 
-                    current_stmts.extend(merge_stmts)
-                    current_vars = new_vars
-                    loc = loc + had_locus
+                if rem_env:
+                    vb = self.findHadLocus(rem, remaining_after_nor)
+                    print(f"\n vb {vb}")
+                    if vb is not None:
+                        _, had_locus, had_vars, rem_env = vb
+                        
+                        # The specific splitting of the had_var is handled inside _gen_en_had_merge_stmts
+                        had_var = next(iter(had_vars.values()))
+                        ctrl_loc = had_locus[0]
+                        merge_stmts, new_vars, q_leftover = self._gen_en_had_merge_stmts(current_vars, had_var, ctrl_loc, loc[0].line_number())                 
+                        current_stmts.extend(merge_stmts)
+                        current_vars = new_vars
+                        loc = loc + had_locus
                     
 
-                    for i in range(len(remaining_after_had)):
-                        rem_loc, rem_qty, rem_vars = remaining_after_had[i]
+                    for i in range(len(rem_env)):
+                        rem_loc, rem_qty, rem_vars = rem_env[i]
                         if rem_loc[0].location() == q_leftover.ID():
                             new_rem_var = {q_leftover.ID(): q_leftover}
-                            remaining_after_had[i] = (rem_loc, rem_qty, new_rem_var) 
+                            rem_env[i] = (rem_loc, rem_qty, new_rem_var) 
                             break
            
-                self.varnums = ([(loc, qty, current_vars)]) + remaining_after_had
-                return current_stmts, loc, qty, current_vars, remaining_after_had
+                self.varnums = ([(loc, qty, current_vars)]) + rem_env
+                return current_stmts, loc, qty, current_vars, rem_env
                 
         return None, None, None, None, self.varnums
 
@@ -1640,10 +1662,10 @@ class ProgramTransfer(ProgramVisitor):
         q_assign = ctx.stmts()[0]
         target_name = q_assign.locus()[0].location()
         
-        all_iterators_new = [DXBind(f"k{i}", SType("nat")) for i in range(output_depth)]
+        iterators_new = [DXBind(f"k{i}", SType("nat")) for i in range(output_depth)]
         
-        iterators_old = all_iterators_new[:-1]
-        iterator_new_dim = all_iterators_new[-1]
+        iterators_old = iterators_new[:-1]
+        iterator_new_dim = iterators_new[-1]
         print(f"\n iterator_old, {iterators_old}, \n new_dim {iterator_new_dim}")
 
         target_locus_range = q_assign.locus()[0].crange()
@@ -1659,7 +1681,7 @@ class ProgramTransfer(ProgramVisitor):
         print(f"\n rep_old_var {rep_old_var}")
         for name, new_var in new_vars.items():
             old_var = old_vars.get(name)
-            
+
             # --- Build the 'then' and 'else' branches for the innermost expression ---            
             # 'Then' branch expression
             then_expr = self._build_hadamard_comprehension_body(name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new_dim)
@@ -1668,14 +1690,25 @@ class ProgramTransfer(ProgramVisitor):
                 else_expr = old_var
             else:
                 else_expr = self._create_indexed_var(old_var, iterators_old)
-
+            
             # Build the conditional expression for the innermost element
             control_qubit = ctx.bexp()
-            control_var = old_vars[control_qubit.location()]
-            indexed_control = self._create_indexed_var(control_var, iterators_old)
-            print(f"\n indexed_control {indexed_control}")
+            if isinstance(control_qubit, QXQRange):
+                control_var = old_vars[control_qubit.location()]
+                indexed_control = self._create_indexed_var(control_var, iterators_old)
+                print(f"\n indexed_control {indexed_control}")
     #        control_bit = DXIndex(indexed_control, control_qubit.crange().left().accept(self))
-            condition = DXComp(">=", DXCall("castBVInt", [indexed_control]), DXCall("pow2", [control_qubit.crange().left().accept(self)]))
+                condition = DXComp(">=", DXCall("castBVInt", [indexed_control]), DXCall("pow2", [control_qubit.crange().left().accept(self)]))
+            elif isinstance(control_qubit, QXQComp):
+                print(f"\n control_qubit {control_qubit}")
+                control_var = old_vars[control_qubit.left().location()]
+                indexed_control = self._create_indexed_var(control_var, iterators_old)
+                condition = DXComp(control_qubit.op(), DXCall("castBVInt", [indexed_control]), control_qubit.right().accept(self))
+                print(f"\n name: {name}, {control_qubit.index().ID()}")
+                if name == control_qubit.index().ID():
+                    then_expr = DXCall("castIntBV", [DXNum(1), DXLength(old_var)])
+                    print(f"\n then_expr {then_expr}")
+                    self.libFuns.add("castIntBV")
             self.libFuns.add("castBVInt")
             
             # The body of the innermost comprehension is the conditional
@@ -1683,8 +1716,8 @@ class ProgramTransfer(ProgramVisitor):
 
             # --- Wrap in nested comprehensions ---
             comprehension = inner_comprehension_body
-            for i in range(len(all_iterators_new) - 1, -1, -1):
-                iterator = all_iterators_new[i]
+            for i in range(len(iterators_new) - 1, -1, -1):
+                iterator = iterators_new[i]
                 
                 # The range of the new dimension is different from the old dimensions
                 if iterator == iterator_new_dim:
@@ -1696,7 +1729,7 @@ class ProgramTransfer(ProgramVisitor):
                     comp_range = DXCall("pow2", [DXLength(range_var)])
                 else:
                     # The iterators for the outer dimensions need to be mapped back to the old state
-                    outer_iterators_for_old = [it for it in all_iterators_new[:i] if it in iterators_old]
+                    outer_iterators_for_old = [it for it in iterators_new[:i] if it in iterators_old]
                     range_var = self._create_indexed_var(rep_old_var, outer_iterators_for_old)
                     comp_range = DXLength(range_var)
 
