@@ -117,7 +117,7 @@ def serializedATN():
         buf.write("\u0088\u008a\u008c\u008e\u0090\u0092\u0094\u0096\u0098")
         buf.write("\u009a\u009c\u009e\u00a0\u00a2\u00a4\u00a6\u00a8\u00aa")
         buf.write("\u00ac\u00ae\u00b0\2\13\3\2\60\61\3\2Y^\4\2\21\21ee\4")
-        buf.write("\2\33\33WW\3\2!\"\4\2<=BB\3\2>@\4\2AACC\3\2PQ\2\u0506")
+        buf.write("\2\33\33WW\3\2!\"\4\2<=BB\4\2>@DD\4\2AACC\3\2PQ\2\u0506")
         buf.write("\2\u00b3\3\2\2\2\4\u00be\3\2\2\2\6\u00c0\3\2\2\2\b\u00d6")
         buf.write("\3\2\2\2\n\u00ee\3\2\2\2\f\u00fb\3\2\2\2\16\u0104\3\2")
         buf.write("\2\2\20\u010f\3\2\2\2\22\u0112\3\2\2\2\24\u011c\3\2\2")
@@ -8596,6 +8596,9 @@ class ExpParser ( Parser ):
         def TMod(self):
             return self.getToken(ExpParser.TMod, 0)
 
+        def TDot(self):
+            return self.getToken(ExpParser.TDot, 0)
+
         def getRuleIndex(self):
             return ExpParser.RULE_multiplicativeOp
 
@@ -8625,7 +8628,7 @@ class ExpParser ( Parser ):
             self.enterOuterAlt(localctx, 1)
             self.state = 1180
             _la = self._input.LA(1)
-            if not((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << ExpParser.TMul) | (1 << ExpParser.TDiv) | (1 << ExpParser.TMod))) != 0)):
+            if not(((((_la - 60)) & ~0x3f) == 0 and ((1 << (_la - 60)) & ((1 << (ExpParser.TMul - 60)) | (1 << (ExpParser.TDiv - 60)) | (1 << (ExpParser.TMod - 60)) | (1 << (ExpParser.TDot - 60)))) != 0)):
                 self._errHandler.recoverInline(self)
             else:
                 self._errHandler.reportMatch(self)

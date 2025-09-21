@@ -19,6 +19,13 @@ class DafnyLibrary:
     'omega': 'function {:axiom} omega(n:nat, a:nat): real',
     'omega0' : '''lemma {:axiom} omega0()
                     ensures forall k : nat :: omega(0, k) == 1.0''',
+    'dotProd': '''function dotProd(x: seq<bv1>, y: seq<bv1>): nat
+                requires |x| == |y|
+                decreases |x|
+              {
+                if |x| == 0 then 0
+                else ((bit(x[0]) * bit(y[0])) + dotProd(x[1..], y[1..]))
+              }''',
     'sqrt': '''function {:axiom} sqrt(a:real): real
                 requires a > 0.0
                 ensures sqrt(a) > 0.0''',
@@ -28,12 +35,8 @@ class DafnyLibrary:
     'castIntBV': '''function {:axiom} castIntBV(x: nat, n: nat) : seq<bv1>
                 ensures castBVInt(castIntBV(x, n)) == x
                 ensures |castIntBV(x, n)| == n ''',
-    'pow2': '''function pow2(n:nat): nat
-            ensures pow2(n) > 0
-            {
-              if n == 0 then 1
-              else 2 * pow2(n-1)
-            }''',
+    'pow2': '''function {:axiom}pow2(n:nat): nat
+            ensures pow2(n) > 0 ''',
     'abs' : '''function {:axiom} abs(n : int) : nat
                 ensures abs(n) == if n >= 0 then n else -n''',
 

@@ -229,7 +229,7 @@ aaType : AA | AA '(' qrange ')';
 
 additiveOp: TAdd | TSub | OPlus;
 
-multiplicativeOp: TMul | TDiv | TMod;
+multiplicativeOp: TMul | TDiv | TMod | TDot;
 
 exponentialOp: TExp | TXor;
 

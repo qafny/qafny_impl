@@ -172,7 +172,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return 'if (' + ctx.cond().accept(self) + '){\n' + stmts + '}' + elsepart
 
     def visitIndex(self, ctx: TargetProgrammer.DXIndex):
-        print('\nvisitIndex in PV', ctx)
+    #    print('\nvisitIndex in PV', ctx)
         if ctx.bind():
             return ctx.bind().accept(self) + '[' + ctx.index().accept(self) + ']'
         else:

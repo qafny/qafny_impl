@@ -161,9 +161,7 @@ class CleanupVisitor(TargetProgramVisitor):
         return DXCast(ctx.type(), ctx.next().accept(self), line=ctx.line())
 
     def visitIfExp(self, ctx: TargetProgrammer.DXIfExp):
-        return DXIfExp(ctx.bexp().accept(self),
-        ctx.left().accept(self),
-        ctx.right().accept(self), line=ctx.line())
+        return DXIfExp(ctx.bexp().accept(self), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line())
 
     def visitLength(self, ctx: TargetProgrammer.DXLength):
 #        print(f"\n visitingLength in CV: {ctx}")
