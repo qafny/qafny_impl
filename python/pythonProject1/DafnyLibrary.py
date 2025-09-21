@@ -29,14 +29,18 @@ class DafnyLibrary:
     'sqrt': '''function {:axiom} sqrt(a:real): real
                 requires a > 0.0
                 ensures sqrt(a) > 0.0''',
-    'castBVInt': '''function {:axiom} castBVInt(x : seq<bv1>) : nat
+    'castBVInt': Method('''function {:axiom} castBVInt(x : seq<bv1>) : nat
                 ensures castBVInt(x) >= 0
-                ensures castBVInt(x) < pow2(|x|) ''',
-    'castIntBV': '''function {:axiom} castIntBV(x: nat, n: nat) : seq<bv1>
+                ensures castBVInt(x) < pow2(|x|) ''', ['pow2']),
+    'castIntBV': Method('''function {:axiom} castIntBV(x: nat, n: nat) : seq<bv1>
                 ensures castBVInt(castIntBV(x, n)) == x
-                ensures |castIntBV(x, n)| == n ''',
-    'pow2': '''function {:axiom}pow2(n:nat): nat
-            ensures pow2(n) > 0 ''',
+                ensures |castIntBV(x, n)| == n ''', ['castBVInt']),
+    'pow2': '''function pow2(n:nat): nat
+            ensures pow2(n) > 0
+            {
+              if n == 0 then 1
+              else 2 * pow2(n-1)
+            }''',
     'abs' : '''function {:axiom} abs(n : int) : nat
                 ensures abs(n) == if n >= 0 then n else -n''',
 
@@ -182,7 +186,7 @@ class DafnyLibrary:
             ensures castBVInt(bool2BV1(b)) == if b then 1 else 0
             ensures |bool2BV1(b)| == 1''', ['castBVInt']),
     'ampeqtrigger' : Method('''lemma {:axiom} ampeqtrigger()
-          ensures forall k : nat :: (1.0/sqrt(pow2(k) as real)) * (1.0/sqrt(pow2(k) as real)) == 1.0/pow2(k) as real''', ['sqrt', 'pow2']),
+          ensures forall k : nat :: (sqrt(pow2(k) as real)) * (sqrt(pow2(k) as real)) == pow2(k) as real''', ['sqrt', 'pow2']),
     'En1toEn2_2' : Method('''method {:axiom} En1toEn2_2(x: seq<seq<bv1>>, y: seq<seq<bv1>>, amp: seq<real>)
         returns (x1: seq<seq<seq<bv1>>>, y1: seq<seq<seq<bv1>>>, amp1: seq<seq<real>>)
         requires |x| == |y| == |amp|

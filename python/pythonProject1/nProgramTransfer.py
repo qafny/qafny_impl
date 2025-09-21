@@ -466,6 +466,7 @@ class ProgramTransfer(ProgramVisitor):
         
         # Unify the state, generating statements for the unification process.
         unification_stmts, unified_locus, unified_qty, current_vars, remaining_vars = self.includeIfLocus(lc.renv)
+        all_stmts.extend(unification_stmts)
 
         print(f"\n unification_stmts: {unification_stmts}, \n unified_locus: {unified_locus}, \
               \n unified_qty: {unified_qty}, \n unified_vars: {current_vars}, \n remaining_vars: {remaining_vars}")
@@ -806,8 +807,11 @@ class ProgramTransfer(ProgramVisitor):
             body = DXComp("==", DXIndex(dvar, iterator), ket_val, line=ctx.line_number())
             predicates.append(DXAll(iterator, DXLogic("==>", drange, body), line=ctx.line_number()))    
         elif isinstance(qty, TyNor):
-            body = DXComp("==", DXCall("castBVInt", [dvar], False),  ket_val, line=ctx.line_number())
-            predicates.append(body)
+            drange = DXInRange(iterator, DXNum(0), DXLength(dvar), line=ctx.line_number())
+            body = DXComp("==", DXIndex(dvar, iterator), ket_val, line=ctx.line_number())
+            predicates.append(DXAll(iterator, DXLogic("==>", drange, body), line=ctx.line_number())) 
+            predicates.append(DXComp("==", DXCall("castBVInt", [dvar], False), ket_val, line=ctx.line_number()))
+            self.libFuns.add('castBVInt')
         
         return predicates
 
@@ -1253,7 +1257,7 @@ class ProgramTransfer(ProgramVisitor):
 
                 # Then merge Had loci
                 if rem_env:
-                    vb = self.findHadLocus(rem, remaining_after_nor)
+                    vb = self.findHadLocus(rem, rem_env)
                     print(f"\n vb {vb}")
                     if vb is not None:
                         _, had_locus, had_vars, rem_env = vb
@@ -1354,7 +1358,8 @@ class ProgramTransfer(ProgramVisitor):
         if self.en_factor:
             self.en_factor = DXBin('&&', self.en_factor.conds(), condition)
         else:
-            self.en_factor = EnFactor(condition)
+            if is_conditional:
+                self.en_factor = EnFactor(condition)
         
         return stmts, new_vars
     
@@ -1656,13 +1661,13 @@ class ProgramTransfer(ProgramVisitor):
             size_of_operated_reg = right
         else:
             size_of_operated_reg = DXBin("-", self.visit(target_locus_range.right()), self.visit(target_locus_range.left()))
-        
+        op = ctx.exp()
         # 3. Build comprehensions for each new variable
         for name, new_var in new_vars.items():
             old_var = old_vars.get(name)
             
             # Build the expression inside the comprehension from the inside out.
-            comprehension_body = self._build_hadamard_comprehension_body(name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new)
+            comprehension_body = self._build_hadamard_comprehension_body(name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new, op)
             
             # Wrap in nested comprehensions
             comprehension = comprehension_body
@@ -1694,7 +1699,7 @@ class ProgramTransfer(ProgramVisitor):
         stmts.append(DXCall("triggerSqrtMul", [], True, line=ctx.line_number()))
         stmts.append(DXCall("ampeqtrigger", [], True, line=ctx.line_number()))
         stmts.append(DXCall("pow2mul", [], True, line=ctx.line_number()))
-        stmts.append(DXCall("pow2sqrt", [], True, line=ctx.line_number()))
+    #    stmts.append(DXCall("pow2sqrt", [], True, line=ctx.line_number()))
         self.libFuns.update(["triggerSqrtMul", "ampeqtrigger", "pow2mul", "pow2sqrt"])
         
         return stmts, new_qty, new_vars
@@ -1717,6 +1722,7 @@ class ProgramTransfer(ProgramVisitor):
         # 2. Setup: Iterators and variable names
         q_assign = ctx.stmts()[0]
         target_name = q_assign.locus()[0].location()
+        op = q_assign.exp()
         
         iterators_new = [DXBind(f"k{i}", SType("nat")) for i in range(output_depth)]
         
@@ -1740,7 +1746,7 @@ class ProgramTransfer(ProgramVisitor):
 
             # --- Build the 'then' and 'else' branches for the innermost expression ---            
             # 'Then' branch expression
-            then_expr = self._build_hadamard_comprehension_body(name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new_dim)
+            then_expr = self._build_hadamard_comprehension_body(name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new_dim, op)
             print(f"\n self._get_total_nesting_depth(old_var.type()): {old_var}: {self._get_total_nesting_depth(old_var.type())}")
             if self._get_total_nesting_depth(old_var.type()) == 0:
                 else_expr = old_var
@@ -1835,11 +1841,14 @@ class ProgramTransfer(ProgramVisitor):
         else: # Other registers are unchanged
             return self._create_indexed_var(unified_vars[name], iterators)
 
-    def _build_hadamard_comprehension_body(self, name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new):
+    def _build_hadamard_comprehension_body(self, name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new, op):
         """
         Helper to build the innermost expression for the Hadamard transformation comprehension.
         """
         old_var = old_vars.get(name)
+        target_var = old_vars.get(target_name)
+        print(f"\n old_var:{old_var} \n target_var: {target_var}")
+        print(f"\n self._get_total_nesting_depth(target_var) {self._get_total_nesting_depth(target_var.type()) }")
         
         if name == 'amp':
             old_amp_slice = self._create_indexed_var(old_var, iterators_old)
@@ -1849,14 +1858,22 @@ class ProgramTransfer(ProgramVisitor):
             scaling_factor = DXBin("/", DXNum(1.0), DXCall("sqrt", [DXCast(SType("real"), pow2_size)]))
             self.libFuns.add("sqrt")
 
-            target_reg_val = DXCall("castBVInt", [self._create_indexed_var(old_vars[target_name], iterators_old)])
-            phase_term = DXBin("*", iterator_new, target_reg_val)
-            self.libFuns.add("castBVInt")
             
-            phase = DXCall("omega", [phase_term, DXNum(2)])
-            self.libFuns.add("omega")
+            if self._get_total_nesting_depth(target_var.type()) == 0:
+                return DXBin('*', old_amp_slice, scaling_factor)
+            else:
+                target_reg_val = DXCall("castBVInt", [self._create_indexed_var(old_vars[target_name], iterators_old)])
+                phase_term = DXBin("*", iterator_new, target_reg_val)
+                self.libFuns.add("castBVInt")
+                
+                if op.op() == "H":
+                    rou_pow = DXNum(2)
+                elif op.op() == "QFT":
+                    rou_pow = DXCall("pow2", [size_of_operated_reg])
+                phase = DXCall("omega", [phase_term, rou_pow])
+                self.libFuns.add("omega")
 
-            return DXBin("*", old_amp_slice, DXBin("*", scaling_factor, phase))
+                return DXBin("*", old_amp_slice, DXBin("*", scaling_factor, phase))
             
         elif name == target_name:
             # The TARGET register's value becomes the new iterator's value.
@@ -1875,17 +1892,15 @@ class ProgramTransfer(ProgramVisitor):
         """Calculates the total number of sequence levels until seq<bv1> and real."""
         dims = 0
         tmp = var_type
+
+        # count how many SeqType wrappers
         while isinstance(tmp, SeqType):
-            prev = tmp
-            tmp = tmp.type()
-            if isinstance(tmp, SType) and tmp.type() == "bv1":
-                return dims  # outermost SeqType wrapping bv1
-            elif isinstance(tmp, SType) and tmp.type() == "real":
-                return dims + 1   # SType("real") object
-            else:
-                dims += 1
-                tmp = tmp.type()
-        return dims
+            dims += 1
+            tmp = tmp.type()  # advance exactly one level
+        if isinstance(tmp, SType) and tmp.type() == "bv1":
+            return max(dims - 1, 0)
+        else:
+            return dims
     
     @staticmethod
     def _get_element_type(seq_type):
