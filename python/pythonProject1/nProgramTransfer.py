@@ -1462,6 +1462,10 @@ class ProgramTransfer(ProgramVisitor):
         
         return logic_map, transformed_names    
     
+    # ==========================================================================
+    # == Core Logic for ORACLE Transformation (deprecated)
+    # ==========================================================================
+
     @DeprecationWarning
     def _create_lambda_method(self, q_assign: QXQAssign, unified_vars: dict):
         """
@@ -1560,10 +1564,8 @@ class ProgramTransfer(ProgramVisitor):
         
         return DXMethod(ghost_name, True, args, returns, reqs + ensures, [], is_function=True)
     
-    # ==========================================================================
-    # == Core Logic for ORACLE Transformation
-    # ==========================================================================
 
+    @DeprecationWarning
     def _get_transformation_logic(self, oracle, old_vars, iterators, target_loc_pos):
         """
         Helper to generate the right-hand side of the transformation equalities for an oracle.
@@ -1578,7 +1580,7 @@ class ProgramTransfer(ProgramVisitor):
             return self._get_phase_oracle_logic(oracle, old_vars, iterators)
         else:
             return self._get_value_oracle_logic(oracle, old_vars, iterators, target_loc_pos)
-
+    @DeprecationWarning
     def _get_phase_oracle_logic(self, oracle, old_vars, iterators):
         """Generates the transformation logic for a phase-modifying oracle."""
         logic_map = {}
@@ -1604,7 +1606,7 @@ class ProgramTransfer(ProgramVisitor):
                 final_phase_expr = subst.visit(phase_template)
             logic_map['amp'] = DXBin("*", indexed_old_amp, final_phase_expr)
         return logic_map
-
+    @DeprecationWarning
     def _get_value_oracle_logic(self, oracle, old_vars, iterators, target_loc_pos):
         """Generates the transformation logic for a value-modifying oracle."""
         logic_map = {}
