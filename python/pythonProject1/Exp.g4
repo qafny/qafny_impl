@@ -88,7 +88,7 @@ partsections: partsection ('+' partsection);
 
 tensorall: '⊗' ID '.' manyket | '⊗' ID TIn crange '.' manyket;
 
-sumspec: maySum (arithExpr? manyketpart | '(' arithExpr? manyketpart ')') | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
+sumspec: maySum (arithExpr? manyketpart | '(' arithExpr? manyketpart ')' | (arithExpr '.')? tensorall ) | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
 
 maySum: TSum ID TIn crange (('on' | '@') '(' bexp ')')? '.';
 

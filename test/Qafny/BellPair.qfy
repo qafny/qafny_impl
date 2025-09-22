@@ -1,7 +1,7 @@
 //Simple Bell Pair
 method BellPair(q : Q[2])
-  requires { q[0, 2) : nor ↦ |0⟩ }
-  ensures  { q[0, 2) : en ↦ ∑ j ∈ [0 , 2) . 1/sqrt(2) |j⟩|j⟩ }
+  requires { q[0, 2) : nor ↦ ⊗ i ∈ [0, 2) . |0⟩ }
+  ensures  { q[0, 2) : en ↦ ∑ j ∈ [0, 2) . 1/sqrt(2) . ⊗ i ∈ [0, 2) . |j⟩ }
 {
   q[0] *= H;
   //assert { q [0] : had ↦ |+⟩ };

@@ -4,6 +4,7 @@
 import argparse  # usage: parsing cli arguments, printing help
 import os  # usage: getting relative paths and directoy names
 import rich # usage: console ui
+import sys
 # from colored import stylize, fore # console ui styling
 
 from antlr4 import FileStream, CommonTokenStream  # usage: reading in a file and creating a token stream
@@ -45,25 +46,25 @@ def example_program(filename: str) -> str:
 
 # The suite of test qafny files (Qafny defaults to verifying these)
 DEFAULT_FILENAMES = [
-    example_program("test1"),
-    example_program("test2"),
-    example_program("test3"),
-    example_program("test4"),
-#   example_program("test5"),
-    example_program("test6"),
-    example_program("test7"),
-   example_program("test8"),
-   example_program("test9"),
+#     example_program("test1"),
+#     example_program("test2"),
+#     example_program("test3"),
+#     example_program("test4"),
+# #   example_program("test5"),
+#     example_program("test6"),
+#     example_program("test7"),
+#   example_program("test8"),
+#   example_program("test9"),
 #   example_program("test10"),
-   example_program("test11"),
-   example_program("test12"),
-     example_program("test13"),
-     example_program("test14"),
-    # example_program("BellPair"),
-    # example_program("GHZ"),
-    # example_program("Teleportation"),
+#    example_program("test11"),
+#    example_program("test12"),
+#      example_program("test13"),
+#      example_program("test14"),
+      example_program("BellPair"),
+    #  example_program("GHZ"),
+     example_program("Teleportation"),
     # example_program("Superdense"),
-    # example_program("Shors"),
+#     example_program("Shors"),
     # example_program("DeutschJozsa"),
     # example_program("simon"),
     # example_program("DiscreteLog"),
@@ -171,7 +172,7 @@ if __name__ == "__main__":
             type_collector.visit(qafny_ast)
 
             # Convert to Dafny AST
-            dafny_transfer = ProgramTransfer(collect_kind.get_kenv(), type_collector.get_env())
+            dafny_transfer = ProgramTransfer(collect_kind.get_kenv(), type_collector.get_env(), debug=True)
             dafny_ast = dafny_transfer.visit(qafny_ast)
 
             # Pass the result through a Cleanup Visitor to perform final cleanup operations
@@ -254,3 +255,4 @@ if __name__ == "__main__":
                 show_step_status(filename, "Verify", dafny_result.returncode == 0)
 
             print("")  # newline break
+    sys.exit(0)

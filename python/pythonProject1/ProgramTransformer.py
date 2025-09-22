@@ -119,7 +119,7 @@ class ProgramTransformer(ExpVisitor):
         # convert decreases
         for a_exp in ctx.arithExpr():
             conds.append(QXDecreases(self.visitArithExpr(a_exp), line_number=ctx.start.line))
-
+        print(f"\n visitConds {conds}")
         return conds
 
     # Visit a parse tree produced by ExpParser#reen.
@@ -646,17 +646,17 @@ class ProgramTransformer(ExpVisitor):
             bindings = self.visitTypeOptionalBindings(ctx.typeOptionalBindings())
 
         for binding in bindings:
-            stmts.append(QXInit(binding, ctx,line_number=ctx.start.line))
+            stmts.append(QXInit(binding, line_number=ctx.start.line))
 
         if ctx.arithExpr() is not None:
             value = self.visitArithExpr(ctx.arithExpr())
-            stmts.append(QXCAssign(bindings, value, ctx,line_number=ctx.start.line))
+            stmts.append(QXCAssign(bindings, value, line_number=ctx.start.line))
 
         return stmts
 
     # Visit a parse tree produced by ExpParser#assigning.
     def visitAssigning(self, ctx: ExpParser.AssigningContext):
-        return QXCAssign(self.visitIdindices(ctx.idindices()), self.visitArithExpr(ctx.arithExpr()), ctx,line_number=ctx.start.line)
+        return QXCAssign(self.visitIdindices(ctx.idindices()), self.visitArithExpr(ctx.arithExpr()),line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#ids.
     def visitIds(self, ctx: ExpParser.IdsContext):
@@ -678,7 +678,7 @@ class ProgramTransformer(ExpVisitor):
 
             if isinstance(child, antlr4.tree.Tree.TerminalNodeImpl) and child.getText() != ',': # ignore commas
                 # Identifier
-                transformed.append(QXBind(child, parser_context = child))
+                transformed.append(QXBind(child))
             elif isinstance(child, ExpParser.IdindexContext):
                 transformed.append(self.visitIdindex(child))
 
@@ -733,7 +733,7 @@ class ProgramTransformer(ExpVisitor):
         if ctx.arithExpr() is not None:
             restrict = self.visitArithExpr(ctx.arithExpr())
         
-        stmts.append(QXMeasure(assign_to, locus, restrict, ctx,line_number=ctx.start.line))
+        stmts.append(QXMeasure(assign_to, locus, restrict, line_number=ctx.start.line))
         return stmts
 
     # Visit a parse tree produced by ExpParser#measureAbort.
@@ -819,8 +819,8 @@ class ProgramTransformer(ExpVisitor):
         if ctx.bexp() is not None:
             control = self.visitBexp(ctx.bexp())
             # since we have a control, wrap the body in an if stmt
-            body = [QXIf(control, body, None, ctx,line_number=ctx.start.line)]
-        return QXFor(id, crange, inv, body, ctx,line_number=ctx.start.line)
+            body = [QXIf(control, body, None, line_number=ctx.start.line)]
+        return QXFor(id, crange, inv, body, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#whileexp.
     def visitWhileexp(self, ctx: ExpParser.WhileexpContext):
@@ -836,7 +836,7 @@ class ProgramTransformer(ExpVisitor):
         inverse = False
         if ctx.getChild(1) is not None and ctx.getChild(1).getText() == '^{-1}':
             inverse = True
-        return QXCall(ctx.ID(), self.visitArithExprsOrKets(ctx.arithExprsOrKets()), inverse, ctx,line_number=ctx.start.line)
+        return QXCall(ctx.ID(), self.visitArithExprsOrKets(ctx.arithExprsOrKets()), inverse, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#arithExprsOrKets.
     def visitArithExprsOrKets(self, ctx: ExpParser.ArithExprsOrKetsContext):
@@ -868,11 +868,11 @@ class ProgramTransformer(ExpVisitor):
 
             left = self.visitArithExprWithSum(ctx.arithExprWithSum(0))
             right = self.visitArithExprWithSum(ctx.arithExprWithSum(1))
-            return QXBin(op, left, right, ctx,line_number=ctx.start.line)
+            return QXBin(op, left, right, line_number=ctx.start.line)
         elif ctx.maySum() is not None:
             summation = self.visitMaySum(ctx.maySum())
             aexp = self.visitArithExprWithSum(ctx.arithExprWithSum(0))
-            return QXSumAExp(summation, aexp, ctx,line_number=ctx.start.line)
+            return QXSumAExp(summation, aexp, line_number=ctx.start.line)
         elif len(ctx.arithExprWithSum()) == 1:
             # unwrap parentheses
             return self.visitArithExprWithSum(ctx.arithExprWithSum(0))

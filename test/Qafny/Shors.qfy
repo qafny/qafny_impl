@@ -2,7 +2,7 @@
 method Shors(n:nat, q : Q[n], p : Q[n], N : nat, base : nat, r:nat , c:nat) returns (y:nat, py : real)
   //requires 1 < base
   requires 1 < base < N
-  requires gcd(base,N) == 1
+ // requires gcd(base,N) == 1
   //requires N <= 2 ^ n //if we do not want allow this syntax, fine.
   //requires gcd(base,N) == 1
   //requires order(base,N) == r //define order function

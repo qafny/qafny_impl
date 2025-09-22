@@ -1,4 +1,8 @@
 import copy
+import os
+import time
+from contextlib import contextmanager
+
 from Programmer import *
 from ProgramVisitor import ProgramVisitor
 from TargetProgrammer import *
@@ -17,7 +21,17 @@ class EnFactor(StackFactor):
     def __init__(self, condition: DXComp = None):
         self._cond = condition
 
-    def conds(self):
+    def cond(self):
+        return self._cond
+    
+    def push(self, add):
+        self._cond = add if self._cond is None else DXBin("&&", self._cond, add)
+
+    def pop(self):
+        if isinstance(self._cond, DXBin) and self._cond.op() == "&&":
+            self._cond = self._cond.left()   # <-- only if your DXBin exposes .left()
+        else:
+            self._cond = None
         return self._cond
 
 
@@ -50,26 +64,6 @@ def compareRangeLocus(q1: QXQRange, qs: [QXQRange]):
                                                 qs[i].crange().line_number()), qs[i].line_number())]
                         + (qs[i+1:len(qs)]))
         vs = vs + [qs[i]]
-    return None
-
-def compareSingle(q1: QXQRange, qs: [([QXQRange], QXQTy, dict)]):
-
-    vs = []
-    for i in range(len(qs)):
-        loc, qty, vars = qs[i]
-        v = loc[0]
-        if q1.location() == v.location():
-            if compareAExp(q1.crange().left(), v.crange().left()):
-                if compareAExp(q1.crange().right(), v.crange().right()): #(exactmatch, vs, [])
-                    qv = []
-                    vs += (qs[i+1:len(qs)])
-                    return (q1, vars, vs)
-                else: #(matched_qxrange, vs, [remaining_qxrange])
-                    qv = [QXQRange(q1.location(),crange=QXCRange(q1.crange().right(), v.crange().right()))] 
-                    vs += (qs[i+1:len(qs)])
-                    return (q1, vars, qv + vs)
-        vs += [v]
-
     return None
 
 #compareLocus and return the reminder locus
@@ -136,10 +130,10 @@ def meetType(t1: QXQTy, t2: QXQTy):
     # Fast path: identical types
     if type(t1) is type(t2):
         if isinstance(t1, TyEn):
-            return t1 if t1.flag() >= t2.flag() else t2
+            return t1 if t1.flag().num() >= t2.flag().num() else t2
         if isinstance(t1, TyAA):
             # choose the larger flag; keep AA structure (qrange/line) from either
-            if t1.flag() >= t2.flag():
+            if t1.flag() >= t2.flag().num():
                 return t1
             else:
                 return t2
@@ -165,36 +159,16 @@ def meetType(t1: QXQTy, t2: QXQTy):
 
     # En vs AA — keep AA form, lift flag to the max
     if isinstance(t1, TyEn) and isinstance(t2, TyAA):
-        return t2 if t1.flag() < t2.flag() else TyAA(t1.flag(), t2.qrange(), t2.line_number())
+        return t2 if t1.flag().num() < t2.flag().num() else TyAA(t1.flag(), t2.qrange(), t2.line_number())
     if isinstance(t1, TyAA) and isinstance(t2, TyEn):
-        return t1 if t1.flag() >= t2.flag() else TyAA(t2.flag(), t1.qrange(), t1.line_number())
+        return t1 if t1.flag().num() >= t2.flag().num() else TyAA(t2.flag(), t1.qrange(), t1.line_number())
 
     # AA vs AA (different shapes)
     if isinstance(t1, TyAA) and isinstance(t2, TyAA):
-        return t1 if t1.flag() >= t2.flag() else t2
+        return t1 if t1.flag().num() >= t2.flag().num() else t2
 
     # Fallback (shouldn’t be reached if all kinds are covered)
     return t1
-def computeType(self, q2: [QXQRange]):
-        """
-        Calculates the "meet" or the most general type required to unify a set of
-        qubit ranges 'q2'. It determines the current type of each range and then
-        uses the 'meetType' helper to find their least upper bound.
-        """
-        tmp = None
-        for elem in q2:
-            loc, qty, vars = subLocus([elem], self.varnums)
-            if tmp is None:
-                tmp = qty
-            else:
-                tmp = meetType(tmp, qty)
-        return tmp
-def findHadLocus(q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
-
-    for i in range(len(q2)):
-        v = compareSingle(q2[i], qs)
-        if v is not None:
-            return v
 
 def gen_nested_seq_type(n: int, t: DXType):
     """Generates a nested Dafny sequence type of depth n."""
@@ -236,7 +210,8 @@ class ProgramTransfer(ProgramVisitor):
     updated by each quantum operation.
     """
 
-    def __init__(self, kenv: dict, tenv: dict):
+    def __init__(self, kenv: dict, tenv: dict, *, debug: bool | None = None):
+
         """Initializes the ProgramTransfer visitor."""
         
         # Environment management
@@ -249,7 +224,7 @@ class ProgramTransfer(ProgramVisitor):
         self.outvarnums = []
         self.final_requires = []     # Stores original, unmodified requires clauses
 #        self.working_predicate = []  # The current logical state, which gets transformed
-        self.en_factor = None # Current condition context (for if-statements)
+        self.en_factor = EnFactor() # Current condition context (for if-statements)
         # Utility state
         self.counter = 0             # Global counter for unique variable names
         self.libFuns = set()         # Tracks required Dafny library functions
@@ -258,6 +233,56 @@ class ProgramTransfer(ProgramVisitor):
         self.t_ensures = False  # Flag to indicate if we are in a postcondition context
         self.classical_args = [] # To store classical arguments of the current method
 
+        # ---- Debug controls  ----
+        # If not provided, respect env var QAFNY_DEBUG=1/0
+        self.debug = bool(int(os.getenv("QAFNY_DEBUG", "0"))) if debug is None else bool(debug)
+        self._indent = 0  # pretty nesting for logs
+
+    # ==========================================================================
+    # == Helpers for debugging
+    # ==========================================================================
+
+    # replace your current log() with this exact version
+    def log(self, *msg):
+        """Lightweight gated logger."""
+        if not self.debug:
+            return
+        try:
+            ts = time.strftime("%H:%M:%S")
+            indent = "  " * self._indent
+            # IMPORTANT: use print(), do NOT call self.log() inside log()
+            print(f"\n[{ts}] {indent}" + " ".join(str(m) for m in msg))
+        except Exception as e:
+            # Last-resort guard: never recurse—still use print
+            print(f"[log-error] {e}")
+
+    def _push(self):  # increase visual nesting
+        self._indent += 1
+
+    def _pop(self):   # decrease visual nesting
+        if self._indent > 0:
+            self._indent -= 1
+
+    @contextmanager
+    def trace(self, section: str):
+        """
+        Context manager to log entry/exit and elapsed time for a block.
+        Usage: with self.trace("Hadamard transform"): ...
+        """
+        if not self.debug:
+            # Still yield without overhead
+            yield
+            return
+        self.log(f"→ {section}")
+        self._push()
+        t0 = time.perf_counter()
+        try:
+            yield
+        finally:
+            dt_ms = (time.perf_counter() - t0) * 1000.0
+            self._pop()
+            self.log(f"← {section} ({dt_ms:.2f} ms)")
+
     # ==========================================================================
     # == Core Visitor Methods (Program and Method Orchestration)
     # ==========================================================================
@@ -265,7 +290,7 @@ class ProgramTransfer(ProgramVisitor):
         """Translates the entire Qafny program."""
         methods = [elem.accept(self) for elem in ctx.topLevelStmts()]
         # The main program now includes the main methods and any generated ghost methods.
-#        print(f"\nGenerated library functions: {self.addFuns}")
+#        self.log(f"\nGenerated library functions: {self.addFuns}")
         return DXProgram(methods, line=ctx.line_number())
 
     def visitMethod(self, ctx: Programmer.QXMethod):
@@ -287,7 +312,7 @@ class ProgramTransfer(ProgramVisitor):
         # --- Translate Arguments ---
         self.classical_args = [b.accept(self) for b in ctx.bindings() if b.accept(self) is not None]
         dafny_args = self.classical_args[:]
-#        print(f"\n dafny_args before varnums: {dafny_args}")
+#        self.log(f"\n dafny_args before varnums: {dafny_args}")
         for _, _, var_map in self.varnums:
             dafny_args.extend(sorted(var_map.values(), key=lambda v: v.ID()))
 
@@ -300,7 +325,7 @@ class ProgramTransfer(ProgramVisitor):
                 if preds:
                     preds_list = preds if isinstance(preds, list) else [preds]
                     self.final_requires.extend(DXRequires(p, line=self.current_line) for p in preds_list if p is not None)
-#        print(f"\n final_requires: {final_requires}")
+#        self.log(f"\n final_requires: {final_requires}")
         # --- Prepare for Postcondition Translation ---
         out_tenv = self.tenv.get(self.fvar)[1]  
         self.outvarnums = []
@@ -339,7 +364,7 @@ class ProgramTransfer(ProgramVisitor):
             dafny_returns.extend(sorted(var_map.values(), key=lambda v: v.ID()))
         
         all_conditions = self.final_requires + final_ensures
-#        print(f"\n specs: {all_conditions}")
+#        self.log(f"\n specs: {all_conditions}")
         
         return DXMethod(self.fvar, ctx.axiom(), dafny_args, dafny_returns, all_conditions, dafny_body, False, line=ctx.line_number())
 
@@ -381,8 +406,9 @@ class ProgramTransfer(ProgramVisitor):
             return [] # Unsupported operation type
 
         # Update the main state
+    #    self.log(f"\n varnum before updates {self.varnums}")
         self._update_state_for_locus(loc, new_qty, final_vars)
-        
+    #    self.log(f"\n varnum after updates {self.varnums}")
         return stmts
 
     def visitOracle(self, ctx: QXOracle):
@@ -466,10 +492,11 @@ class ProgramTransfer(ProgramVisitor):
         
         # Unify the state, generating statements for the unification process.
         unification_stmts, unified_locus, unified_qty, current_vars, remaining_vars = self.includeIfLocus(lc.renv)
-        all_stmts.extend(unification_stmts)
 
-        print(f"\n unification_stmts: {unification_stmts}, \n unified_locus: {unified_locus}, \
+        self.log(f"\n unification_stmts: {unification_stmts}, \n unified_locus: {unified_locus}, \
               \n unified_qty: {unified_qty}, \n unified_vars: {current_vars}, \n remaining_vars: {remaining_vars}")
+        
+        all_stmts.extend(unification_stmts)
         # Dispatch to the correct transformation logic based on the operation inside the conditional
         # 3. Iterate through each statement in the block, applying the transformation sequentially.
         for stmt in ctx.stmts():
@@ -488,7 +515,6 @@ class ProgramTransfer(ProgramVisitor):
                 stmts = stmt.accept(self)
                 if stmts:
                     all_stmts.extend(stmts)
-        final_vars = current_vars
 
         #need to refine the check
         lemma_stmts = []
@@ -503,7 +529,9 @@ class ProgramTransfer(ProgramVisitor):
                     lemma_stmts.append(DXCall(lemma_name, [], True, line=self.current_line))
                     self.libFuns.add(lemma_name)
         all_stmts.extend(lemma_stmts)
-        # Update the main state
+        #pop the condition
+        self.en_factor.pop()
+        
         
         return all_stmts
 
@@ -609,37 +637,37 @@ class ProgramTransfer(ProgramVisitor):
         for locus, return_qty, return_vars_map in self.outvarnums:
             # Find the corresponding final state in the running environment
             final_state_tuple = subLocus(locus, self.varnums)
-     #       print(f"\nMapping for locus {locus}: found final state tuple {final_state_tuple}")
+     #       self.log(f"\nMapping for locus {locus}: found final state tuple {final_state_tuple}")
             
             if final_state_tuple:
                 _, final_qty, final_vars_map = final_state_tuple
-#                print(f"\nFinal qty: {final_qty}, Return qty: {return_qty}")
+#                self.log(f"\nFinal qty: {final_qty}, Return qty: {return_qty}")
                 
                 # Check if the types match before creating the assignment
                 if compareType(final_qty, return_qty):
                     final_vars = sorted(final_vars_map.values(), key=lambda v: v.ID())
                     return_vars = sorted(return_vars_map.values(), key=lambda v: v.ID())
-#                    print(f"\nFinal vars: {final_vars}, Return vars: {return_vars}")
+#                    self.log(f"\nFinal vars: {final_vars}, Return vars: {return_vars}")
 
                     if final_vars and return_vars:
                         assignments.append(DXAssign(return_vars, final_vars, line=self.current_line))
                         for i in range(len(final_vars)):
                             mapping[final_vars[i].ID()] = return_vars[i]
-#        print(f"\nFinal assignments: {assignments}")                    
+#        self.log(f"\nFinal assignments: {assignments}")                    
         return assignments, mapping
 
     def _update_state_for_locus(self, target_locus: list, new_qty: QXQTy, new_vars: dict):
         """Updates self.varnums by replacing an old locus with its new version."""
         new_varnums = []
         found = False
-        for loc, _, _ in self.varnums:
+        for loc, qty, vars in self.varnums:
             # Use compareLocus to check for an exact match
             if compareLocus(target_locus, loc) == []:
                 if not found:
                     new_varnums.append((target_locus, new_qty, new_vars))
                     found = True
             else:
-                new_varnums.append((loc, _, _))
+                new_varnums.append((loc, qty, vars))
         self.varnums = new_varnums
 
 
@@ -738,10 +766,8 @@ class ProgramTransfer(ProgramVisitor):
         ampvar = varbind.get('amp')
         if ampvar:
             amp_val = ctx.amp().accept(self)
-            print(f"\n amp_val: {amp_val}" )
             idx_amp = makeIndex(ampvar, sum_vars)
             body = DXComp("==", idx_amp, amp_val, line=ctx.line_number())
-            print(f"\n amp predicate body: {body}")
             tmp.append(_build_sum_forall(body, [DXBind(sv.ID(), SType("nat"), line=ctx.line_number()) for sv in sum_vars]))
 
         # Value predicates
@@ -818,7 +844,7 @@ class ProgramTransfer(ProgramVisitor):
     def visitBin(self, ctx: Programmer.QXBin):
         left = ctx.left().accept(self)
         right = ctx.right().accept(self)
-#        print(f"\nVisiting bin: {ctx} with left {left} and right {right}")
+#        self.log(f"\nVisiting bin: {ctx} with left {left} and right {right}")
         if ctx.op() == '^':
             if isinstance(left, DXNum) and left.val() == 2:
                 self.libFuns.add('pow2')
@@ -829,7 +855,7 @@ class ProgramTransfer(ProgramVisitor):
 
         elif ctx.op() == '/':
             if isinstance(left, DXNum) and left.val() == 1.0:
-#            print('\ntransfer', DXBin(ctx.op(),  DXNum(1), right, line=ctx.line_number()))
+#            self.log('\ntransfer', DXBin(ctx.op(),  DXNum(1), right, line=ctx.line_number()))
                 return DXBin(ctx.op(), DXNum(1.0), right, line=ctx.line_number())
         
         #need to refine the dot product for two vectors
@@ -854,7 +880,7 @@ class ProgramTransfer(ProgramVisitor):
         return DXComp(ctx.op(), left, right, line=ctx.line_number())
     
     def visitCall(self, ctx: Programmer.QXCall):
-    #    print('\nvisitCall', ctx.ID())
+    #    self.log('\nvisitCall', ctx.ID())
         self.libFuns.add(str(ctx.ID()))
         return DXCall(str(ctx.ID()), [x.accept(self) for x in ctx.exps()], line=ctx.line_number())
     
@@ -891,9 +917,9 @@ class ProgramTransfer(ProgramVisitor):
     
     def visitCast(self, ctx: Programmer.QXCast):
         """Handles explicit type casting of a quantum state."""
-#        print('\ncheckpoint')
+#        self.log('\ncheckpoint')
         loc_tuple = subLocus(ctx.locus(), self.varnums)
-#        print(f'\nloc_tuple, {loc_tuple}, \nself.varnums {self.varnums}')
+#        self.log(f'\nloc_tuple, {loc_tuple}, \nself.varnums {self.varnums}')
         
         if loc_tuple is not None:
             loc, qty, old_vars = loc_tuple
@@ -904,7 +930,7 @@ class ProgramTransfer(ProgramVisitor):
                 # Handle specific, supported casts
                 if isinstance(qty, TyHad) and isinstance(ctx.qty(), TyEn):
                     stmts, new_vars = self._gen_had_to_en_cast_stmts(old_vars, ctx.line_number())
-         #           print(f"\n stmts: {stmts} \n new_vars: {new_vars}")
+         #           self.log(f"\n stmts: {stmts} \n new_vars: {new_vars}")
                     self._update_state_for_locus(loc, ctx.qty(), new_vars)
                     return stmts
         
@@ -923,7 +949,7 @@ class ProgramTransfer(ProgramVisitor):
         new_vars = {}
         
         new_vars = self._update_vars_type(vars_map, TyEn(QXNum(1)))
-     #   print(f"\n new_vars in cast: {new_vars}")
+     #   self.log(f"\n new_vars in cast: {new_vars}")
 
         call = DXCall("hadEn", list(vars_map.values()), line=line_number)
         # Use DXAssign with init=True to generate 'var ... :='
@@ -953,33 +979,36 @@ class ProgramTransfer(ProgramVisitor):
         
         return stmts, new_vars
 
-    def _gen_en_had_merge_stmts(self, en_vars: dict, had_var: DXBind, ctrl_loc: QXQRange, line_number: int):
+    def _gen_en_had_merge_stmts(self, en_vars: dict, had_var: DXBind, ctrl_loc: QXQRange, remainder: QXQRange, line_number: int):
         """
         Generates imperative statements to merge a TyHad state (had_var) with a
         TyEn state (en_vars).
         """
 
-        print(f"\n en_vars: {en_vars} \n had_var: {had_var}")
+        self.log(f"\n en_vars: {en_vars} \n had_var: {had_var}")
         stmts = []
         new_vars = {}
-        
-        # 1. Split the Had variable into its leftover part and the control bit
-        
-        org_name = had_var.ID()
-        q_leftover = DXBind(org_name, had_var.type(), self.counter)
-        stmts.append(DXAssign([q_leftover], DXCall("cutHad", [had_var]), True, line=line_number))
-        self.libFuns.add("cutHad")
-        self.counter += 1
 
-        q_control_bit = DXBind(org_name, had_var.type().type(), self.counter)
-        stmts.append(DXAssign([q_control_bit], DXIndex(had_var, DXNum(0)), True, line=line_number))
-        self.counter += 1
+        if remainder is None:
+            q_leftover = None
+            q_control_bit = had_var
+        # 1. Split the Had variable into its leftover part and the control bit
+
+        else:
+        
+            org_name = had_var.ID()
+            q_leftover = DXBind(org_name, had_var.type(), self.counter)
+            stmts.append(DXAssign([q_leftover], DXCall("cutHad", [had_var]), True, line=line_number))
+            self.libFuns.add("cutHad")
+            self.counter += 1
+
+            q_control_bit = DXBind(org_name, had_var.type().type(), self.counter)
+            stmts.append(DXAssign([q_control_bit], DXIndex(had_var, DXNum(0)), True, line=line_number))
+            self.counter += 1
         
         # 2. Merge each component of the En state
-        self.libFuns.add('mergeBitEn')
-        self.libFuns.add('duplicateMergeBitEn')
-        self.libFuns.add('mergeAmpEn')
-        self.libFuns.add('triggerSqrtMul')
+
+#        self.libFuns.add('triggerSqrtMul')
 
         ctrl_reg_name = ctrl_loc.location()
         ctrl_idx = ctrl_loc.crange().left().accept(self)
@@ -990,11 +1019,14 @@ class ProgramTransfer(ProgramVisitor):
             
             if name == 'amp':               
                 call = DXCall('mergeAmpEn', [var, q_control_bit], line=line_number)
+                self.libFuns.add('mergeAmpEn')
             elif name == ctrl_reg_name: 
                 original_q_var = var             
                 call = DXCall('mergeBitEn', [var, ctrl_idx], line=line_number)
+                self.libFuns.add('mergeBitEn')
             else:
-                call = DXCall('duplicateMergeBitEn', [var], line=line_number)             
+                call = DXCall('duplicateMergeBitEn', [var], line=line_number) 
+                self.libFuns.add('duplicateMergeBitEn')            
             stmts.append(DXAssign([new_var_bind], call, True, line=line_number))
             new_vars[name] = new_var_bind
         self.counter += 1
@@ -1008,7 +1040,7 @@ class ProgramTransfer(ProgramVisitor):
              self.libFuns.add("mergeBitTrigger")
              self.libFuns.add('pow2add')
 
-        print(f"\n stmts: {stmts} \n new_vars: {new_vars} \n q_leftover: {q_leftover}")
+        self.log(f"\n stmts: {stmts} \n new_vars: {new_vars} \n q_leftover: {q_leftover}")
             
         return stmts, new_vars, q_leftover
 
@@ -1070,7 +1102,7 @@ class ProgramTransfer(ProgramVisitor):
     def _update_vars_type(self, v: dict, t: QXQTy):
         tmp = dict()
         for key in v.keys():
-            print('upVarsType', key, v.get(key), t)
+            self.log('upVarsType', key, v.get(key), t)
             if isinstance(t, TyNor):
                 tmp.update({key: v.get(key).newBindType(SeqType(SType("bv1")), self.counter)})
             elif isinstance(t, TyHad):
@@ -1081,7 +1113,7 @@ class ProgramTransfer(ProgramVisitor):
                     tmp.update({key: v.get(key).newBindType(gen_nested_seq_type(1, SeqType(SType("bv1"))), self.counter)})
                 else:
                     tmp.update({key: v.get(key).newBindType(SeqType(v.get(key).type()), self.counter)})
-                print('\nupVarsType en amp var: ', key, tmp.get(key))
+                self.log('\nupVarsType en amp var: ', key, tmp.get(key))
         self.counter += 1
 
         return tmp
@@ -1091,10 +1123,11 @@ class ProgramTransfer(ProgramVisitor):
         Searches the current state (self.varnums) to find a component that overlaps
         with the target locus 'q2' and matches the target type 'ty'. 
         """
-#        print(f"\n superLocus: searching for super locus of {q2} with type {ty} in varnums: {self.varnums}")
+#        self.log(f"\n superLocus: searching for super locus of {q2} with type {ty} in varnums: {self.varnums}")
         vs = []
         for i in range(len(self.varnums)):
             loc, qty, vars = self.varnums[i]
+            self.log(f"\n loc {loc} \n qty {qty} \n vars {vars}")
             if EqualityVisitor().visit(ty, qty):
                 # Check for any overlap by seeing if any component of one locus
                 # is a sub-locus of the other.
@@ -1135,7 +1168,7 @@ class ProgramTransfer(ProgramVisitor):
         Searches for a separable locus `q1` in `qs`.
         Handles:
         - Exact match: returns (None, [q1], vars_map, remaining_states)
-        - Left-prefix match: returns (original_var, [q1], vars_map, remaining_states)
+        - Left-prefix match: returns (q/q1, [q1], vars_map, remaining_states)
             where `original_var` indicates slicing is needed upstream.
         Returns None if no match is found.
         """
@@ -1163,21 +1196,21 @@ class ProgramTransfer(ProgramVisitor):
             # Case 2: left-prefix match -> slice "existing" to its right remainder
             # (We assume caller ensured q1.right <= existing.right syntactically;
             if left_eq:
-                # Keep the same vars_map for the remainder (you said caller will slice)
+                # Keep the same vars_map for the remainder 
                 new_left = q1.crange().right()
-                remainder = QXQRange(
+                remq1 = QXQRange(
                     q1.location(),
                     crange=QXCRange(new_left, existing.crange().right())
                 )
-                remaining_tuple = ([remainder], qty, vars_map)
+                remaining_tuple = ([remq1], qty, vars_map)
 
                 remaining_states = qs[:i] + [remaining_tuple] + qs[i+1:]
 
                 # Signal to caller which original var to slice: use the VAR NAME (key), not value
                 # Pick a stable key; if you have a canonical name, use that instead.
-                original_var = next(iter(vars_map.keys())) if vars_map else None
+#                original_var = next(iter(vars_map.keys())) if vars_map else None
 
-                return (original_var, [q1], vars_map, remaining_states)
+                return ([remq1], [q1], vars_map, remaining_states)
 
         # No match found
         return None
@@ -1195,93 +1228,91 @@ class ProgramTransfer(ProgramVisitor):
         return None
     
     def includeIfLocus(self, q2: [QXQRange]):
-        print(f"\n lc locus from if: {q2}")
-        v = subLocus(q2, self.varnums)
-        print(f"\n subLocus {v} \n varnum {self.varnums}")
+        with self.trace("includeIfLocus"):
+            self.log(f"\n lc locus from if: {q2}")
+            self.log(f"\n self.varnum {self.varnums}")
+            v = subLocus(q2, self.varnums)
+            self.log(f"\n subLocus {v}")
 
-        if v is not None:
+            if v is not None:
+                locs, qty, vars_map = v
 
-            locs, qty, vars_map = v
+                # Remove exactly one occurrence equal to v (by value) from self.varnums
+                remaining = None
+                for idx, s in enumerate(self.varnums):
+                    if s == v:                       # value equality, not identity
+                        remaining = self.varnums[:idx] + self.varnums[idx+1:]
+                        break
+                if remaining is None:
+                    # v wasn't literally in the list (subLocus built a fresh tuple).
+                    # Fall back to keeping the list as-is:
+                    remaining = list(self.varnums)
 
-            # Remove exactly one occurrence equal to v (by value) from self.varnums
-            remaining = None
-            for idx, s in enumerate(self.varnums):
-                if s == v:                       # value equality, not identity
-                    remaining = self.varnums[:idx] + self.varnums[idx+1:]
-                    break
-            if remaining is None:
-                # v wasn't literally in the list (subLocus built a fresh tuple).
-                # Fall back to keeping the list as-is:
-                remaining = list(self.varnums)
+                matched_locus = locs if isinstance(locs, list) else [locs]
 
-            matched_locus = locs if isinstance(locs, list) else [locs]
+                return [], matched_locus, qty, vars_map, remaining
 
-            return [], matched_locus, qty, vars_map, remaining
+            ty = self.computeType(q2)
+            rt = self.superLocus(q2, ty)
 
-        ty = self.computeType(q2)
-        rt = self.superLocus(q2, ty)
+            if rt is None:
+                self.log("no sub/super locus match; return unchanged env")
+                return [], None, None, None, list(self.varnums)
         #remainder from q2 after superLocus, super locus and remains in env
-        if rt is not None:
-            rem, loc, qty, vars, tmpVarNums = rt
-            print(f"\n rem: {rem} \n loc qty vars{loc}, \n {qty} \n {vars}, \n tmpVarNums {tmpVarNums}")
-            
+            rem, loc, qty, vars_map, env_after = rt
+            self.log(f"\n rem: {rem} \n loc qty vars{loc}, \n {qty} \n {vars_map}, \n tmpVarNums {env_after}")
+
+            # Normalize shapes
+            base_loc = loc[:] if isinstance(loc, list) else [loc]
+            merged_loc = base_loc[:]           # we'll build on this
+            current_vars = dict(vars_map)      # copy to avoid aliasing
+            stmts = []
+
+            # 2a) If starting from Had, cast to En first
             if isinstance(ty, TyHad):
-                stmts, new_vars = self._gen_had_to_en_cast_stmts(vars, loc[0].line_number())
+                cast_stmts, en_vars = self._gen_had_to_en_cast_stmts(current_vars, base_loc[0].line_number())
+                stmts.extend(cast_stmts)
                 qty = TyEn(QXNum(1))
-                
-                nor_locs, nor_vars, remaining_after_nor = self.collectNorLocus(rem, tmpVarNums)
-                for nor_loc in nor_locs:
-                    loc_name = nor_loc.location()
-                    if loc_name in nor_vars: 
-                        nor_var_map = nor_vars[loc_name]            
-         #               merge_stmts, new_vars = self._gen_en_nor_extend_stmts(new_vars, nor_var_map, loc[0].line_number())
-         #               stmts.extend(merge_stmts)
-                        merged_loc = loc.append(nor_loc)
-                        new_vars[loc_name] = nor_var_map
+                current_vars = en_vars
 
-                self.varnums = ([(merged_loc, qty, new_vars)]) + remaining_after_nor
-                return stmts, loc, qty, new_vars, remaining_after_nor
+            # 2b) Merge Nor loci from remainder
+            nor_locs, nor_vars, env_after = self.collectNorLocus(rem, env_after)
+            for nloc in nor_locs:
+                name = nloc.location()
+                if name in nor_vars:
+                    merged_loc = merged_loc + [nloc]        
+                    current_vars[name] = nor_vars[name]
 
-            elif isinstance(ty, TyEn):
-                current_stmts = []
-                current_vars = vars             
-                nor_locs, nor_vars, rem_env = self.collectNorLocus(rem, tmpVarNums)
-                for nor_loc in nor_locs:
-                    loc_name = nor_loc.location()
-                    if loc_name in nor_vars: 
-                        nor_var_map = nor_vars[loc_name]            
-         #               merge_stmts, new_vars = self._gen_en_nor_extend_stmts(new_vars, nor_var_map, loc[0].line_number())
-         #               stmts.extend(merge_stmts)
-                        merged_loc = loc.append(nor_loc)
-                        current_vars[loc_name] = nor_var_map
+            # 2c) If we’re already En, try to merge a Had control locus
+            if isinstance(ty, TyEn) and env_after:
+                vb = self.findHadLocus(rem, env_after)
+                self.log("findHadLocus →", vb)
+                if vb is not None:
+                    remainder, had_locus, had_vars, env_after = vb
+                    had_var = next(iter(had_vars.values()))
+                    ctrl_had = had_locus[0]
+                    rem_had = remainder[0] if remainder is not None else None
+                    merge_stmts, new_vars, q_leftover = self._gen_en_had_merge_stmts(
+                        current_vars, had_var, ctrl_had, rem_had, base_loc[0].line_number()
+                    )
+                    self.log(f"\n new_vars {new_vars} \n q_leftover {q_leftover}")
+                    stmts.extend(merge_stmts)
+                    current_vars = new_vars
+                    merged_loc = merged_loc + had_locus
 
-                # Then merge Had loci
-                if rem_env:
-                    vb = self.findHadLocus(rem, rem_env)
-                    print(f"\n vb {vb}")
-                    if vb is not None:
-                        _, had_locus, had_vars, rem_env = vb
-                        
-                        # The specific splitting of the had_var is handled inside _gen_en_had_merge_stmts
-                        had_var = next(iter(had_vars.values()))
-                        ctrl_loc = had_locus[0]
-                        merge_stmts, new_vars, q_leftover = self._gen_en_had_merge_stmts(current_vars, had_var, ctrl_loc, loc[0].line_number())                 
-                        current_stmts.extend(merge_stmts)
-                        current_vars = new_vars
-                        loc = loc + had_locus
-                    
 
-                    for i in range(len(rem_env)):
-                        rem_loc, rem_qty, rem_vars = rem_env[i]
-                        if rem_loc[0].location() == q_leftover.ID():
-                            new_rem_var = {q_leftover.ID(): q_leftover}
-                            rem_env[i] = (rem_loc, rem_qty, new_rem_var) 
+                    # Replace the matching leftover in env_after with a singleton map
+                    for i, (rloc, rqty, rvars) in enumerate(env_after):
+                        if rloc and rloc[0].location() == q_leftover.ID():
+                            env_after[i] = (rloc, rqty, {q_leftover.ID(): q_leftover})
                             break
-           
-                self.varnums = ([(loc, qty, current_vars)]) + rem_env
-                return current_stmts, loc, qty, current_vars, rem_env
-                
-        return None, None, None, None, self.varnums
+
+            # 3) Return the constructed pieces; let the caller update self.varnums
+            self.log("includeIfLocus → merged_loc/qty/vars/env_after:",
+                    merged_loc, qty, list(current_vars.keys()), env_after)
+            new_env = [(tuple(merged_loc), qty, current_vars)] + env_after
+            self.varnums = new_env
+            return stmts, merged_loc, qty, current_vars, env_after
 
     def _sequence_comprehension_transform(self, ctx, unified_locus, unified_qty, unified_vars):
         """
@@ -1326,14 +1357,16 @@ class ProgramTransfer(ProgramVisitor):
             if is_conditional:
                 control_qubit = ctx.bexp()
                 control_var = unified_vars[control_qubit.location()]
+                self.log(f"\n control_var: {control_var}")
                 indexed_control = self._create_indexed_var(control_var, iterators)
     #            control_bit = DXIndex(indexed_control, control_qubit.crange().left().accept(self))
                 condition = DXComp(">=", DXCall("castBVInt", [indexed_control]), DXCall("pow2", [control_qubit.crange().left().accept(self)]))
 #                condition = DXComp("==", control_bit, DXNum(1))
-                print(f"\n condition {condition}")
+                self.log(f"\n condition {condition}")
                 
                 else_expr = self._create_indexed_var(var, iterators)
                 comprehension_body = DXIfExp(condition, transform_expr, else_expr)
+                
             else: # Standard oracle
                 comprehension_body = transform_expr
 
@@ -1355,11 +1388,13 @@ class ProgramTransfer(ProgramVisitor):
             if name not in new_vars:
                 new_vars[name] = var
         
-        if self.en_factor:
-            self.en_factor = DXBin('&&', self.en_factor.conds(), condition)
-        else:
-            if is_conditional:
-                self.en_factor = EnFactor(condition)
+        self.en_factor.push(condition)
+        
+        # if self.en_factor:
+        #     self.en_factor = DXBin('&&', self.en_factor.conds(), condition)
+        # else:
+        #     if is_conditional:
+        #         self.en_factor = EnFactor(condition)
         
         return stmts, new_vars
     
@@ -1426,6 +1461,8 @@ class ProgramTransfer(ProgramVisitor):
             #     logic_map['amp'] = self._create_indexed_var(unified_vars['amp'], iterators)
         
         return logic_map, transformed_names    
+    
+    @DeprecationWarning
     def _create_lambda_method(self, q_assign: QXQAssign, unified_vars: dict):
         """
         Creates an axiomatic ghost method that defines the transformation
@@ -1454,7 +1491,7 @@ class ProgramTransfer(ProgramVisitor):
         else:
             args += [DXBind(f"{name}", self._get_element_type(unified_vars[name].type())) for name in sorted(target_names)]
             returns = [DXBind(f"{name}_out", self._get_element_type(unified_vars[name].type())) for name in sorted(target_names)]
-#       print(f"\n args: {args} \n{returns}")
+#       self.log(f"\n args: {args} \n{returns}")
         
         # if len(returns) > 1:
         #     returns = [DXTup(returns)]
@@ -1505,7 +1542,7 @@ class ProgramTransfer(ProgramVisitor):
                             replace = DXCall("castBVInt", [lambda_input_vars[in_name]])
                             subst = SubstDAExp(binder.ID(), replace)
                             ket_expr = subst.visit(ket_expr)
-    #                print(f"\n ket_expr: {ket_expr}")
+    #                self.log(f"\n ket_expr: {ket_expr}")
                     ensures.append(DXEnsures(DXComp("==", DXCall("castBVInt", [out_var]), ket_expr)))
                     self.libFuns.add("castBVInt")
                     ket_idx += 1
@@ -1728,7 +1765,7 @@ class ProgramTransfer(ProgramVisitor):
         
         iterators_old = iterators_new[:-1]
         iterator_new_dim = iterators_new[-1]
-        print(f"\n iterator_old, {iterators_old}, \n new_dim {iterator_new_dim}")
+        self.log(f"\n iterator_old, {iterators_old}, \n new_dim {iterator_new_dim}")
 
         target_locus_range = q_assign.locus()[0].crange()
         right = self.visit(target_locus_range.right())
@@ -1740,14 +1777,14 @@ class ProgramTransfer(ProgramVisitor):
         
         # 3. Build comprehensions for each new variable
         rep_old_var = next(iter(old_vars.values()))
-        print(f"\n rep_old_var {rep_old_var}")
+        self.log(f"\n rep_old_var {rep_old_var}")
         for name, new_var in new_vars.items():
             old_var = old_vars.get(name)
 
             # --- Build the 'then' and 'else' branches for the innermost expression ---            
             # 'Then' branch expression
             then_expr = self._build_hadamard_comprehension_body(name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new_dim, op)
-            print(f"\n self._get_total_nesting_depth(old_var.type()): {old_var}: {self._get_total_nesting_depth(old_var.type())}")
+    #        self.log(f"\n self._get_total_nesting_depth(old_var.type()): {old_var}: {self._get_total_nesting_depth(old_var.type())}")
             if self._get_total_nesting_depth(old_var.type()) == 0:
                 else_expr = old_var
             else:
@@ -1758,7 +1795,7 @@ class ProgramTransfer(ProgramVisitor):
             if isinstance(control_qubit, QXQRange):
                 control_var = old_vars[control_qubit.location()]
                 indexed_control = self._create_indexed_var(control_var, iterators_old)
-    #            print(f"\n indexed_control {indexed_control}")
+    #            self.log(f"\n indexed_control {indexed_control}")
     #        control_bit = DXIndex(indexed_control, control_qubit.crange().left().accept(self))
                 condition = DXComp(">=", DXCall("castBVInt", [indexed_control]), DXCall("pow2", [control_qubit.crange().left().accept(self)]))
             elif isinstance(control_qubit, QXQComp):
@@ -1770,9 +1807,8 @@ class ProgramTransfer(ProgramVisitor):
                     self.libFuns.add("castIntBV")
             self.libFuns.add("castBVInt")
 #            factor = EnFactor(condition)
-            if self.en_factor:
-                condition = DXBin('&&', self.en_factor.conds(), condition)
-            print(f"\n condition {condition}")
+
+            self.log(f"\n condition {condition}")
             
             
             # The body of the innermost comprehension is the conditional
@@ -1802,53 +1838,18 @@ class ProgramTransfer(ProgramVisitor):
 
             stmts.append(DXAssign([new_var], comprehension, True))
         
-        if self.en_factor:
-            self.en_factor = DXBin('&&', self.en_factor.conds(), condition)
-        else:
-            self.en_factor = EnFactor(condition)
-        
-        
+        self.en_factor.push(condition)
+            
         return stmts, new_qty, new_vars
     
-    def _build_controlled_hadamard_body(self, name, unified_vars, target_name, iterators, q_assign):
-        """
-        Builds the expression for the 'then' branch of a controlled Hadamard.
-        This logic mirrors the 'conditionaltest2' example.
-        """
-        if name == 'amp':
-            amp_slice = self._create_indexed_var(unified_vars['amp'], iterators)
-            target_var = unified_vars[target_name]
-            target_slice = self._create_indexed_var(target_var, iterators)
-            
-            pow2_size = DXCall("pow2", [DXLength(target_slice)])
-            self.libFuns.add("pow2")
-            scaling_factor = DXBin("/", DXNum(1.0), DXCall("sqrt", [DXCast(SType("real"), pow2_size)]))
-            self.libFuns.add("sqrt")
-            
-            # The new amplitude is simply the old one scaled. No phase for H on |0>.
-            return DXBin("*", amp_slice, scaling_factor)
-        
-        elif name == target_name:
-            # The target register becomes a new superposition. This requires a new inner comprehension.
-            inner_iterator = DXBind(f"j", SType("nat"))
-            target_slice = self._create_indexed_var(unified_vars[name], iterators)
-            inner_range = DXCall("pow2", [DXLength(target_slice)])
-            inner_spec = DXRequires(DXInRange(inner_iterator, DXNum(0), inner_range))
-            inner_body = DXCall("castIntBV", [inner_iterator, DXLength(target_slice)])
-            self.libFuns.add("castIntBV")
-            return DXSeqComp(inner_range, inner_iterator, inner_spec, inner_body)
-
-        else: # Other registers are unchanged
-            return self._create_indexed_var(unified_vars[name], iterators)
-
     def _build_hadamard_comprehension_body(self, name, old_vars, target_name, size_of_operated_reg, iterators_old, iterator_new, op):
         """
         Helper to build the innermost expression for the Hadamard transformation comprehension.
         """
         old_var = old_vars.get(name)
         target_var = old_vars.get(target_name)
-        print(f"\n old_var:{old_var} \n target_var: {target_var}")
-        print(f"\n self._get_total_nesting_depth(target_var) {self._get_total_nesting_depth(target_var.type()) }")
+        self.log(f"\n old_var:{old_var} \n target_var: {target_var}")
+    #    self.log(f"\n self._get_total_nesting_depth(target_var) {self._get_total_nesting_depth(target_var.type()) }")
         
         if name == 'amp':
             old_amp_slice = self._create_indexed_var(old_var, iterators_old)
@@ -1893,10 +1894,9 @@ class ProgramTransfer(ProgramVisitor):
         dims = 0
         tmp = var_type
 
-        # count how many SeqType wrappers
         while isinstance(tmp, SeqType):
             dims += 1
-            tmp = tmp.type()  # advance exactly one level
+            tmp = tmp.type()  
         if isinstance(tmp, SType) and tmp.type() == "bv1":
             return max(dims - 1, 0)
         else:
