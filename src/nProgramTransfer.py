@@ -1388,7 +1388,8 @@ class ProgramTransfer(ProgramVisitor):
             if name not in new_vars:
                 new_vars[name] = var
         
-        self.en_factor.push(condition)
+        if is_conditional:
+            self.en_factor.push(condition)
         
         # if self.en_factor:
         #     self.en_factor = DXBin('&&', self.en_factor.conds(), condition)

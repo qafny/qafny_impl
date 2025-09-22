@@ -1,17 +1,11 @@
 # Python
 __pycache__
-.venv
-
-
-# Haskell
-.stack-work
+.qenv
 .history/
-python/.DS_Store
 .DS_Store
 dist-newstyle/.DS_Store
-python/pythonProject1/.DS_Store
 scr/.DS_Store
 test/.DS_Store
-python/pythonProject1/generated/
-python/__pycache__/
-python/pythonProject1/experiments/
+src/generated
+generated/
+experiments/
