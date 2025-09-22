@@ -4,11 +4,11 @@
 //the document contains bugs. The controlled-shift is not clear, and the eigenvalue state is not explained properly.
 
 method rzSeq(q: Q[n], n: nat, a: nat) 
-  requires {q[0, n) : nor ↦ |a⟩}
-  ensures {q[0, i) : nor ↦ ω (a, 2^n) |a⟩}
+  requires { q[0, n) : nor ↦ |a⟩ }
+  ensures { q[0, i) : nor ↦ ω (a, 2^n) |a⟩ }
 {
-  for i in [0,n)
-  invariant {q[0, i) : nor ↦ ω (a[0,i), 2^n) |a⟩} //we need to create a[0,i) means sum_i 2^0*a[0]+ ...+ 2^i * a[i]
+  for i in [0, n)
+    invariant { q[0, i) : nor ↦ ω (a[0, i), 2^n) |a⟩ } //we need to create a[0,i) means sum_i 2^0*a[0]+ ...+ 2^i * a[i]
   {
     q[i] *= λ((x: Q[1]) => ω (2^i * x[i], 2^n) |x⟩);
   }
@@ -35,7 +35,7 @@ method QPEQ(q: Q[n], p: Q[n], n: nat, a: nat, Q_divisor: nat)
     p[0, n) *= λ ((y: Q[n]) => |y + 2^i % Q_divisor⟩);
   }
   
-  q[0,n) *= RQFT;
+  q[0, n) *= RQFT;
       
 }
 
@@ -45,7 +45,7 @@ method QPEQ(q: Q[n], p: Q[n], n: nat, a: nat, Q_divisor: nat)
 //Then, the steps from 39 to 55 are just the inversed QPE. In quantum, if a unitary is given, we can have the axiom,
 //where the inversed function f^-1 takes the output of the original function f and it produces the input.
 method QFTModQ(n: nat, q: Q[n], p: Q[n], a: nat, Q_divisor: nat)
-  requires forall k :: 0 <= k < 2^(n-1) ==> f(n2b(k)) == f(s xor n2b(k+2^n))
+  requires forall k :: 0 <= k < 2^(n-1) ==> f(n2b(k)) == f(s xor n2b(k + 2^n))
   requires b2n(s) != 0
     // we can assume that all elements in the function are lined up with, without losing generality, since we do not rely on the structure
   requires { q[0, n) : Nor ↦ |a⟩ }
@@ -60,7 +60,7 @@ method QFTModQ(n: nat, q: Q[n], p: Q[n], a: nat, Q_divisor: nat)
   p[0, n) *= H;
   
   for i in [0, n) && p[i]
-  invariant {q[0, i), p[0, n) :  En ↦ ∑ k ∈ [0, 2^i) . 1 / sqrt(2^i) * ω (k * a, 2^n) | a , k ⟩  }
+    invariant { q[0, i), p[0, n) :  En ↦ ∑ k ∈ [0, 2^i) . 1 / sqrt(2^i) * ω (k * a, 2^n) | a, k ⟩  }
   {
     rzSeq(q, n, a);
   }

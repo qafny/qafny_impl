@@ -4,27 +4,27 @@
 //Please look at the wiki and try to modify the code to be a phase estimation.
 //lambda value here is the eigenvalue for U, so you will need to say the eigen value property about U here.
 
-method {:axiom} U(n:nat, q: Q[n], a:nat)
-  requires { q[0 , n) : en ↦ ⊗ phi }
-  ensures { q[0 , n) : en ↦ omega(a, 2^n) ⊗ phi }
+method {:axiom} U(n: nat, q: Q[n], a: nat)
+  requires { q[0, n) : en ↦ ⊗ phi }
+  ensures { q[0, n) : en ↦ omega(a, 2^n) ⊗ phi }
   
 
-method repeat(n:nat, q:Q[n], a:nat, m:nat)
-  requires { q[0 , n) : en ↦ ⊗ phi }
-  ensures { q[0 , n) : en ↦ omega(m * a, 2^n) ⊗ phi }
+method repeat(n: nat, q: Q[n], a: nat, m: nat)
+  requires { q[0, n) : en ↦ ⊗ phi }
+  ensures { q[0, n) : en ↦ omega(m * a, 2^n) ⊗ phi }
 {
 
   for k in [0, m)
-  invariant { q[0 , n) : en ↦ omega(k * a, 2^n) ⊗ phi }
+    invariant { q[0, n) : en ↦ omega(k * a, 2^n) ⊗ phi }
   {
-     U(n,q,a);
+     U(n, q, a);
   }
 }
   
   
-method QPE(q : Q[n], p : Q[n], n:nat, lambda : nat) returns (y:nat, p : real)
-  requires { q[0 , n) : nor ↦ |0⟩ }
-  requires { p[0 , n) : en ↦ ⊗ phi } 
+method QPE(q: Q[n], p: Q[n], n: nat, lambda: nat) returns (y: nat, prob: real)
+  requires { q[0, n) : nor ↦ |0⟩ }
+  requires { p[0, n) : en ↦ ⊗ phi } 
   //requires forall k, U(k, psi) == ω (k * lambda, 1) * psi
     // need to have a way to say, we can increment the phase to a quantum state psi.
     // ω (k * lambda, 1) = e^(2pi * i * k * lambda / 1)
@@ -42,11 +42,11 @@ method QPE(q : Q[n], p : Q[n], n:nat, lambda : nat) returns (y:nat, p : real)
        //q[0, k) : En ↦ ∑ k ∈ [0, 2^k)) . 1 / sqrt(2^k) . ω (k * lambda, 1)   . | k ⟩ and p[0, n) ↦ psi
     }
     invariant {
-      q [k, n) : had ↦ |+⟩
+      q[k, n) : had ↦ |+⟩
     }
   {
     //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
-    repeat(n,p, lambda, 2^k);
+    repeat(n, p, lambda, 2^k);
 
     // This is super hacky, but I have no good way to do this now....
     // TODO: find out one way to take the reference of the underlying range
@@ -62,7 +62,6 @@ method QPE(q : Q[n], p : Q[n], n:nat, lambda : nat) returns (y:nat, p : real)
   assert { q[0, n) : en ↦  ∑ v ∈ [0, 2^n) . 1 / (2^n) . (∑ j ∈ [0, 2^n) . ω (j * lambda * 2^n - j * v, 2/n) | v ⟩ ) };
    // the above step rearrange the arrays from ∑ j  and ∑ v
    //can do something smart, we can start with the one in line 47, 
-  y, p *= measure(q[0, n));
   y, prob *= measure(q[0, n));
   //we will need the post-analysis leading to the above result set up in https://en.wikipedia.org/wiki/Simon%27s_problem
 }  

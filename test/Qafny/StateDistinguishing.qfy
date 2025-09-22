@@ -8,7 +8,7 @@ method swap(n: nat, q: Q[n], p: Q[n])
 	ensures { q[0, n) : en ↦ old(p[0, n)) }
 	ensures { p[0, n) : en ↦ old(q[0, n)) }
 {
-   for j in [0,n) {
+   for j in [0, n) {
 	  if p[j] { q[j] *= λ(x => |x + 1⟩); }
 	  if q[j] { p[j] *= λ(x => |x + 1⟩); }
 	  if p[j] { q[j] *= λ(x => |x + 1⟩); }
@@ -19,6 +19,7 @@ method permLoop(r: Q[k][n], q: Q[k][n], p: Q[k][n], t: nat, k: nat, n: nat)
 	requires t < k
 	ensures { q[t][0, n) : en ↦ old(p[k - 1][0, n)) }
 	ensures { p[k - 1][0, n) : en ↦ old(q[t][0, n)) }
+
 method permLoop(k: nat, n: nat, r: Q[k][n], q: Q[k][n], p: Q[k][n], t: nat) 
 	ensures { q[t][0, n) : en ↦ old(p[k][0, n)) }
 	ensures { p[k][0, n) : en ↦ old(q[t][0, n)) }

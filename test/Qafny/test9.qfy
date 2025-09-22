@@ -1,5 +1,5 @@
 
-method conditionaltest2(n:nat, q : Q[1], p : Q[n], base: nat, N:nat)
+method conditionaltest2(n: nat, q: Q[1], p: Q[n], base: nat, N: nat)
   requires { q[0] : had ↦ |+⟩ }
   requires { p[0, n) : nor ↦ |0⟩ }
  // ensures  { q[0, 1), p [0, n) : en(2) ↦ 1/sqrt(2) |0⟩|0⟩ + ∑ k ∈ [0, 2^n) . 1/sqrt(2) * 1/sqrt(2^n)|1⟩ |k⟩}

@@ -2,27 +2,35 @@
 // https://www.mdpi.com/2624-960X/6/1/1
 // https://www.nature.com/articles/s41534-021-00379-1
 
-// ci method is Chernoff-Hoeffding
+// confidence interval method is Chernoff-Hoeffding
 // need arrays for k, up, and K. could also have variables just for i-1, i, and i+1
 
-method AmplitudeEstimation(n:nat, q: Q[n], k : array<nat>, up : array<bool>, K: array<nat>, eps:real, a:real, Nshots:nat) returns (a_l:real, a_u:real)
+method {:axiom} Q_f(n: nat, q: Q[n], k: real)
+    ensures { q[0, n) : en ↦ cos((2 * k + 1) * phi) |a⟩|0⟩ + sin((2 * k + 1) * phi) |b⟩|1⟩ }
+
+method AmplitudeEstimation(n: nat, q: Q[n], k: array<nat>, up: array<bool>, K: array<nat>, eps: real, a: real, Nshots: nat) returns (a_l: real, a_u: real)
 {
-    i := 0;
+    var i := 0;
     k[i] := 0;
     up[i] := True;
-    ci_lb := 0;
-    ci_ub := PI/2;
-    T := ceiling(log(2, PI/(8 * eps)));
-    Lmax := arcsin((2 / Nshots) * log(2 * T / a)) ^ (1/4);
+    // confidence intervale
+    var ci_lb := 0;
+    var ci_ub := PI / 2;
+    // max number of rounds
+    var T := ceiling(log(2, PI / (8 * eps)));
+    // max error on each iteration
+    var Lmax := arcsin((2 / Nshots) * log(2 * T / a)) ^ (1/4);
 
     while ci_ub - ci_lb > 2 * eps
         decreases ci_ub - ci_lb
         invariant i < |K| && i < |k|
     {
         i := i + 1;
-        k, up, K := FindNextK(k, up, K, n, i, ci_lb, ci_ub, 2);
+        // , K[i]
+        k[i], up[i] := FindNextK(k, up, K, n, i - 1, ci_lb, ci_ub, 2);
         K[i] := 4 * k[i] + 2;
 
+        var N: nat;
         if K[i] > ceiling(Lmax / eps)
         {
             N := ceiling(Nshots * Lmax / eps / K[i] / 10);
@@ -32,16 +40,30 @@ method AmplitudeEstimation(n:nat, q: Q[n], k : array<nat>, up : array<bool>, K: 
             N := Nshots;
         }
 
-        // measure q N times
+        // measure q N times to approximate the probability of reading a 1 for the last qubit
+        var ai: nat := 0;
+        for _ in [0, N) {
+            // this is the actual quantum computing part of the algorithm
+            Q_f(n, q, k);
+            var result, prob *= measure(q[n - 1]);
+            ai := ai + result; // result will either be 0 or 1, taking a sum of all the results and dividing by n will approximate a[i]
+        }
+        ai := ai / N;
 
         if k[i] == k[i - 1]
         {
             // TODO: combine iterations into a single result
+            for j in [0, i + 1) {
+                if k[j] == k[i] {
+                    a[i] := (a[i] + a[j]) / 2; // the N for both of these runs are equal, so the averages can be combined like this
+                }
+            }
         }
 
-        eai := sqrt(log(2 * T / a) / (2 * N));
-        ai_max := min(1, ai + eai);
-        ai_min := max(0, ai - eai);
+        // Chernoff-Hoeffding confidence interval method
+        var eai := sqrt(log(2 * T / a) / (2 * N));
+        var ai_max := min(1, ai + eai);
+        var ai_min := max(0, ai - eai);
 
         // calculate ci_min and ci_max 
 
@@ -56,33 +78,33 @@ method AmplitudeEstimation(n:nat, q: Q[n], k : array<nat>, up : array<bool>, K: 
 
 }
 
-method FindNextK(k: Q[n], up: Q[n], K: Q[n], n:nat, i:nat, ci_lb:real, ci_ub:real, r:nat) returns (ki:real, upi:Bool)
+method FindNextK(k: Q[n], up: Q[n], K: Q[n], n: nat, i: nat, ci_lb: real, ci_ub: real, r: nat) returns (ki: real, upi: Bool)
 {
     K[i] := 4 * k[i] + 2;
-    ci_min := K[i] * ci_lb;
-    ci_max := K[i] * ci_ub;
-    Kmax := floor(PI / (ci_ub - ci_lb));
-    K := Kmax - (Kmax - 2) % 4;
+    var ci_min := K[i] * ci_lb;
+    var ci_max := K[i] * ci_ub;
+    var Kmax := floor(PI / (ci_ub - ci_lb));
+    var Kpotential := Kmax - (Kmax - 2) % 4;
 
-    while K >= r * K[i]
+    while Kpotential >= r * K[i]
     {
-        q := K / K[i];
+        q := Kpotential / K[i];
         
-        if (q * ci_max) % (2 * PI) <= PI && (q * ci_min) % (2 % PI) <= PI
+        if (q * ci_max) % (2 * PI) <= PI && (q * ci_min) % (2 * PI) <= PI
         {
-            K[i+1] := K;
-            up[i+1] := True;
-            k[i+1] := (K[i+1] - 2) / 4;
-            return k, up, K;
+            K[i + 1] := Kpotential;
+            up[i + 1] := True;
+            k[i + 1] := (K[i + 1] - 2) / 4;
+            return k, up;
         }
         if (q * ci_max) % (2 * PI) >= PI && (q * ci_min) % (2 % PI) >= PI
         {
-            K[i+1] := K;
-            up[i+1] := False;
-            k[i+1] := (K[i+1] - 2) / 4;
-            return k, up, K;
+            K[i + 1] := Kpotential;
+            up[i + 1] := False;
+            k[i + 1] := (K[i + 1] - 2) / 4;
+            return k, up;
         }
-        K := K - 4;
+        Kpotential := Kpotential - 4;
     }
-    return k, up, K;
+    return k, up;
 }

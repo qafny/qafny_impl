@@ -1,10 +1,10 @@
 //Simple Had application
-method conditionaltest1(n:nat, q : Q[n], p : Q[n], i:nat, base: nat, N:nat)
+method conditionaltest1(n: nat, q: Q[n], p: Q[n], i: nat, base: nat, N: nat)
   requires 0 <= i < n
   requires N > 0
   requires { q[0, i), p[0, n) : en ↦ ∑ k ∈ [0, 2^i) . 1/sqrt(2^i) | k ⟩ | (base ^ k) % N ⟩ }
-  requires { q [i , n) : had ↦ |+⟩ }
-  ensures  { q [i+1 , n) : had ↦ |+⟩ }
+  requires { q[i, n) : had ↦ |+⟩ }
+  ensures { q[i+1, n) : had ↦ |+⟩ }
   ensures { q[0, i+1), p[0, n) : en ↦ ∑ k ∈ [0, 2^(i+1)) . 1/sqrt(2^(i+1)) | k ⟩ | (base ^ k) % N ⟩ }
 {
   // induce superposition on the first qubit

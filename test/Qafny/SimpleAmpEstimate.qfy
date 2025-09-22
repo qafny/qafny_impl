@@ -19,9 +19,9 @@ method qstep(n: nat, p: Q[n], r: Q[1], f: [Bool] -> Bool, t: nat)
   assert { p[0, n), r[0] : En ↦ part(2^n, sin theta : f(|k⟩) == 1, cos theta : f(|k⟩) == 0) |-⟩ };
     
   for j in [0, t)
-    invariant { q[0,n), r[0] : En ↦ part(2^n, sin (2 * j * theta + theta) : f(|k⟩) == 1, cos (2 * j * theta + theta) : f(|k⟩) == 0) |-⟩ }
+    invariant { q[0, n), r[0] : En ↦ part(2^n, sin (2 * j * theta + theta) : f(|k⟩) == 1, cos (2 * j * theta + theta) : f(|k⟩) == 0) |-⟩ }
   {
-    uf(p, r,f, n); //this is the first step in the grover's algorithm
+    uf(p, r, f, n); //this is the first step in the grover's algorithm
                    //the step marks the first set in the partition as - sin (2 * j * theta + theta)
 
     
