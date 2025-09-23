@@ -573,9 +573,13 @@ class ProgramTransformer(ExpVisitor):
                 return (None, expr)
 
 
+        this_sum = []
+        if ctx.maySum() is not None:
+            this_sum += [self.visitMaySum(ctx.maySum())]
+
         if ctx.manyketpart() is not None:
             # the end sumspec (not recursive)
-            sum = self.visitMaySum(ctx.maySum())
+            #sum = self.visitMaySum(ctx.maySum())
             amp = None
         #    condition = None
             if ctx.arithExpr() is not None:
@@ -584,30 +588,26 @@ class ProgramTransformer(ExpVisitor):
                 condition, amp = extract_condition(amp)
 
             
-            kets = self.visitManyketpart(ctx.manyketpart())
+            kets = QXTensor(self.visitManyketpart(ctx.manyketpart()))
 
-            return QXSum([sum], amp, kets, line_number=ctx.start.line)
-        elif ctx.maySum() is not None:
+            return QXSum(this_sum, amp, kets, line_number=ctx.start.line)
+
+        if ctx.tensorall() is not None:
             # recursive sum spec, add to this sum
-            this_sum = self.visitMaySum(ctx.maySum())
 
             amp = None
-            condition = None
             if ctx.arithExpr() is not None:
                 amp = self.visitArithExpr(ctx.arithExpr())
                 # extract the condition if it exists
                 condition, amp = extract_condition(amp)
 
-            next_sum = self.visitSumspec(ctx.sumspec())
-
-            # combine sum specs
-            sums = [this_sum] + next_sum.sums()
+            kets = ctx.tensorall().accept(self)
 
             # combine the amplitudes
-            if amp is not None:
-                amp = QXBin('*', amp, next_sum.amp(), line_number=ctx.start.line)
-            else:
-                amp = next_sum.amp()
+            #if amp is not None:
+            #    amp = QXBin('*', amp, next_sum.amp(), line_number=ctx.start.line)
+            #else:
+            #    amp = next_sum.amp()
 
             # combine the conditions
             # if condition is not None and next_sum.condition() is not None:
@@ -615,8 +615,8 @@ class ProgramTransformer(ExpVisitor):
             # else:
             #     condition = next_sum.condition()
 
-            return QXSum(sums, amp, next_sum.kets(), line_number=ctx.start.line)
-        elif ctx.sumspec() is not None:
+            return QXSum(this_sum, amp, kets, line_number=ctx.start.line)
+        else:
             # unwrap parentheses
             return self.visitSumspec(ctx.sumspec())
 
