@@ -423,12 +423,12 @@ class ProgramVisitor(AbstractProgramVisitor):
         ctx.next().accept(self)
 
     def visitSum(self, ctx: Programmer.QXSum):
-        for elem in ctx.kets():
-            if isinstance(elem, list):
-                for e in elem:
-                    e.accept(self)
-            else:
-                elem.accept(self)
+        # for elem in ctx.kets():
+        #     if isinstance(elem, list):
+        #         for e in elem:
+        #             e.accept(self)
+        #     else:
+        ctx.kets().accept(self)
         ctx.amp().accept(self)
         for elem in ctx.sums():
             elem.accept(self)

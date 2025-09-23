@@ -719,6 +719,7 @@ class ProgramTransfer(ProgramVisitor):
         tmp = []
         n = qty.flag().num()
         sum_vars = ctx.sums()
+        print(f"\n sum_vars {sum_vars}")
 
         def _build_sum_forall(body, iterators):
             """Helper to wrap a pred in nested foralls."""
@@ -771,7 +772,8 @@ class ProgramTransfer(ProgramVisitor):
             tmp.append(_build_sum_forall(body, [DXBind(sv.ID(), SType("nat"), line=ctx.line_number()) for sv in sum_vars]))
 
         # Value predicates
-        var_ket = {loc[i].location(): ket for i, ket in enumerate(ctx.kets())}   
+        self.log(f"\n kets {ctx.kets()}")
+        var_ket = {loc[i].location(): ket for i, ket in enumerate(ctx.kets().kets())}   
         for var, dvar in varbind.items():
             if var == 'amp':
                 continue

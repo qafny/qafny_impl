@@ -62,6 +62,7 @@ def findQVars(v: QXBool, vars: [str]):
         return findQVars(v.next(), vars)
 
     if isinstance(v, QXComp):
+        print(f"\n findQVars: {v} in vars {vars}")
         return (findQAVars(v.left(),vars) + findQAVars(v.right(),vars))
 
 def subStrs(a: [str], b:[str]):
@@ -273,7 +274,7 @@ class TypeCollector(ProgramVisitor):
 
             self.mkenv.append((ctx.spec().locus(), ctx.spec().qty()))
 
-        if isinstance(ctx.spec(), QXComp):
+        elif isinstance(ctx.spec(), QXComp):
             left = ctx.spec().left().ID()
             right = ctx.spec().right().ID()
 

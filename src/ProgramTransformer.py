@@ -573,51 +573,37 @@ class ProgramTransformer(ExpVisitor):
                 return (None, expr)
 
 
-        this_sum = []
         if ctx.maySum() is not None:
-            this_sum += [self.visitMaySum(ctx.maySum())]
-
-        if ctx.manyketpart() is not None:
             # the end sumspec (not recursive)
-            #sum = self.visitMaySum(ctx.maySum())
+            this_sum = self.visitMaySum(ctx.maySum())
             amp = None
         #    condition = None
-            if ctx.arithExpr() is not None:
-                amp = self.visitArithExpr(ctx.arithExpr())
-                # if we have a condition, we want to extract it from the amplitude expression
-                condition, amp = extract_condition(amp)
-
+            if ctx.manyketpart() is not None:
+                if ctx.arithExpr() is not None:
+                    amp = self.visitArithExpr(ctx.arithExpr())
+                    # if we have a condition, we want to extract it from the amplitude expression
+                    condition, amp = extract_condition(amp)
+                    kets = QXTensor(self.visitManyketpart(ctx.manyketpart()))
+                    return QXSum([this_sum], amp, kets, line_number=ctx.start.line)
             
-            kets = QXTensor(self.visitManyketpart(ctx.manyketpart()))
-
-            return QXSum(this_sum, amp, kets, line_number=ctx.start.line)
-
-        if ctx.tensorall() is not None:
-            # recursive sum spec, add to this sum
-
-            amp = None
-            if ctx.arithExpr() is not None:
-                amp = self.visitArithExpr(ctx.arithExpr())
-                # extract the condition if it exists
-                condition, amp = extract_condition(amp)
-
-            kets = ctx.tensorall().accept(self)
-
-            # combine the amplitudes
-            #if amp is not None:
-            #    amp = QXBin('*', amp, next_sum.amp(), line_number=ctx.start.line)
-            #else:
-            #    amp = next_sum.amp()
-
-            # combine the conditions
-            # if condition is not None and next_sum.condition() is not None:
-            #     condition = QXLogic('&&', condition, next_sum.condition(), line_number=ctx.start.line)
-            # else:
-            #     condition = next_sum.condition()
-
-            return QXSum(this_sum, amp, kets, line_number=ctx.start.line)
-        else:
-            # unwrap parentheses
+            if hasattr(ctx, "tensorall") and ctx.tensorall() is not None:
+                if ctx.arithExpr() is not None:
+                    amp = self.visitArithExpr(ctx.arithExpr())
+                kets = self.visitTensorall(ctx.tensorall())
+                return QXSum([this_sum], amp, kets, line_number=ctx.start.line)
+            if ctx.sumspec() is not None:
+                if ctx.arithExpr() is not None:
+                    amp = self.visitArithExpr(ctx.arithExpr())
+                next_sum = self.visitSumspec(ctx.sumspec())
+                sums = [this_sum] + next_sum.sums()
+                            # combine the amplitudes
+                if amp is not None:
+                    amp = QXBin('*', amp, next_sum.amp(), line_number=ctx.start.line)
+                else:
+                    amp = next_sum.amp()
+                return QXSum(sums, amp, next_sum.kets(), line_number=ctx.start.line)
+        # parentheses wrapper: '(' sumspec ')'
+        if ctx.sumspec() is not None:
             return self.visitSumspec(ctx.sumspec())
 
     # Visit a parse tree produced by ExpParser#maySum.

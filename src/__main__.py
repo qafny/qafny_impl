@@ -14,7 +14,7 @@ from ProgramTransformer import ProgramTransformer # usage: transforming antlr as
 from CollectKind import CollectKind # usage: collecting the kind environment from the qafny AST (see the README for a breakdown of kinds vs. types)
 from TypeCollector import TypeCollector # usage: collecting the type environment from the qafny AST (see the README for a breakdown of types vs. kinds)
 from TypeChecker import TypeChecker # usage: type checking the parsed file
-from ProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one
+#from ProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one
 from nProgramTransfer import ProgramTransfer # usage: transforming the qafny ast into a dafny one (new version)
 from PrinterVisitor import PrinterVisitor # usage: outputting string text dafny code from a dafny (TargetProgrammer) AST
 from DafnyLibrary import DafnyLibrary # usage: generating template library functions for verification
@@ -59,12 +59,13 @@ DEFAULT_FILENAMES = [
    example_program("test11"),
    example_program("test12"),
      example_program("test13"),
-     example_program("test14"),
+      example_program("test14"),
       example_program("BellPair"),
     #  example_program("GHZ"),
-     example_program("Teleportation"),
+#     example_program("Teleportation"),
     # example_program("Superdense"),
-#     example_program("Shors"),
+  #   example_program("Shors"),
+      example_program("HammingWeight")  
     # example_program("DeutschJozsa"),
     # example_program("simon"),
     # example_program("DiscreteLog"),
