@@ -139,6 +139,15 @@ class SubstDAExp(TargetProgramVisitor):
     def visitSType(self, ctx: SType):
         return ctx
     
+    def visitQRange(self, ctx: QXQRange):
+        if ctx.index():
+            ctx.index().accept(self)
+        ctx.crange().accept(self)
+
+    def visitCrange(self, ctx: QXCRange):
+        l = ctx.left().accept(self)
+        r = ctx.left().accept(self)
+    
     def visitWhile(self, ctx: DXWhile):
         c = ctx.cond().accept(self)
         s = [st.accept(self) for st in ctx.stmts()]
