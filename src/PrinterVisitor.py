@@ -213,3 +213,13 @@ class PrinterVisitor(TargetProgramVisitor):
         spec_str = ctx.spec().accept(self) if ctx.spec() is not None else ''
         lambd_str = ctx.lambd().accept(self) if ctx.lambd() is not None else ''       
         return f'seq({size_str}, {idx_str} {spec_str} => {lambd_str})'
+    
+    def visitSlice(self, ctx: TargetProgrammer.DXSlice):
+        id_str = ctx.bind().accept(self)
+        low_str = ""
+        if ctx.low() is not None:
+            low_str = ctx.low().accept(self)
+        high_str = ""
+        if ctx.high() is not None:
+            high_str = ctx.high().accept(self)
+        return f'{id_str}[{low_str}..{high_str}]'

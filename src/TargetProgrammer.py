@@ -524,6 +524,32 @@ class DXIndex(DXAExp):
     
     def line(self):
         return self._line
+    
+class DXSlice(DXAExp):
+
+    def __init__(self, id: DXAExp, low: DXAExp | None, high: DXAExp | None, line: int = None):
+        self._id = id
+        self._low = low
+        self._high = high
+        self._line = line
+
+    def accept(self, visitor: AbstractTargetVisitor):
+        return visitor.visitSlice(self)
+
+    def bind(self):
+        return self._id
+
+    def low(self):
+        return self._low
+
+    def high(self):
+        return self._high
+
+    def __repr__(self):
+        return f'DXSlice(id={self._id}, low={self._low}, high={self._high})'
+    
+    def line(self):
+        return self._line
 
 class DXCast(DXAExp):
 

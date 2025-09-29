@@ -60,6 +60,8 @@ class CleanupVisitor(TargetProgramVisitor):
                 return self.visitNum(ctx)
             case DXSeqComp():
                 return self.visitSeqComp(ctx)
+            case DXSlice():
+                return self.visitSlice(ctx)
     
     def visitProgram(self, ctx: TargetProgrammer.DXProgram):
         methods = []
@@ -200,6 +202,7 @@ class CleanupVisitor(TargetProgramVisitor):
 
     def visitAssign(self, ctx: TargetProgrammer.DXAssign):
         ids = []
+        print(f"\n visitAssign in CV {ctx}")
         for i in ctx.ids():
             ids.append(i.accept(self))
 
@@ -224,4 +227,10 @@ class CleanupVisitor(TargetProgramVisitor):
         idx = ctx.idx().accept(self) if ctx.idx() is not None else None
         spec = ctx.spec().accept(self) if ctx.spec() is not None else None
         lambd = ctx.lambd().accept(self) if ctx.lambd() is not None else None
-        return TargetProgrammer.DXSeqComp(size, idx, spec, lambd)
+        return DXSeqComp(size, idx, spec, lambd)
+    
+    def visitSlice(self, ctx: TargetProgrammer.DXSlice):
+        id = ctx.bind().accept(self)
+        low = ctx.low().accept(self) if ctx.low() is not None else None
+        high = ctx.high().accept(self) if ctx.high() is not None else None
+        return DXSlice(id, low, high, line=ctx.line())

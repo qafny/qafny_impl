@@ -19,6 +19,8 @@ class DafnyLibrary:
     'omega': 'function {:axiom} omega(n:nat, a:nat): real',
     'omega0' : '''lemma {:axiom} omega0()
                     ensures forall k : nat :: omega(0, k) == 1.0''',
+    'omega1' : '''lemma {:axiom} omega0()
+                    ensures forall k : nat :: omega(0, k) == -1.0''',
     'dotProd': '''function dotProd(x: seq<bv1>, y: seq<bv1>): nat
                 requires |x| == |y|
                 decreases |x|
@@ -28,10 +30,18 @@ class DafnyLibrary:
               }''',
     'sqrt': '''function {:axiom} sqrt(a:real): real
                 requires a > 0.0
-                ensures sqrt(a) > 0.0''',
-    'castBVInt': Method('''function {:axiom} castBVInt(x : seq<bv1>) : nat
+                ensures sqrt(a) > 0.0
+                ensures sqrt(a) * sqrt(a) == a''',
+    'sqrt1': '''lemma {:axiom} sqrt1() 
+                ensures sqrt(1.0) == 1.0''',
+    'castBVInt': Method('''function castBVInt(x : seq<bv1>) : nat
                 ensures castBVInt(x) >= 0
-                ensures castBVInt(x) < pow2(|x|) ''', ['pow2']),
+                ensures castBVInt(x) < pow2(|x|) 
+                {
+                  if |x| == 0 then 0
+                  else bv1ToNat(x[0]) + 2 * castBVInt(x[1..])
+                }''', ['pow2', 'bv1ToNat']),
+    'bv1ToNat': '''function bv1ToNat(b: bv1): nat { if b == 1 then 1 else 0 }''',
     'castIntBV': Method('''function {:axiom} castIntBV(x: nat, n: nat) : seq<bv1>
                 ensures castBVInt(castIntBV(x, n)) == x
                 ensures |castIntBV(x, n)| == n ''', ['castBVInt']),
@@ -41,13 +51,19 @@ class DafnyLibrary:
               if n == 0 then 1
               else 2 * pow2(n-1)
             }''',
-    'abs' : '''function {:axiom} abs(n : int) : nat
-                ensures abs(n) == if n >= 0 then n else -n''',
-
+    'abs' : '''function abs(n : int) : nat
+                ensures abs(n) == if n >= 0 then n else -n
+                {
+                  if n >= 0 then n else -n
+                }''',
+    'pow': '''function {:axiom} pow(base: nat, k: nat): nat
+              ensures k == 0 ==> pow(base, k) == 1
+              ensures base == 0 && k > 0 ==> pow(base, k) == 0
+              ensures base > 0 ==> pow(base, k) > 0''',
     'powN' : '''function {:axiom} powN(N:nat, k: nat) : int
                     ensures powN(N, k) > 0''',
-    'powNTimesMod' : '''lemma {:axiom} powNTimesMod()
-          ensures forall k: nat, j: nat, l : nat, N:nat {:trigger powN(k, j) * (powN(k, l) % N)}:: N > 0 ==> powN(k, j) * (powN(k, l) % N) % N == powN(k, j + l) % N''',
+    'powTimesMod' : Method('''lemma {:axiom} powTimesMod()
+          ensures forall k: nat, j: nat, l : nat, N:nat {:trigger pow(k, j) * (pow(k, l) % N)}:: N > 0 ==> pow(k, j) * (pow(k, l) % N) % N == pow(k, j + l) % N''', ['pow']),
 
     'pow2mul' : Method('''lemma {:axiom} pow2mul()
                 ensures forall k : nat, j : nat :: pow2(k) * pow2(j) == pow2(k + j)''', ['pow2']),
@@ -58,6 +74,17 @@ class DafnyLibrary:
     'SqrtGt': Method('''lemma {:axiom} SqrtGt(a:real)
                 requires a > 0.0
                 ensures sqrt(a) > 0.0''', ['sqrt']),
+   
+    'countN': '''function countN(x: nat): nat
+              ensures countN(x) <= x
+            {
+              if x == 0 then 0
+              else (if x % 2 == 1 then 1 else 0) + countN(x / 2)
+            }''', 
+   
+    'countStep': Method('''lemma {:axiom} countStep(i:nat)
+              ensures forall k: nat :: k < pow2(i) ==> countN(k + pow2(i)) == countN(k) + 1''', ['pow2', 'countN']),
+   
     'hadNorHad': Method('''method hadNorHad(x:seq<bv1>) returns (y : seq<real>) 
               ensures |y| == |x|
               ensures forall k :: 0 <= k < |x| ==> y[k] == omega(x[k] as int,2)
@@ -138,19 +165,52 @@ class DafnyLibrary:
           ensures forall k :: 0 <= k < |x1| ==> forall j :: 0 <= j < |x1[k]| ==> samebit(x1[k][j], x, |x|)
       ''', ['castBVInt', 'samebit']),
 
-    'mergeBitEn' : Method('''method {:axiom} mergeBitEn(x: seq<seq<bv1>>, n : nat) returns (x1: seq<seq<bv1>>)
-          requires forall k :: 0 <= k < |x| ==> |x[k]| == n
-          ensures |x1| == |x| * 2
-          ensures forall k :: 0 <= k < |x1| ==> |x1[k]| == n + 1
-          ensures forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k][0..n], n)
-          ensures forall k :: |x| <= k < |x1| ==> samebit(x[k-|x|], x1[k][0..n], n) 
-          ensures forall k :: 0 <= k < |x| ==> x1[k][n] == 0
-          ensures forall k :: |x| <= k < |x1| ==> x1[k][n] == 1''', ['samebit']),
+    'mergeBitEn' : Method('''method  mergeBitEn(x: seq<seq<bv1>>, i : nat) returns (x1: seq<seq<bv1>>)
+          requires |x| == pow2(i)
+          requires forall k :: 0 <= k < |x| ==> |x[k]| == i
+          requires forall k :: 0 <= k < |x| ==> castBVInt(x[k]) == k
+          ensures |x1| == |x| * 2 
+          ensures |x1| == pow2(i + 1)
+          ensures forall k :: 0 <= k < |x1| ==> |x1[k]| == i + 1
+          ensures forall k :: 0 <= k < |x| ==> x1[k] == x[k] + [0]
+          ensures forall k :: |x| <= k < |x1| ==> x1[k] == x[k - |x|] + [1]
+          ensures forall k :: 0 <= k < |x| ==> castBVInt(x1[k]) == k
+          ensures forall k :: |x| <= k < |x1| ==> castBVInt(x1[k]) == k 
+          {
+            var left  := seq(|x|,  k requires 0 <= k < |x|=> x[k] + [0]);
+            var right := seq(|x|,  k requires 0 <= k < |x|=> x[k] + [1]);
+            x1 := left + right;
+            var k1 := 0;
+            while k1 < |x|
+                invariant 0 <= k1 <= |x|
+                invariant forall k :: 0 <= k < k1 ==> castBVInt(x1[k]) == castBVInt(x[k])
+            {
+                castAppendBitValue(x[k1], 0); 
+                k1 := k1 + 1;
+            }
 
+            var k2 := 0;
+            while k2 < |x|
+                invariant 0 <= k2 <= |x|
+                invariant forall k::0 <= k < k2 ==> castBVInt(x1[|x| + k]) == castBVInt(x[k]) + pow2(i)
+            {
+                castAppendBitValue(x[k2], 1); 
+                k2 := k2 + 1;
+            }
+          }''', ['samebit', 'castAppendBitValue']),
+    
+    'castAppendBitValue': '''lemma {:axiom} castAppendBitValue(s: seq<bv1>, b: bv1)
+            ensures castBVInt(s + [b]) == castBVInt(s) + if b == 1 then pow2(|s| as int) else 0''',
+    
     'mergeAmpEn' : Method('''method {:axiom} mergeAmpEn(amp: seq<real>, q : real) returns (amp1: seq<real>)
           ensures |amp1| == |amp| * 2
           ensures forall k :: 0 <= k < |amp| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k]
-          ensures forall k :: |amp| <= k < |amp1| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k-|amp|] * q''', ['sqrt']),
+          ensures forall k :: |amp| <= k < |amp1| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k-|amp|] * q
+          {
+            var left  := seq(|amp|, k requires 0 <= k < |amp|=> (1.0 / sqrt(pow2(1) as real)) * amp[k]);
+            var right := seq(|amp|, k requires 0 <= k < |amp|=> (1.0 / sqrt(pow2(1) as real)) * amp[k] * q);
+            amp1 := left + right;
+          }''', ['sqrt', 'pow2']),
 
     'triggerSqrtMul' : Method('''lemma {:axiom} triggerSqrtMul()
                       ensures forall k, j :: k > 0.0 && j > 0.0 ==> sqrt(k) * sqrt(j) == sqrt(k * j)''', ['sqrt']),

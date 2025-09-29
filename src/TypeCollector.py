@@ -10,15 +10,27 @@ def compareComp(t1: QXComp, t2: QXComp):
     return t1.op() == t2.op() and compareAExp(t1.left(),t2.left()) and compareAExp(t1.right(),t2.right())
 
 
-def addElem(a:QXComp, l:[QXComp], isRequires:bool):
-    v = False
-    for elem in l:
-        if compareComp(a,elem.spec()):
-            v = True
-    if v:
-        return l
-    a = QXRequires(a) if isRequires else QXEnsures(a)
-    return l.append(a)
+# def addElem(a:QXComp, l:[QXComp], isRequires:bool):
+#     v = False
+#     for elem in l:
+#         if compareComp(a,elem.spec()):
+#             v = True
+#     if v:
+#         return l
+#     a = QXRequires(a) if isRequires else QXEnsures(a)
+#     return l.append(a)
+
+def addElem(a: QXComp, l: [QXComp], wrapper_class: QXCond):
+    """
+    Adds a predicate to a list, avoiding duplicates.
+    Wraps the predicate in the provided wrapper_class (e.g., QXRequires).
+    """
+    is_duplicate = any(compareComp(a, elem.spec()) for elem in l if isinstance(elem.spec(), QXComp))
+    if not is_duplicate:
+        # Instantiate the provided class directly with the predicate
+        wrapped_pred = wrapper_class(a)
+        l.append(wrapped_pred)
+    return l
 
 def isARange(env: [([QXQRange], QXQTy)], se:[str]):
     tmp = []
@@ -33,25 +45,34 @@ def merge_two_dicts(x, y):
     z.update(y)    # modifies z with keys and values of y
     return z
 
-def findQAVars(v: QXAExp, vars: [str]):
+def findQAVars(v: QXAExp, vars: [str]) -> list[str]:
 
     if isinstance(v, QXUni):
         return findQAVars(v.next(), vars)
 
-    if isinstance(v, QXBin):
-        return (findQAVars(v.left(),vars) + findQAVars(v.right(),vars))
+    elif isinstance(v, QXBin):
+        print(f'\n v: {v}')
+        left_vars = findQAVars(v.left(), vars)
+        right_vars = findQAVars(v.right(), vars)
+        return left_vars + right_vars
 
-    if isinstance(v, QXNum):
+
+    elif isinstance(v, QXNum):
         return []
 
-    if isinstance(v, QXBind):
+    elif isinstance(v, QXBind):
         if v.ID() in vars:
             return [v.ID()]
         else:
             return []
+    elif isinstance(v, QXCall):
+        return v.exps()
     
-    if isinstance(v, QXLogic) or isinstance(v, QXCNot) or isinstance(v, QXComp):
+    
+    elif isinstance(v, QXLogic) or isinstance(v, QXCNot) or isinstance(v, QXComp):
         return findQVars(v, vars)
+    else:
+        return []
 
 def findQVars(v: QXBool, vars: [str]):
 
@@ -92,81 +113,55 @@ class TypeCollector(ProgramVisitor):
         # the first two items mapping from loci -> types
         # the third item is a list of predicates
         self.tenv = [] # temp pre-env for a method
+        self.tmpenv = []
         self.mkenv = [] # temp post-env for a method
         self.pred = [] # temp predicates
         self.fkenv = None
         self.fvar = ""
-
-    def createRequireVars(self, l:[QXCond]):
-
-        tmp = []
-        for var , kty in self.fkenv[0].items():
-            if isinstance(kty, TyQ):
-                tmp += [var]
-
-        vars = tmp.copy()
-
-        for elem in l:
-            if isinstance(elem, QXRequires):
-                if isinstance(elem.spec(), QXQSpec):
-                    for ran in elem.spec().locus():
-                        if ran.location() in tmp:
-                            tmp.remove(ran.location())
-                        elif ran.location() in vars:
-                            continue
-                        else:
-                            return None
-                if isinstance(elem.spec(), QXBool):
-                    tmvars = findQVars(elem.spec(), vars)
-                    if not subStrs(tmvars, tmp):
-                        for tmpelem in tmvars:
-                            tmp.remove(tmpelem)
-
+    
+    def _create_default_vars(self, conditions: list, condition_type):
+        """Helper for createRequireVars and createEnsureVars"""
+        # Start with all quantum variables
+        quantum_vars = {var for var, kty in self.fkenv[0].items() 
+                    if isinstance(kty, TyQ)}
+        specified_vars = set()
+        
+        for elem in conditions:
+            if not isinstance(elem, condition_type):
+                continue
+                
+            if isinstance(elem.spec(), QXQSpec):
+                # Mark variables that have explicit loci
+                for ran in elem.spec().locus():
+                    loc = ran.location()
+                    if loc in quantum_vars:
+                        specified_vars.add(loc)
+                    # Don't fail if loc not in quantum_vars - might be classical
+                        
+            elif isinstance(elem.spec(), QXBool):
+                # Boolean constraints might implicitly specify some variables
+                # This logic needs clarification of the intended semantics
+                referenced_vars = findQVars(elem.spec(), list(quantum_vars))
+                specified_vars.update(referenced_vars)
+        
+        # Create default loci for unspecified quantum variables
         result = []
-
-        for var in tmp:
-            v = self.fkenv[0].get(var).flag()
-            locus = [QXQRange(var,  crange = QXCRange(QXNum(0), v))]
+        for var in quantum_vars - specified_vars:
+            flag = self.fkenv[0][var].flag()
+            locus = [QXQRange(var, crange=QXCRange(QXNum(0), flag))]
             ty = TyEn(QXNum(1))
-            result += [(locus, ty)]
-
+            result.append((locus, ty))
+        
         return result
 
-    def createEnsureVars(self, l:[QXCond]):
+    def createRequireVars(self, l: list):
+        return self._create_default_vars(l, QXRequires)
 
-        tmp = []
-        for var , kty in self.fkenv[0].items():
-            if isinstance(kty, TyQ):
-                tmp += [var]
-
-        vars = tmp.copy()
-
-        for elem in l:
-            if isinstance(elem, QXEnsures):
-                if isinstance(elem.spec(), QXQSpec):
-                    for ran in elem.spec().locus():
-                        if ran.location() in tmp:
-                            tmp.remove(ran.location())
-                        elif ran.location() in vars:
-                            continue
-                        else:
-                            return None
-                if isinstance(elem.spec(), QXBool):
-                    tmvars = findQVars(elem.spec(), vars)
-                    if not subStrs(tmvars, tmp):
-                        for tmpelem in tmvars:
-                            tmp.remove(tmpelem)
-
-        result = []
-
-        for var in tmp:
-            v = self.fkenv[0].get(var).flag()
-            locus = [QXQRange(var,  crange = QXCRange(QXNum(0), v))]
-            ty = TyEn(QXNum(1))
-            result += [(locus, ty)]
-
-        return result
-
+    def createEnsureVars(self, l: list):
+        return self._create_default_vars(l, QXEnsures)
+    
+    def createInvVars(self, l:list):
+        return self._create_default_vars(l, QXInvariant)
 
     def findLocus(self, locus: [QXQRange]):
 
@@ -175,6 +170,82 @@ class TypeCollector(ProgramVisitor):
             if vs == []:
                 return qty
         return None
+    
+    def _visit_spec(self, ctx, spec_type: QXCond):
+        """Shared logic for visitRequires visitInvariants, and visitEnsures"""
+        wrapper_map = {
+        "requires": QXRequires,
+        "ensures": QXEnsures,
+        "invariant": QXInvariant
+        }
+        wrapper_class = wrapper_map.get(spec_type)
+        if not wrapper_class:
+            raise ValueError(f"Unknown specification type: {spec_type}")
+
+        if spec_type == "requires":
+            target_env = self.tenv
+        elif spec_type == "ensures":
+            target_env = self.mkenv
+        elif spec_type == "invariant":
+            target_env = self.tmpenv # *** THE FIX: Use self.tmpenv ***
+        else:
+            return False # Should not happen
+
+#        target_env = self.tenv if is_requires else self.mkenv
+        
+        if isinstance(ctx.spec(), QXQSpec):
+            for elem in ctx.spec().locus():
+                x = str(elem.location())
+                kty = self.fkenv[0].get(x)
+                if not isinstance(kty, TyQ):
+                    return False
+
+                left = elem.crange().left()
+                right = elem.crange().right()
+
+                if not left.accept(self) or not right.accept(self):
+                    return False
+                    
+                # Add range predicates
+                if not compareAExp(left, QXNum(0)):
+                    addElem(QXComp("<=", QXNum(0), left), self.pred, wrapper_class)
+                if not compareAExp(right, kty.flag()):
+                    addElem(QXComp("<=", right, kty.flag()), self.pred, wrapper_class)
+                    
+            target_env.append((ctx.spec().locus(), ctx.spec().qty()))
+            return True
+
+        elif isinstance(ctx.spec(), QXQComp):
+            # Safe ID extraction (same for both)
+            left = ctx.spec().left().ID() if isinstance(ctx.spec().left(), QXBind) else ctx.spec().left()
+            right = ctx.spec().right().ID() if isinstance(ctx.spec().right(), QXBind) else ctx.spec().right()
+
+            tyx = self.fkenv[0].get(left)
+            tyy = self.fkenv[0].get(right)
+            
+            if tyx is None or tyy is None:
+                return False
+
+            if isinstance(tyx, TyQ) and isinstance(tyy, TyQ):
+                xT = self.findLocus([QXQRange(left, crange=QXCRange(QXNum(0), tyx.flag()))])
+                yT = self.findLocus([QXQRange(right, crange=QXCRange(QXNum(0), tyy.flag()))])
+
+                if xT is None and yT is None:
+                    return False
+                elif xT is None:
+                    target_env.append(([QXQRange(left, crange=QXCRange(QXNum(0), tyx.flag()))], yT))
+                elif yT is None:
+                    target_env.append(([QXQRange(right, crange=QXCRange(QXNum(0), tyy.flag()))], xT))
+                else:
+                    re = compareType(xT, yT)
+                    if re is None:
+                        return False
+            return True
+        
+        elif isinstance(ctx.spec(), QXComp):
+            addElem(ctx.spec(), self.pred, wrapper_class)
+            return True
+
 
     def visitMethod(self, ctx: Programmer.QXMethod):
         self.fvar = str(ctx.ID())
@@ -182,6 +253,10 @@ class TypeCollector(ProgramVisitor):
         self.mkenv = []
         self.pred = []
         self.fkenv = self.kenv.get(self.fvar)
+
+        if self.fkenv is None:
+            print(f"Error: Kind environment not found for method '{self.fvar}'")
+            return False
 
         self.tenv += self.createRequireVars(ctx.conds())
         self.mkenv += self.createEnsureVars(ctx.conds())
@@ -191,7 +266,7 @@ class TypeCollector(ProgramVisitor):
             if not v:
                 return False
 
-        self.env.update({self.fvar:(self.tenv,self.mkenv,self.pred)})
+        self.env[self.fvar] = (self.tenv, self.mkenv, self.pred)
 
         return True
 
@@ -202,100 +277,15 @@ class TypeCollector(ProgramVisitor):
                 return False
 
         return True
-
+    
     def visitRequires(self, ctx: Programmer.QXRequires):
-        if isinstance(ctx.spec(), QXQSpec):
-            for elem in ctx.spec().locus():
-                x = str(elem.location())
-                kty = self.fkenv[0].get(x)
-                if not isinstance(kty, TyQ):
-                    return False
-
-                left = elem.crange().left()
-                right = elem.crange().right()
-
-                if not left.accept(self) or not right.accept(self):
-                    return False
-                #Requires { x[i,j) : en(1) -> .... }
-                # i <= j, if i == j, then x[i,j) == {}
-    #            print('\nRequires range check:', left, right, kty.flag())
-                if not compareAExp(left, QXNum(0)):
-                    addElem((QXComp("<=",QXNum(0),left)), self.pred, True)
-                if not compareAExp(right, kty.flag()):
-                    addElem((QXComp("<=",right,kty.flag())), self.pred, True)
-                
-                    
-
-            self.tenv.append((ctx.spec().locus(), ctx.spec().qty()))
-
-        if isinstance(ctx.spec(), QXComp):
-            left = ctx.spec().left().ID() if isinstance(ctx.spec().left(), QXBind) else ctx.spec().left()
-            right = ctx.spec().right().ID() if isinstance(ctx.spec().right(), QXBind) else ctx.spec().right()
-
-            tyx = self.fkenv[0].get(left)
-            tyy = self.fkenv[0].get(right)
-
-            if isinstance(tyx, TyQ) and isinstance(tyy, TyQ):
-                xT = self.findLocus([QXQRange(left, crange = QXCRange(QXNum(0),tyx.flag()))])
-                yT = self.findLocus([QXQRange(right, crange = QXCRange(QXNum(0),tyy.flag()))])
-
-                if xT is None and yT is None:
-                    return False
-                elif xT is None:
-                    self.tenv.append([QXQRange(left,  crange = QXCRange(QXNum(0),tyx.flag()))], yT)
-                elif yT is None:
-                    self.tenv.append([QXQRange(left,  crange = QXCRange(QXNum(0), tyx.flag()))], xT)
-                else:
-                    re = compareType(xT, yT)
-                    if re is None:
-                        return False
-        return True
-
+        return self._visit_spec(ctx, spec_type='requires')
 
     def visitEnsures(self, ctx: Programmer.QXEnsures):
-        if isinstance(ctx.spec(), QXQSpec):
-            for elem in ctx.spec().locus():
-                x = str(elem.location())
-                kty = self.fkenv[0].get(x)
-                if not isinstance(kty, TyQ):
-                    return False
-
-                left = elem.crange().left()
-                right = elem.crange().right()
-
-                if not left.accept(self) or not right.accept(self):
-                    return False
-
-                if not compareAExp(left, QXNum(0)):
-                    addElem((QXComp("<=",QXNum(0),left)), self.pred, False)
-                if not compareAExp(right, kty.flag()):
-                    addElem((QXComp("<=",right,kty.flag())), self.pred, False)
-                    
-
-            self.mkenv.append((ctx.spec().locus(), ctx.spec().qty()))
-
-        elif isinstance(ctx.spec(), QXComp):
-            left = ctx.spec().left().ID()
-            right = ctx.spec().right().ID()
-
-            tyx = self.fkenv[0].get(left)
-            tyy = self.fkenv[0].get(right)
-
-            if isinstance(tyx, TyQ) and isinstance(tyy, TyQ):
-                xT = self.findLocus([QXQRange(left,  crange = QXCRange(QXNum(0),tyx.flag()))])
-                yT = self.findLocus([QXQRange(right,  crange = QXCRange(QXNum(0),tyy.flag()))])
-
-                if xT is None and yT is None:
-                    return False
-                elif xT is None:
-                    self.mkenv.append([QXQRange(left,  crange = QXCRange(QXNum(0),tyx.flag()))], yT)
-                elif yT is None:
-                    self.mkenv.append([QXQRange(left,  crange = QXCRange(QXNum(0), tyx.flag()))], xT)
-                else:
-                    re = compareType(xT, yT)
-                    if re is None:
-                        return False
-        return True
+        return self._visit_spec(ctx, spec_type='ensures')
+    
+    def visitInvariant(self, ctx):
+        return self._visit_spec(ctx, spec_type='invariant')
 
     def visitUni(self, ctx: Programmer.QXUni):
         return ctx.next().accept(self)
@@ -310,6 +300,11 @@ class TypeCollector(ProgramVisitor):
 
     def visitNum(self, ctx: Programmer.QXNum):
         return True
+    
+    def visitFun(self, ctx: Programmer.QXCall):
+        for elem in ctx.exps():
+    #        print(f"\n elem {elem}")
+            return elem.accept(self)
 
     def get_env(self):
         return self.env
@@ -327,3 +322,9 @@ class TypeCollector(ProgramVisitor):
             method_name = str(method_name)
 
         return self.env[method_name][1]
+    
+    def get_tmpenv(self):
+        return self.tmpenv
+    
+    def pop_tmpenv(self):
+        self.tmpenv = []

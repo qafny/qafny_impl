@@ -46,21 +46,21 @@ def example_program(filename: str) -> str:
 
 # The suite of test qafny files (Qafny defaults to verifying these)
 DEFAULT_FILENAMES = [
-    example_program("test1"),
-    example_program("test2"),
-    example_program("test3"),
-    example_program("test4"),
-#   example_program("test5"),
-    example_program("test6"),
-    example_program("test7"),
-  example_program("test8"),
-  example_program("test9"),
-#  example_program("test10"),
-   example_program("test11"),
-   example_program("test12"),
-     example_program("test13"),
-      example_program("test14"),
-      example_program("BellPair"),
+#     example_program("test1"),
+#     example_program("test2"),
+#     example_program("test3"),
+#     example_program("test4"),
+# #   example_program("test5"),
+#     example_program("test6"),
+#     example_program("test7"),
+#   example_program("test8"),
+#   example_program("test9"),
+# #  example_program("test10"),
+#    example_program("test11"),
+#    example_program("test12"),
+#      example_program("test13"),
+#       example_program("test14"),
+#      example_program("BellPair"),
     #  example_program("GHZ"),
 #     example_program("Teleportation"),
     # example_program("Superdense"),
@@ -171,6 +171,7 @@ if __name__ == "__main__":
 
             type_collector = TypeCollector(collect_kind.get_kenv())
             type_collector.visit(qafny_ast)
+    #        print(f"\n type_collector.get_env() {type_collector.get_env()}")
 
             # Convert to Dafny AST
             dafny_transfer = ProgramTransfer(collect_kind.get_kenv(), type_collector.get_env(), debug=True)

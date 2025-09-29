@@ -13,6 +13,7 @@ from TypeChecker import TypeChecker, subLocusGen, compareType
 from EqualityChecker import EqualityVisitor
 from LocusCollector import LocusCollector   
 from UpdateVars import UpdateVars
+from TypeCollector import TypeCollector
 
 class StackFactor:
     pass
@@ -232,6 +233,7 @@ class ProgramTransfer(ProgramVisitor):
         self.current_line = 0        # Tracks the line number for generated AST nodes
         self.t_ensures = False  # Flag to indicate if we are in a postcondition context
         self.classical_args = [] # To store classical arguments of the current method
+        
 
         # ---- Debug controls  ----
         # If not provided, respect env var QAFNY_DEBUG=1/0
@@ -301,9 +303,12 @@ class ProgramTransfer(ProgramVisitor):
         """Translates a single Qafny method into a Dafny method."""
         # --- Initialize State ---
         self.fvar = str(ctx.ID())
+#        self.log(f"\n self.fvar {self.fvar}")
+        self.fkenv = self.kenv.get(self.fvar)
         self.current_line = ctx.line_number()
         self.varnums = []
         tenvp = self.tenv.get(self.fvar)[0]
+        self.log(f"\n tenvp {tenvp}")
         for locus, q_type in tenvp:     
             var_map = make_dafny_vars_for_locus(locus, q_type, self.counter)
             self.counter += 1
@@ -520,9 +525,9 @@ class ProgramTransfer(ProgramVisitor):
         lemma_stmts = []
         if unification_stmts:
             lemma_map = {
-                "powN": "powNTimesMod",
+                "pow": "powTimesMod",
                 "sqrt": "triggerSqrtMul",
-                "mergeAmpEn": "pow2mul"
+    #            "mergeAmpEn": "pow2mul"
             }
             for lib_func, lemma_name in lemma_map.items():
                 if lib_func in self.libFuns:
@@ -695,7 +700,9 @@ class ProgramTransfer(ProgramVisitor):
     def visitQSpec(self, ctx: QXQSpec):
         
         env = self.outvarnums if self.t_ensures else self.varnums
+        self.log(f"\n env in QSpec: {env}")
         res = subLocus(ctx.locus(), env)
+        self.log(f"\n res {res} in visitQSpec")
         if not res:
             return []
         loc,qty,varbind = res
@@ -843,6 +850,131 @@ class ProgramTransfer(ProgramVisitor):
         
         return predicates
 
+    def visitFor(self, ctx: Programmer.QXFor) -> list:
+        """
+        Translates a Qafny 'for' loop into a Dafny 'while' loop using
+        a state-scoping approach for invariants.
+        """
+        # 1. Initialize loop counter (no change)
+        x = ctx.ID()
+        vx = DXBind(x, SType("nat"))
+        lower_bound = ctx.range().left().accept(self)
+        upper_bound = ctx.range().right().accept(self)
+        init_stmt = DXAssign([vx], lower_bound, True, line=ctx.line_number())
+        loop_condition = DXComp("<", vx, upper_bound, line=ctx.line_number())
+
+        
+        
+        base_case_stmts = []
+        
+        # a. Identify which quantum registers are modified by the loop.
+        modified_reg_names = {inv.spec().locus()[0].location() for inv in ctx.conds()}
+        
+        # b. Find the concrete (pre-loop) state entry for these registers.
+        concrete_entry = next((entry for entry in self.varnums if entry[0][0].location() in modified_reg_names), None)
+
+        if concrete_entry:
+            concrete_locus, _, concrete_var_map = concrete_entry
+            
+            # c. Create the new set of Dafny variables that will hold the state during the loop.
+            loop_vars = self._update_vars(concrete_var_map)
+
+            # d. Generate imperative assignments to initialize these loop variables.
+            for inv_spec in ctx.conds():
+                spec = inv_spec.spec()
+                if isinstance(spec, QXQSpec):
+                    state_desc = spec.states()[0]
+                    # TODO implement this helper
+                    assignments = self._spec_state_to_seq_comp(state_desc, loop_vars, x, lower_bound)
+                    base_case_stmts.extend(assignments)
+        else:
+            loop_vars = {} # No quantum state in the loop
+
+
+        original_varnums = self.varnums  # Backup the current concrete state
+        try:
+            # 2. Build the symbolic environment for the invariants.
+            collector = TypeCollector(self.kenv)
+            collector.fkenv = self.fkenv # It needs the method's kind environment
+            self.log(f'\n collector.fkenv {collector.fkenv}')
+            collector.fkenv = ({**collector.fkenv[0], x: TySingle(name='nat')}, collector.fkenv[1])
+            self.log(f'\n collector.fkenv {collector.fkenv}')
+
+            # b. Use the collector to parse the invariants and get the symbolic signature.
+            for inv_spec in ctx.conds():
+                collector.visit(inv_spec)
+            symbolic_type_env = collector.get_tmpenv()
+            self.log(f"\n symbolic_type_env {symbolic_type_env}")
+            # No need to pop, the collector instance will be discarded.
+
+            # c. Build the temporary, symbolic environment for the loop's scope.
+            symbolic_env = []
+            for locus, q_type in symbolic_type_env:
+                var_map = make_dafny_vars_for_locus(locus, q_type, self.counter)
+                self.counter += 1
+                symbolic_env.append((locus, q_type, var_map))
+
+            # 3. SWAP the visitor's state to the symbolic environment
+            self.varnums = symbolic_env
+            self.log(f"\n self.varnums {self.varnums}")
+            
+            # 4. Translate invariants. The call to accept() will now trigger
+            # visitQSpec, which will find the symbolic loci in the swapped state.
+            dafny_invariants = []
+            loop_body_stmts = []
+            for inv_spec in ctx.conds():
+                predicates = inv_spec.accept(self) # This now works without changing visitQSpec
+                if predicates:
+                    dafny_invariants.extend(predicates if isinstance(predicates, list) else [predicates])
+            
+            for stmt in ctx.stmts():
+                res = stmt.accept(self)
+                if res: loop_body_stmts.extend(res if isinstance(res, list) else [res])
+
+        finally:
+            # 5. RESTORE the original state. This is crucial.
+            # The 'finally' block ensures this happens even if an error occurs.
+            self.varnums = original_varnums
+
+        # --- End State Scoping Block ---
+
+        increment_stmt = DXAssign([vx], DXBin("+", vx, DXNum(1)))
+        loop_body_stmts.append(increment_stmt)
+
+        # 7. Assemble the final while loop (no change)
+        while_loop = DXWhile(loop_condition,  loop_body_stmts, dafny_invariants, line=ctx.line_number())
+
+        return [init_stmt] + base_case_stmts + [while_loop]
+    
+    
+    
+    
+    
+    
+    
+    
+    # def visitFor(self, ctx: Programmer.QXFor):
+    #     tmp_current_line = self.current_line
+    #     self.current_line = ctx.line_number()
+    #     x = ctx.ID()
+    #     tmpinvs = []
+    #     for inv in ctx.inv():
+    #         tmpinvs += [inv.accept(self)]
+
+    #     self.log(f"\n tmpinvs: {tmpinvs}")
+
+    #     tmpstmts = []
+    #     for elem in ctx.stmts():
+    #         tmpstmts += elem.accept(self)
+
+    #     lbound = ctx.crange().left().accept(self)
+    #     rbound = ctx.crange().right().accept(self)
+    #     vx = DXBind(x, SType("nat"))
+    #     self.current_line = tmp_current_line
+    #     return [DXInit(vx, lbound, line=self.current_line),
+    #             DXWhile(DXComp("<", vx, rbound, line=self.current_line),
+    #                     tmpstmts, tmpinvs, line=self.current_line)]
+    
     def visitBin(self, ctx: Programmer.QXBin):
         left = ctx.left().accept(self)
         right = ctx.right().accept(self)
@@ -852,8 +984,8 @@ class ProgramTransfer(ProgramVisitor):
                 self.libFuns.add('pow2')
                 return DXCall('pow2',[right], line=ctx.line_number())
             else:
-                self.libFuns.add('powN')
-                return DXCall('powN',[left, right], line=ctx.line_number())
+                self.libFuns.add('pow')
+                return DXCall('pow',[left, right], line=ctx.line_number())
 
         elif ctx.op() == '/':
             if isinstance(left, DXNum) and left.val() == 1.0:
@@ -1000,8 +1132,9 @@ class ProgramTransfer(ProgramVisitor):
         
             org_name = had_var.ID()
             q_leftover = DXBind(org_name, had_var.type(), self.counter)
-            stmts.append(DXAssign([q_leftover], DXCall("cutHad", [had_var]), True, line=line_number))
-            self.libFuns.add("cutHad")
+    #        stmts.append(DXAssign([q_leftover], DXCall("cutHad", [had_var]), True, line=line_number))
+            stmts.append(DXAssign([q_leftover], DXSlice(had_var, DXNum(1), None), True, line=line_number))
+    #        self.libFuns.add("cutHad")
             self.counter += 1
 
             q_control_bit = DXBind(org_name, had_var.type().type(), self.counter)
@@ -1027,8 +1160,9 @@ class ProgramTransfer(ProgramVisitor):
                 call = DXCall('mergeBitEn', [var, ctrl_idx], line=line_number)
                 self.libFuns.add('mergeBitEn')
             else:
-                call = DXCall('duplicateMergeBitEn', [var], line=line_number) 
-                self.libFuns.add('duplicateMergeBitEn')            
+                # call = DXCall('duplicateMergeBitEn', [var], line=line_number) 
+                # self.libFuns.add('duplicateMergeBitEn')
+                call = DXBin('+', var, var)            
             stmts.append(DXAssign([new_var_bind], call, True, line=line_number))
             new_vars[name] = new_var_bind
         self.counter += 1
@@ -1036,11 +1170,11 @@ class ProgramTransfer(ProgramVisitor):
         # 3. Add calls to helper lemmas
         stmts.append(DXCall("omega0", [], True, line=line_number))
         self.libFuns.add("omega0")
-        if original_q_var:
-             stmts.append(DXCall("mergeBitTrigger", [original_q_var, new_vars[ctrl_reg_name], DXLength(DXIndex(original_q_var, DXNum(0)))], True, line=line_number))
-             stmts.append(DXCall('pow2add', [], True, line=line_number))
-             self.libFuns.add("mergeBitTrigger")
-             self.libFuns.add('pow2add')
+#        if original_q_var:
+#             stmts.append(DXCall("mergeBitTrigger", [original_q_var, new_vars[ctrl_reg_name], DXLength(DXIndex(original_q_var, DXNum(0)))], True, line=line_number))
+        #     stmts.append(DXCall('pow2add', [], True, line=line_number))
+#             self.libFuns.add("mergeBitTrigger")
+        #     self.libFuns.add('pow2add')
 
         self.log(f"\n stmts: {stmts} \n new_vars: {new_vars} \n q_leftover: {q_leftover}")
             
@@ -1740,9 +1874,9 @@ class ProgramTransfer(ProgramVisitor):
         # 4. Add helper lemma calls
         stmts.append(DXCall("triggerSqrtMul", [], True, line=ctx.line_number()))
         stmts.append(DXCall("ampeqtrigger", [], True, line=ctx.line_number()))
-        stmts.append(DXCall("pow2mul", [], True, line=ctx.line_number()))
+    #    stmts.append(DXCall("pow2mul", [], True, line=ctx.line_number()))
     #    stmts.append(DXCall("pow2sqrt", [], True, line=ctx.line_number()))
-        self.libFuns.update(["triggerSqrtMul", "ampeqtrigger", "pow2mul", "pow2sqrt"])
+        self.libFuns.update(["triggerSqrtMul", "ampeqtrigger"])
         
         return stmts, new_qty, new_vars
     
