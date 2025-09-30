@@ -37,7 +37,7 @@ class EqualityVisitor(TargetProgramVisitor):
     def visitBind(self, ctx1: DXBind, ctx2: DXBind):
         # Note: This does not compare types for simplicity. A more robust
         # version would recursively check type equality as well.
-        return ctx1.ID() == ctx2.ID() and ctx1.num() == ctx2.num()
+        return ctx1.ID() == ctx2.ID()
 
     def visitNum(self, ctx1: DXNum, ctx2: DXNum):
         return ctx1.val() == ctx2.val()

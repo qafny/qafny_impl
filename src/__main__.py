@@ -64,7 +64,7 @@ DEFAULT_FILENAMES = [
     #  example_program("GHZ"),
 #     example_program("Teleportation"),
     # example_program("Superdense"),
-  #   example_program("Shors"),
+     example_program("Shors"),
       example_program("HammingWeight")  
     # example_program("DeutschJozsa"),
     # example_program("simon"),

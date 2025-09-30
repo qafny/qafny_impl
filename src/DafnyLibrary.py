@@ -273,7 +273,10 @@ class DafnyLibrary:
     ''', ['pow2', 'castBVInt', 'omega', 'sqrt']),
 
     'pow2sqrt' : Method('''lemma {:axiom} pow2sqrt()
-        ensures forall k :nat  :: sqrt(pow2(2 * k) as real) == pow2(k) as real''', ['sqrt', 'pow2'])
+        ensures forall k :nat  :: sqrt(pow2(2 * k) as real) == pow2(k) as real''', ['sqrt', 'pow2']),
+    'invPow2Step': Method('''lemma {:axiom}invPow2Step(i: nat)
+        ensures invPow2(i) * invPow2(1) == invPow2(i + 1)''', ['invPow2']), 
+    'invPow2': Method('''function invPow2(i: nat): real { 1.0 / sqrt(pow2(i) as real) }''', ['sqrt', 'pow2'])
   }
   
   @staticmethod

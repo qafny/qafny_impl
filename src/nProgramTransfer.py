@@ -349,7 +349,7 @@ class ProgramTransfer(ProgramVisitor):
                     dafny_body.extend(stmts if isinstance(stmts, list) else [stmts])
             
             # --- Assign Final State to Return Variables ---
-            final_assignments, _ = self._get_final_assignments_and_mapping()
+            final_assignments, _ = self._get_final_assignments_and_mapping(self.outvarnums)
             dafny_body.extend(final_assignments)
         
         # --- Translate Postconditions ---
@@ -397,6 +397,9 @@ class ProgramTransfer(ProgramVisitor):
                 stmts = cast_stmts + oracle_stmts
                 new_qty = casted_qty
             elif isinstance(qty, TyEn):
+                stmts, final_vars = self._sequence_comprehension_transform(ctx, loc, qty, old_vars)
+                new_qty = qty
+            elif isinstance(qty, TyNor):
                 stmts, final_vars = self._sequence_comprehension_transform(ctx, loc, qty, old_vars)
                 new_qty = qty
             else:
@@ -526,8 +529,8 @@ class ProgramTransfer(ProgramVisitor):
         if unification_stmts:
             lemma_map = {
                 "pow": "powTimesMod",
-                "sqrt": "triggerSqrtMul",
-    #            "mergeAmpEn": "pow2mul"
+        #        "sqrt": "triggerSqrtMul",
+        #        "mergeAmpEn": "invPow2Step"
             }
             for lib_func, lemma_name in lemma_map.items():
                 if lib_func in self.libFuns:
@@ -630,35 +633,43 @@ class ProgramTransfer(ProgramVisitor):
     # == Helper Methods for State Management
     # ==========================================================================
 
-    def _get_final_assignments_and_mapping(self):
+    def _get_final_assignments_and_mapping(self, outvarnums):
         """
-        Generates assignments from the final state variables to the return variables
-        and returns the mapping between them for predicate substitution. This version
-        is driven by the method's public return signature.
+        Generates assignments from the final state variables to the return variables.
+        This version is self-contained and does not require a separate helper.
         """
         assignments = []
-        mapping = {} # Maps final state var ID to return var object
+        mapping = {}
         
-        for locus, return_qty, return_vars_map in self.outvarnums:
-            # Find the corresponding final state in the running environment
-            final_state_tuple = subLocus(locus, self.varnums)
-     #       self.log(f"\nMapping for locus {locus}: found final state tuple {final_state_tuple}")
+        for locus, return_qty, return_vars_map in outvarnums:
+            # Initialize variables to store the found state
+            final_qty, final_vars_map = None, None
             
-            if final_state_tuple:
-                _, final_qty, final_vars_map = final_state_tuple
-#                self.log(f"\nFinal qty: {final_qty}, Return qty: {return_qty}")
-                
-                # Check if the types match before creating the assignment
-                if compareType(final_qty, return_qty):
-                    final_vars = sorted(final_vars_map.values(), key=lambda v: v.ID())
-                    return_vars = sorted(return_vars_map.values(), key=lambda v: v.ID())
-#                    self.log(f"\nFinal vars: {final_vars}, Return vars: {return_vars}")
+            # Get the set of required register names from the ensures locus.
+            target_names = {part.location() for part in locus}
 
-                    if final_vars and return_vars:
-                        assignments.append(DXAssign(return_vars, final_vars, line=self.current_line))
-                        for i in range(len(final_vars)):
-                            mapping[final_vars[i].ID()] = return_vars[i]
-#        self.log(f"\nFinal assignments: {assignments}")                    
+            # Iterate through each state in the final environment to find a match
+            for current_locus, current_qty, current_vars_map in self.varnums:
+                # Check 1: Do the types match?
+                if compareType(current_qty, return_qty): # compareType is assumed to exist
+                    # Check 2: Do the registers match?
+                    current_names = {part.location() for part in current_locus}
+                    if target_names == current_names:
+                        # We found a direct match.
+                        final_qty = current_qty
+                        final_vars_map = current_vars_map
+                        break # Stop searching once a match is found
+            
+            # If a matching state was found, create the assignment
+            if final_vars_map:
+                final_vars = sorted(final_vars_map.values(), key=lambda v: v.ID())
+                return_vars = sorted(return_vars_map.values(), key=lambda v: v.ID())
+
+                if final_vars and return_vars:
+                    assignments.append(DXAssign(return_vars, final_vars, line=self.current_line))
+                    for i in range(len(final_vars)):
+                        mapping[final_vars[i].ID()] = return_vars[i]
+                            
         return assignments, mapping
 
     def _update_state_for_locus(self, target_locus: list, new_qty: QXQTy, new_vars: dict):
@@ -745,7 +756,7 @@ class ProgramTransfer(ProgramVisitor):
                 left = elem.crange().left().accept(self)            
                 qcount = elem.crange().right().accept(self)
                 if not self.t_ensures:
-                    len_pred = DXComp(">", qcount, DXNum(0), line=ctx.line_number())
+                    len_pred = DXComp(">=", qcount, DXNum(0), line=ctx.line_number())
                     is_duplicate = any(EqualityVisitor().visit(len_pred, p) for p in tmp)
                     if not is_duplicate:
                         tmp.append(len_pred)
@@ -831,7 +842,7 @@ class ProgramTransfer(ProgramVisitor):
         predicates.append(DXComp("==", DXLength(dvar), range_len_expr, line=ctx.line_number()))
 
         if not self.t_ensures:
-            predicates.append(DXComp(">", right, left, line=ctx.line_number()))
+            predicates.append(DXComp(">=", right, left, line=ctx.line_number()))
                 
         # --- Value Predicate ---
         ket_val = ctx.kets()[0].accept(self)
@@ -850,201 +861,143 @@ class ProgramTransfer(ProgramVisitor):
         
         return predicates
 
-    def visitFor(self, ctx: Programmer.QXFor) -> list:
-        """
-        Translates a Qafny 'for' loop into a Dafny 'while' loop using
-        a state-scoping approach for invariants.
-        """
-        # 1. Initialize loop counter (no change)
-        it = ctx.ID()
-        dit = DXBind(it, SType("nat"))
+    def visitFor(self, ctx: QXFor) -> list:
+        # Step 1: Setup Loop Counter
+        iterator_name = ctx.ID()
+        iterator = DXBind(iterator_name, SType("nat"))
         lower_bound = ctx.range().left().accept(self)
         upper_bound = ctx.range().right().accept(self)
-        init_stmt = DXAssign([dit], lower_bound, True, line=ctx.line_number())
-        loop_condition = DXComp("<", dit, upper_bound, line=ctx.line_number())
+        init_stmt = DXAssign([iterator], lower_bound, True, line=self.current_line)
+        loop_condition = DXComp("<", iterator, upper_bound, line=self.current_line)
 
-        
-        
-        base_case_stmts = []
-        modified_reg_names = {locus_part.location() for inv in ctx.conds() for locus_part in inv.spec().locus()}
-        self.log(f"\n modified_reg {modified_reg_names}")   
-        concrete_entries = [entry for entry in self.varnums if entry[0][0].location() in modified_reg_names]
-        self.log(f"\n concrete {concrete_entries}")
-        
-        loop_vars = {}
-        for _, _, concrete_var_map in concrete_entries:
-            loop_vars.update(concrete_var_map)
-
-        self.log(f"\n loop_vars {loop_vars}")
-        
+        # Step 2: Generate Invariant's Base Case and Loop Variables
         qafny_inv = [inv for inv in ctx.conds() if isinstance(inv.spec(), QXQSpec)]
+        base_case_stmts, loop_states = self._generate_loop_base_case(qafny_inv, iterator)
+        loop_vars = {name: var for _, _, vmap in loop_states for name, var in vmap.items()}
 
-        for inv_spec in qafny_inv:
-            state = inv_spec.spec().states()[0]
-            locus = inv_spec.spec().locus()
-            qty = inv_spec.spec().qty()
-            is_same_qty = False
-            if len(locus) == 1: # could use a stronger guard
-                continue
-            elif len(locus) > 1: #
-                for loc in locus:
-                    if EqualityVisitor().visit(loc.crange().left().accept(self), DXNum(0)) and EqualityVisitor().visit(loc.crange().right().accept(self), dit):
-                        img_var_map = make_dafny_vars_for_locus([loc], qty, 0)
-                        loop_vars.update(img_var_map)
-            loop_vars.update(self._update_vars_type(loop_vars, qty))
-            self.log(f"\n loop_vars after{loop_vars}")
-            assignments = self._spec_state_to_seq_comp(locus, qty, state, loop_vars)
-            base_case_stmts.extend(assignments)
-        
-        self.log(f"\n base_case_stmts {base_case_stmts}")
-        dafny_inv = []
-        loop_body_stmts = []
-        original_varnums = self.varnums  # Backup the current concrete state
+        # Step 3: Translate Loop Invariants and Body in a Symbolic Scope
+        dafny_predicates, loop_body_stmts = [], []
+        original_varnums = self.varnums
         try:
-            # 2. Build the symbolic environment for the invariants.
-            collector = TypeCollector(self.kenv)
-            collector.fkenv = self.fkenv # It needs the method's kind environment
-            self.log(f'\n collector.fkenv {collector.fkenv}')
-            collector.fkenv = ({**collector.fkenv[0], it: TySingle(name='nat')}, collector.fkenv[1])
-            self.log(f'\n collector.fkenv {collector.fkenv}')
-
-            # b. Use the collector to parse the invariants and get the symbolic signature.
+            # The symbolic environment is now the list of loop states
+            self.varnums = loop_states
             for inv_spec in ctx.conds():
-                collector.visit(inv_spec)
-            symbolic_type_env = collector.get_tmpenv()
-            self.log(f"\n symbolic_type_env {symbolic_type_env}")
-            # No need to pop, the collector instance will be discarded.
-
-            # c. Build the temporary, symbolic environment for the loop's scope.
-            symbolic_env = []
-            for locus, q_type in symbolic_type_env:
-                var_map = make_dafny_vars_for_locus(locus, q_type, self.counter)
-                self.counter += 1
-                symbolic_env.append((locus, q_type, var_map))
-
-            # 3. SWAP the visitor's state to the symbolic environment
-            self.varnums = symbolic_env
-            self.log(f"\n self.varnums {self.varnums}")
-            
-            # 4. Translate invariants. The call to accept() will now trigger
-            # visitQSpec, which will find the symbolic loci in the swapped state.
-
-            for inv_spec in ctx.conds():
-                preds = inv_spec.accept(self) # This now works without changing visitQSpec
-                if preds: dafny_inv.extend(preds if isinstance(preds, list) else [preds])
-            
+                preds = inv_spec.accept(self)
+                if preds: dafny_predicates.extend(preds if isinstance(preds, list) else [preds])
             for stmt in ctx.stmts():
                 res = stmt.accept(self)
                 if res: loop_body_stmts.extend(res if isinstance(res, list) else [res])
-
+            self.log(f"\n self.varnums {self.varnums} \n loop_states {loop_states}")
+            assignments, _ = self._get_final_assignments_and_mapping(loop_states)
+            loop_body_stmts.extend(assignments)
+            # Add helper lemma calls required by the loop body's operations
+            lemma_map = {
+                # lib_function_name: lambda: DXCall(lemma_name, [args], is_lemma=True)
+                'mergeAmpEn': lambda: DXCall('invPow2Step', [iterator], True, line=self.current_line),
+                'countN': lambda: DXCall('countStep', [iterator], True, line=self.current_line),
+            }
+            
+            for lib_fun, lemma_generator in lemma_map.items():
+                if lib_fun in self.libFuns:
+                    lemma_call = lemma_generator()
+                    loop_body_stmts.append(lemma_call)
+                    # Ensure the lemma function itself is declared if needed
+                    self.libFuns.add(lemma_call.ID())
         finally:
-            # 5. RESTORE the original state. This is crucial.
-            # The 'finally' block ensures this happens even if an error occurs.
             self.varnums = original_varnums
 
-        # --- End State Scoping Block ---
-        if concrete_entries:
-            # a. Create a substitutor to replace iterator 'i' with upper bound 'n'.
-            subst = SubstDAExp(it, upper_bound)
-            
-            # b. Start building the new environment by keeping all UNMODIFIED registers.
+        # Step 4: Update Main State for After the Loop
+        if loop_vars:
+            modified_reg_names = {l.location() for inv in qafny_inv for l in inv.spec().locus()}
+            subst = SubstDAExp(iterator.ID(), upper_bound)
             new_varnums = [e for e in self.varnums if e[0][0].location() not in modified_reg_names]
-
-            # c. Process each invariant to create a NEW post-loop state entry if it's not empty.
             for inv in qafny_inv:
-                is_empty = False
-                # Check if any locus part in this invariant becomes an empty range
-                for locus_part in inv.spec().locus():
-                    final_left = subst.visit(locus_part.crange().left().accept(self))
-                    final_right = subst.visit(locus_part.crange().right().accept(self))
-                    if compareAExp(final_left, final_right):
-                        is_empty = True
-                        break
-                
-                # If the invariant corresponds to a state that still exists after the loop...
-                if not is_empty:
-                    # Perform substitution to get the final locus and type.
-                    final_locus = []
-                    for loc in inv.spec().locus():
-                        final_left = subst.visit(loc.crange().left().accept(self))
-                        final_right = subst.visit(locus_part.crange().right().accept(self))
-                        final_crange = QXCRange(final_left, final_right)
-                        final_locus.append(QXQRange(locus_part.location(), crange=final_crange))
-                    
-                    # The loop_vars are shared across all partitions of the unified state.
-                    new_state_entry = (final_locus, inv.spec().qty(), loop_vars)
-                    new_varnums.append(new_state_entry)
-
-            # d. Finally, update the main state.
+                if not any(compareAExp(subst.visit(l.crange().left().accept(self)), subst.visit(l.crange().right().accept(self))) for l in inv.spec().locus()):
+                    final_locus = [QXQRange(l.location(), crange=QXCRange(subst.visit(l.crange().left().accept(self)), subst.visit(l.crange().right().accept(self)))) for l in inv.spec().locus()]
+                    # Find the correct var_map for this post-loop state
+                    post_loop_var_map = next(vmap for loc, _, vmap in loop_states if loc == inv.spec().locus())
+                    new_varnums.append((final_locus, inv.spec().qty(), post_loop_var_map))
             self.varnums = new_varnums
 
-        increment_stmt = DXAssign([dit], DXBin("+", dit, DXNum(1)))
+        # Step 5: Assemble and Return
+     #   dafny_predicates.append(DXComp("<=", lower_bound, iterator))
+     #   dafny_predicates.append(DXComp("<=", iterator, upper_bound))       
+        increment_stmt = DXAssign([iterator], DXBin("+", iterator, DXNum(1)))
         loop_body_stmts.append(increment_stmt)
-
-        # 7. Assemble the final while loop (no change)
-        while_loop = DXWhile(loop_condition,  loop_body_stmts, dafny_inv, line=ctx.line_number())
-
+        while_loop = DXWhile(loop_condition, loop_body_stmts, dafny_predicates, line=self.current_line)
         return [init_stmt] + base_case_stmts + [while_loop]
-    
+
+    def _generate_loop_base_case(self, qafny_inv, iterator):
+        if not qafny_inv: return [], []
+        
+        base_case_stmts = []
+        loop_states = []
+
+        # For each distinct quantum state described in the invariants, create a base case
+        for inv_spec in qafny_inv:
+            locus = inv_spec.spec().locus()
+            qty = inv_spec.spec().qty()
+            state_desc = inv_spec.spec().states()[0]
+
+            # Create a new, separate set of loop-carried variables for this state
+            if isinstance(qty, TyEn):
+                loop_vars = make_dafny_vars_for_locus(locus, qty, self.counter)
+                self.counter += 1
+            elif isinstance(qty, (TyHad, TyNor)):
+                self.log(f"locus_gene_loop_base {locus} \n {self.varnums}")
+                _, _, loop_vars, _ = self.compareSingle(locus[0], self.varnums)
+
+            
+            # Store this new state
+            loop_states.append((locus, qty, loop_vars))
+            
+            # Generate the base case assignments for these specific variables
+#            subst = SubstDAExp(iterator.ID(), iterator.range().left().accept(self))
+            assignments = self._spec_state_to_seq_comp(locus, qty, state_desc, loop_vars)
+            base_case_stmts.extend(assignments)
+        
+        self.log(f"\n loop_base_case{base_case_stmts} \n {loop_states}")
+            
+        return base_case_stmts, loop_states
+
     def _spec_state_to_seq_comp(self, locus: list, qty: QXQTy, state: QXQState, var_map: dict, substitutor: SubstDAExp = None) -> list:
-        """
-        Converts a declarative QXSum into imperative Dafny sequence comprehensions,
-        correctly handling multiple nested sum iterators like visitSum.
-        """
-        if not isinstance(state, QXSum) or not isinstance(qty, TyEn):
-            return []
         
-        assignments = []
-        sum_iterators = state.sums() # Get all sum iterators
-        
-        # Create a name-based lookup for kets
-        locus_names = [l.location() for l in locus]
-        ket_map = {name: state.kets().kets()[i] for i, name in enumerate(locus_names)}
+        assignments = []      
+        if isinstance(qty, (TyNor, TyHad)) or isinstance(state, QXTensor):
+            pass
 
-        # Generate a nested sequence comprehension for each variable in the state
-        for name, dafny_var in var_map.items():
-            # Determine the expression for the innermost body
-            if name == 'amp':
-                expr_template = state.amp()
-            elif name in ket_map:
-                expr_template = ket_map[name]
-            else:
-                continue # This variable is not part of this specific invariant
+        elif isinstance(qty, TyEn) or isinstance(state, QXSum):
             
-            self.log(f"\n expr_tmp {expr_template}")
-            # Translate the Qafny expression template to a Dafny AST
-            inner_body = expr_template.accept(self)
-            
-            # If a substitutor is provided (for the base case), apply it now.
-            if substitutor:
-                inner_body = substitutor.visit(inner_body)
+            sum_iterators = state.sums()
+            locus_names = [l.location() for l in locus]
+            ket_map = {name: state.kets().kets()[i] for i, name in enumerate(locus_names)}
 
-            # If it's a qubit register, the body must be cast to a bit vector.
-            if name != 'amp':
-                q_locus = next(l for l in locus if l.location() == name)
-            #    width_expr_template = DXBin("-", , q_locus.crange().left())
-                final_width = q_locus.crange().right().accept(self)
-                if substitutor:
-                    final_width = substitutor.visit(final_width)
-                inner_body = DXCall("castIntBV", [inner_body, final_width])
-                self.libFuns.add("castIntBV")
-            
-            # --- Build the nested sequence comprehension from the inside out ---
-            comprehension = inner_body
-            for sum_iter in reversed(sum_iterators):
-                it = sum_iter.accept(self)
-                dit = DXBind(it, SType("nat"))
-                self.log(f"\n lambda_var {it} {sum_iter}")
-      #          size_expr_template = DXBin("-", sum_iter.range().right(), sum_iter.range().left())
+            for name, dafny_var in var_map.items():
+                if name == 'amp': expr = state.amp()
+                elif name in ket_map: expr = ket_map[name]
+                else: continue
+
+                inner_body = expr.accept(self)
+                if substitutor: inner_body = substitutor.visit(inner_body)
+
+                if name != 'amp':
+                    q_locus = next(l for l in locus if l.location() == name)
+                    width_expr = q_locus.crange().right().accept(self)
+                    if substitutor: width_expr = substitutor.visit(width_expr)
+                    inner_body = DXCall("castIntBV", [inner_body, width_expr])
+                    self.libFuns.add("castIntBV")
                 
-                final_size_expr = sum_iter.range().right().accept(self)
-                if substitutor:
-                    final_size_expr = substitutor.visit(final_size_expr)
+                comprehension = inner_body
+                for sum_iter in reversed(sum_iterators):
+                    it = sum_iter.accept(self)
+                    dit = DXBind(it, SType("nat"))
+                    size_expr = sum_iter.range().right().accept(self)
+                    if substitutor: size_expr = substitutor.visit(size_expr)
 
-                spec = DXRequires(DXInRange(dit, DXNum(0), final_size_expr))
-                comprehension = DXSeqComp(final_size_expr, dit, spec, comprehension)
+                    spec = DXRequires(DXInRange(dit, DXNum(0), size_expr))
+                    comprehension = DXSeqComp(size_expr, dit, spec, comprehension)
 
-            assignments.append(DXAssign([dafny_var], comprehension, True))
+                assignments.append(DXAssign([dafny_var], comprehension, True))
             
         return assignments
         
@@ -1441,6 +1394,16 @@ class ProgramTransfer(ProgramVisitor):
                 )
                 remaining_tuple = ([remq1], qty, vars_map)
 
+                remaining_states = qs[:i] + [remaining_tuple] + qs[i+1:]
+                
+                return ([remq1], [q1], vars_map, remaining_states)
+            if right_eq:
+                new_right = q1.crange().left()
+                remq1 = QXQRange(
+                    q1.location(),
+                    crange=QXCRange(existing.crange().left(), new_right)    
+                )
+                remaining_tuple = ([remq1], qty, vars_map)
                 remaining_states = qs[:i] + [remaining_tuple] + qs[i+1:]
 
                 # Signal to caller which original var to slice: use the VAR NAME (key), not value
