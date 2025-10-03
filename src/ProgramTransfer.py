@@ -659,7 +659,7 @@ class ProgramTransfer(ProgramVisitor):
         self.libFuns.add('abs')
         self.libFuns.add('powN')
         print('\ntmpreturn\n', tmpreturn)
-        return DXMethod(str(self.fvar), axiom, tmpbind, tmpreturn, tmpcond, tmpstmt, line=ctx.line_number())
+        return DXMethod(str(self.fvar), axiom, tmpbind, tmpreturn, tmpcond, tmpstmt, is_function=False,line=ctx.line_number())
 
 
     def visitProgram(self, ctx: Programmer.QXProgram):
