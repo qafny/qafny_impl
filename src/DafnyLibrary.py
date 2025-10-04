@@ -87,16 +87,16 @@ class DafnyLibrary:
    
     'hadNorHad': Method('''method hadNorHad(x:seq<bv1>) returns (y : seq<real>) 
               ensures |y| == |x|
-              ensures forall k :: 0 <= k < |x| ==> y[k] == omega(x[k] as int,2)
+              ensures forall k :: 0 <= k < |x| ==> y[k] == omega(bv1ToNat(x[k]),2)
             {
               var i := 0;
               y := [];
               while i < |x| 
                 invariant 0 <= i <= |x|
                 invariant |y| == i
-                invariant forall k :: 0 <= k < i ==> y[k] == omega(x[k] as int,2)
+                invariant forall k :: 0 <= k < i ==> y[k] == omega(bv1ToNat(x[k]),2)
               {
-                y := y + [omega(x[i] as int, 2)];
+                y := y + [omega(bv1ToNat(x[i]), 2)];
                 i := i + 1;
               }
             }''', ['omega']),
@@ -197,12 +197,75 @@ class DafnyLibrary:
                 castAppendBitValue(x[k2], 1); 
                 k2 := k2 + 1;
             }
-          }''', ['samebit', 'castAppendBitValue']),
+          }''', ['castAppendBitValue']),
+
+    'mergeBitEn2': Method('''method  mergeBitEn2(x: seq<seq<seq<bv1>>>, i: nat) returns (x1: seq<seq<seq<bv1>>>)
+          requires |x| == pow2(i)
+          requires forall r :: 0 <= r < |x| ==> forall k :: 0 <= k < |x[r]| ==> |x[r][k]| == i
+          requires forall r :: 0 <= r < |x| ==> forall k :: 0 <= k < |x[r]| ==> castBVInt(x[r][k]) == r
+          ensures |x1| == |x| * 2
+          ensures |x1| == pow2(i + 1)
+          ensures forall r :: 0 <= r < |x| ==> |x1[r]| == |x[r]|
+          ensures forall r :: |x| <= r < |x1| ==> |x1[r]| == |x[r - |x|]|
+          ensures forall r :: 0 <= r < |x1| ==> forall k :: 0 <= k < |x1[r]| ==> |x1[r][k]| == i + 1
+          ensures forall r :: 0 <= r < |x| ==> forall k :: 0 <= k < |x[r]| ==> x1[r][k] == x[r][k] + [0]
+          ensures forall r :: |x| <= r < |x1| ==> forall k :: 0 <= k < |x1[r]| ==> x1[r][k] == x[r-|x|][k] + [1]
+          ensures forall r :: 0 <= r < |x| ==> forall k :: 0 <= k < |x[r]| ==> castBVInt(x1[r][k]) == r
+          ensures forall r :: |x| <= r < |x1| ==> forall k :: 0 <= k < |x1[r]| ==> castBVInt(x1[r][k]) == r
+          {
+          var left  := seq(|x|, r requires 0 <= r < |x| =>
+                          seq(|x[r]|, k requires 0 <= k < |x[r]| => x[r][k] + [0]));
+          var right := seq(|x|, r requires 0 <= r < |x| =>
+                          seq(|x[r]|, k requires 0 <= k < |x[r]| => x[r][k] + [1]));
+          x1 := left + right;
+
+          // Prove integer-value guarantees for left half
+          var r := 0;
+          while r < |x|
+              invariant 0 <= r
+              invariant r <= |x|
+              invariant forall rr, k ::
+              0 <= rr < r ==> 0 <= k < |x[rr]| ==> castBVInt(x1[rr][k]) == castBVInt(x[rr][k])
+          {
+              var k1 := 0;
+              while k1 < |x[r]|
+              invariant 0 <= k1
+              invariant k1 <= |x[r]|
+              invariant forall k :: 0 <= k < k1 ==> castBVInt(x1[r][k]) == castBVInt(x[r][k])
+              {
+              castAppendBitValue(x[r][k1], 0);
+              k1 := k1 + 1;
+              }
+              r := r + 1;
+          }
+
+          // Prove integer-value guarantees for right half
+          var r2 := 0;
+          while r2 < |x|
+              invariant 0 <= r2
+              invariant r2 <= |x|
+              invariant forall rr, k ::
+              0 <= rr < r2 ==> 0 <= k < |x[rr]| ==>
+                  castBVInt(x1[|x| + rr][k]) == castBVInt(x[rr][k]) + pow2(i)
+          {
+              var k2 := 0;
+              while k2 < |x[r2]|
+              invariant 0 <= k2
+              invariant k2 <= |x[r2]|
+              invariant forall k :: 0 <= k < k2 ==>
+                  castBVInt(x1[|x| + r2][k]) == castBVInt(x[r2][k]) + pow2(i)
+              {
+              castAppendBitValue(x[r2][k2], 1);
+              k2 := k2 + 1;
+              }
+              r2 := r2 + 1;
+          }
+          }''', ['castAppendBitValue']), 
     
     'castAppendBitValue': '''lemma {:axiom} castAppendBitValue(s: seq<bv1>, b: bv1)
             ensures castBVInt(s + [b]) == castBVInt(s) + if b == 1 then pow2(|s| as int) else 0''',
     
-    'mergeAmpEn' : Method('''method {:axiom} mergeAmpEn(amp: seq<real>, q : real) returns (amp1: seq<real>)
+    'mergeAmpEn' : Method('''method mergeAmpEn(amp: seq<real>, q : real) returns (amp1: seq<real>)
           ensures |amp1| == |amp| * 2
           ensures forall k :: 0 <= k < |amp| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k]
           ensures forall k :: |amp| <= k < |amp1| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k-|amp|] * q
@@ -211,6 +274,23 @@ class DafnyLibrary:
             var right := seq(|amp|, k requires 0 <= k < |amp|=> (1.0 / sqrt(pow2(1) as real)) * amp[k] * q);
             amp1 := left + right;
           }''', ['sqrt', 'pow2']),
+
+    'mergeAmpEn2':'''method mergeAmpEn2(amp: seq<seq<real>>, q: real) returns (amp1: seq<seq<real>>)
+                ensures |amp1| == |amp| * 2
+                ensures forall r :: 0 <= r < |amp| ==> |amp1[r]| == |amp[r]|
+                ensures forall r :: |amp| <= r < |amp1| ==> |amp1[r]| == |amp[r - |amp|]|
+
+                ensures forall r :: 0 <= r < |amp| ==> forall k :: 0 <= k < |amp[r]| ==> amp1[r][k] == 1.0 / sqrt(pow2(1) as real) * amp[r][k]
+                ensures forall r :: |amp| <= r < |amp1| ==> forall k ::0 <= k < |amp1[r]| ==> amp1[r][k] == 1.0 / sqrt(pow2(1) as real) * amp[r-|amp|][k] * q
+              {
+                var s := 1.0 / sqrt(pow2(1) as real);
+
+                var left  := seq(|amp|, r requires 0 <= r < |amp| =>
+                                seq(|amp[r]|, k requires 0 <= k < |amp[r]| => s * amp[r][k]));
+                var right := seq(|amp|, r requires 0 <= r < |amp| =>
+                                seq(|amp[r]|, k requires 0 <= k < |amp[r]| => s * amp[r][k] * q));
+                amp1 := left + right;
+              }''', 
 
     'triggerSqrtMul' : Method('''lemma {:axiom} triggerSqrtMul()
                       ensures forall k, j :: k > 0.0 && j > 0.0 ==> sqrt(k) * sqrt(j) == sqrt(k * j)''', ['sqrt']),
@@ -276,7 +356,9 @@ class DafnyLibrary:
         ensures forall k :nat  :: sqrt(pow2(2 * k) as real) == pow2(k) as real''', ['sqrt', 'pow2']),
     'invPow2Step': Method('''lemma {:axiom}invPow2Step(i: nat)
         ensures invPow2(i) * invPow2(1) == invPow2(i + 1)''', ['invPow2']), 
-    'invPow2': Method('''function invPow2(i: nat): real { 1.0 / sqrt(pow2(i) as real) }''', ['sqrt', 'pow2'])
+    'invPow2': Method('''function invPow2(i: nat): real { 1.0 / sqrt(pow2(i) as real) }''', ['sqrt', 'pow2']),
+    'powModLeft': '''lemma {:axiom} powModLeft()
+  ensures forall k: nat, add: nat, j: nat, Y: nat, N: nat {:trigger pow(k, add) * ((pow(k, j) * Y) % N)} :: N > 0 ==> (pow(k, add) * ((pow(k, j) * Y) % N)) % N == ((pow(k, j + add) * Y) % N)''',
   }
   
   @staticmethod

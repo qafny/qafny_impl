@@ -194,7 +194,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return 'seq<' + ctx.type().accept(self) + ">"
 
     def visitIfExp(self, ctx: TargetProgrammer.DXIfExp):
-        print(f"f\n visitIfExp in PV: {ctx}")
+     #   print(f"f\n visitIfExp in PV: {ctx}")
         return 'if ' + ctx.bexp().accept(self) + ' then ' + ctx.left().accept(self) + ' else ' + ctx.right().accept(self)
     
     def visitList(self, ctx: TargetProgrammer.DXList):

@@ -65,10 +65,10 @@ DEFAULT_FILENAMES = [
 #     example_program("Teleportation"),
     # example_program("Superdense"),
      example_program("Shors"),
-      example_program("HammingWeight")  
+      example_program("HammingWeight"),  
     # example_program("DeutschJozsa"),
     # example_program("simon"),
-    # example_program("DiscreteLog"),
+     example_program("DiscreteLog"),
     # example_program("Grovers"),
     # example_program("QPE"),
     # example_program("SWAPTest"),

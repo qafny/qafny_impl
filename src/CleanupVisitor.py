@@ -184,7 +184,7 @@ class CleanupVisitor(TargetProgramVisitor):
         return DXWhile(cond, stmts, invs, line=ctx.line())
 
     def visitIf(self, ctx: TargetProgrammer.DXIf):
-        print(f"\n ctx {ctx}")
+     #   print(f"\n ctx {ctx}")
         cond = ctx.cond().accept(self)
 
         left = []
@@ -202,7 +202,7 @@ class CleanupVisitor(TargetProgramVisitor):
 
     def visitAssign(self, ctx: TargetProgrammer.DXAssign):
         ids = []
-        print(f"\n visitAssign in CV {ctx}")
+     #   print(f"\n visitAssign in CV {ctx}")
         for i in ctx.ids():
             ids.append(i.accept(self))
 

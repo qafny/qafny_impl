@@ -232,6 +232,7 @@ class ProgramTransfer(ProgramVisitor):
         self.addFuns = []          # List of generated ghost methods to add to the program
         self.current_line = 0        # Tracks the line number for generated AST nodes
         self.t_ensures = False  # Flag to indicate if we are in a postcondition context
+        self.t_inv = False
         self.classical_args = [] # To store classical arguments of the current method
         
 
@@ -737,7 +738,7 @@ class ProgramTransfer(ProgramVisitor):
         tmp = []
         n = qty.flag().num()
         sum_vars = ctx.sums()
-        print(f"\n sum_vars {sum_vars}")
+    #    print(f"\n sum_vars {sum_vars}")
 
         def _build_sum_forall(body, iterators):
             """Helper to wrap a pred in nested foralls."""
@@ -755,7 +756,7 @@ class ProgramTransfer(ProgramVisitor):
             if dvar: 
                 left = elem.crange().left().accept(self)            
                 qcount = elem.crange().right().accept(self)
-                if not self.t_ensures:
+                if not self.t_ensures and not self.t_inv:
                     len_pred = DXComp(">=", qcount, DXNum(0), line=ctx.line_number())
                     is_duplicate = any(EqualityVisitor().visit(len_pred, p) for p in tmp)
                     if not is_duplicate:
@@ -790,7 +791,7 @@ class ProgramTransfer(ProgramVisitor):
             tmp.append(_build_sum_forall(body, [DXBind(sv.ID(), SType("nat"), line=ctx.line_number()) for sv in sum_vars]))
 
         # Value predicates
-        self.log(f"\n kets {ctx.kets()}")
+    #    self.log(f"\n kets {ctx.kets()}")
         var_ket = {loc[i].location(): ket for i, ket in enumerate(ctx.kets().kets())}   
         for var, dvar in varbind.items():
             if var == 'amp':
@@ -841,7 +842,7 @@ class ProgramTransfer(ProgramVisitor):
             range_len_expr = DXBin("-", right, left)
         predicates.append(DXComp("==", DXLength(dvar), range_len_expr, line=ctx.line_number()))
 
-        if not self.t_ensures:
+        if not self.t_ensures and not self.t_inv:
             predicates.append(DXComp(">=", right, left, line=ctx.line_number()))
                 
         # --- Value Predicate ---
@@ -880,10 +881,13 @@ class ProgramTransfer(ProgramVisitor):
         original_varnums = self.varnums
         try:
             # The symbolic environment is now the list of loop states
+            # might need to combine classical env too 
             self.varnums = loop_states
+            self.t_inv = True
             for inv_spec in ctx.conds():
                 preds = inv_spec.accept(self)
                 if preds: dafny_predicates.extend(preds if isinstance(preds, list) else [preds])
+            self.t_inv = False
             for stmt in ctx.stmts():
                 res = stmt.accept(self)
                 if res: loop_body_stmts.extend(res if isinstance(res, list) else [res])
@@ -907,25 +911,27 @@ class ProgramTransfer(ProgramVisitor):
             self.varnums = original_varnums
 
         # Step 4: Update Main State for After the Loop
-        if loop_vars:
+        if loop_states:
             modified_reg_names = {l.location() for inv in qafny_inv for l in inv.spec().locus()}
             subst = SubstDAExp(iterator.ID(), upper_bound)
             new_varnums = [e for e in self.varnums if e[0][0].location() not in modified_reg_names]
-            for inv in qafny_inv:
-                if not any(compareAExp(subst.visit(l.crange().left().accept(self)), subst.visit(l.crange().right().accept(self))) for l in inv.spec().locus()):
-                    final_locus = [QXQRange(l.location(), crange=QXCRange(subst.visit(l.crange().left().accept(self)), subst.visit(l.crange().right().accept(self)))) for l in inv.spec().locus()]
-                    # Find the correct var_map for this post-loop state
-                    post_loop_var_map = next(vmap for loc, _, vmap in loop_states if loc == inv.spec().locus())
-                    new_varnums.append((final_locus, inv.spec().qty(), post_loop_var_map))
+            for locus, qty, var_map in loop_states:
+                final_locus = [QXQRange(l.location(), crange=QXCRange(subst.visit(l.crange().left().accept(self)), subst.visit(l.crange().right().accept(self)))) for l in locus]
+                
+                if not any(EqualityVisitor().visit(fl.crange().left(), fl.crange().right()) for fl in final_locus):
+                    new_varnums.append((final_locus, qty, var_map))
             self.varnums = new_varnums
+            self.log(f"\n self.varnums after for loop: {self.varnums}")
 
         # Step 5: Assemble and Return
-     #   dafny_predicates.append(DXComp("<=", lower_bound, iterator))
-     #   dafny_predicates.append(DXComp("<=", iterator, upper_bound))       
+#        range_pred = DXLogic('&&', DXComp("<=", lower_bound, iterator), DXComp("<=", iterator, upper_bound))
+    #    range_pred = DXComp("<=", lower_bound, DXComp("<=", iterator, upper_bound))
+    #    dafny_predicates.append(range_pred)      
         increment_stmt = DXAssign([iterator], DXBin("+", iterator, DXNum(1)))
         loop_body_stmts.append(increment_stmt)
         while_loop = DXWhile(loop_condition, loop_body_stmts, dafny_predicates, line=self.current_line)
-        return [init_stmt] + base_case_stmts + [while_loop]
+        final_assert = DXAssert(DXComp('==', iterator, upper_bound))
+        return [init_stmt] + base_case_stmts + [while_loop] + [final_assert]
 
     def _generate_loop_base_case(self, qafny_inv, iterator):
         if not qafny_inv: return [], []
@@ -937,7 +943,7 @@ class ProgramTransfer(ProgramVisitor):
         for inv_spec in qafny_inv:
             locus = inv_spec.spec().locus()
             qty = inv_spec.spec().qty()
-            state_desc = inv_spec.spec().states()[0]
+            st = inv_spec.spec().states()[0]
 
             # Create a new, separate set of loop-carried variables for this state
             if isinstance(qty, TyEn):
@@ -946,14 +952,13 @@ class ProgramTransfer(ProgramVisitor):
             elif isinstance(qty, (TyHad, TyNor)):
                 self.log(f"locus_gene_loop_base {locus} \n {self.varnums}")
                 _, _, loop_vars, _ = self.compareSingle(locus[0], self.varnums)
-
-            
+   
             # Store this new state
             loop_states.append((locus, qty, loop_vars))
             
             # Generate the base case assignments for these specific variables
-#            subst = SubstDAExp(iterator.ID(), iterator.range().left().accept(self))
-            assignments = self._spec_state_to_seq_comp(locus, qty, state_desc, loop_vars)
+            # subst = SubstDAExp(iterator.ID(), iterator.range().left().accept(self))
+            assignments = self._spec_state_to_seq_comp(locus, qty, st, loop_vars)
             base_case_stmts.extend(assignments)
         
         self.log(f"\n loop_base_case{base_case_stmts} \n {loop_states}")
@@ -1000,12 +1005,6 @@ class ProgramTransfer(ProgramVisitor):
                 assignments.append(DXAssign([dafny_var], comprehension, True))
             
         return assignments
-        
-    
-    
-    
-    
-    
     
     # def visitFor(self, ctx: Programmer.QXFor):
     #     tmp_current_line = self.current_line
@@ -1458,7 +1457,7 @@ class ProgramTransfer(ProgramVisitor):
             if rt is None:
                 self.log("no sub/super locus match; return unchanged env")
                 return [], None, None, None, list(self.varnums)
-        #remainder from q2 after superLocus, super locus and remains in env
+            #remainder from q2 after superLocus, super locus and remains in env
             rem, loc, qty, vars_map, env_after = rt
             self.log(f"\n rem: {rem} \n loc qty vars{loc}, \n {qty} \n {vars_map}, \n tmpVarNums {env_after}")
 
@@ -2130,14 +2129,14 @@ class ProgramTransfer(ProgramVisitor):
             indexed_var = DXIndex(indexed_var, it)
         return indexed_var
 
-    def _wrap_in_forall(self, body, iterators, representative_var):
+    def _wrap_in_forall(self, body, iterators, var):
         """Wraps a logical body in nested forall quantifiers with range checks."""
         nested_forall = body
         for k in range(len(iterators) - 1, -1, -1):
             iterator = iterators[k]
             
             # Build the indexed expression for the range limit (e.g., rep_var[k0])
-            indexed_for_range = self._create_indexed_var(representative_var, iterators[:k])
+            indexed_for_range = self._create_indexed_var(var, iterators[:k])
             
             range_check = DXInRange(iterator, DXNum(0), DXLength(indexed_for_range), line=self.current_line)
             nested_forall = DXAll(iterator, DXLogic("==>", range_check, nested_forall, line=self.current_line), line=self.current_line)
