@@ -66,6 +66,8 @@ class TargetProgramVisitor(AbstractTargetVisitor):
                 return self.visitEnsures(ctx)
             case DXSeqComp():
                 return self.visitSeqComp(ctx)
+            case DXWitness():
+                return self.visitWitness(ctx)
             case _:
                 raise NotImplementedError(f"No visit method defined for {type(ctx)}")
 
@@ -190,4 +192,9 @@ class TargetProgramVisitor(AbstractTargetVisitor):
         ctx.idx().accept(self)
         ctx.spec().accept(self) if ctx.spec() is not None else None
         ctx.lambd().accept(self)
+
+    def visitWitness(self, ctx: DXWitness):
+        ctx.bind().accept(self)
+        ctx.constrs().accept(self)
+        return ctx
 

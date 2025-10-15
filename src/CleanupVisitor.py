@@ -202,7 +202,7 @@ class CleanupVisitor(TargetProgramVisitor):
 
     def visitAssign(self, ctx: TargetProgrammer.DXAssign):
         ids = []
-     #   print(f"\n visitAssign in CV {ctx}")
+#        print(f"\n visitAssign in CV {ctx}")
         for i in ctx.ids():
             ids.append(i.accept(self))
 
@@ -234,3 +234,8 @@ class CleanupVisitor(TargetProgramVisitor):
         low = ctx.low().accept(self) if ctx.low() is not None else None
         high = ctx.high().accept(self) if ctx.high() is not None else None
         return DXSlice(id, low, high, line=ctx.line())
+    
+    def visitWitness(self, ctx):
+        bind = ctx.bind().accept(self)
+        constrs = ctx.constrs().accept(self)
+        return DXWitness(bind, constrs)

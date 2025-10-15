@@ -2,18 +2,22 @@ import copy
 import os
 import time
 from contextlib import contextmanager
+from prelude_map import METHOD_BUNDLES
 
 from Programmer import *
 from ProgramVisitor import ProgramVisitor
 from TargetProgrammer import *
 from CollectKind import *
 from SubstDAExp import SubstDAExp
+from SubstAExp import SubstAExp
 from BindCollector import BindCollector
 from TypeChecker import TypeChecker, subLocusGen, compareType
 from EqualityChecker import EqualityVisitor
 from LocusCollector import LocusCollector   
 from UpdateVars import UpdateVars
 from TypeCollector import TypeCollector
+from PatternSubstDAExp import PatternSubstDAExp, rule_invpow2
+
 
 class StackFactor:
     pass
@@ -219,6 +223,7 @@ class ProgramTransfer(ProgramVisitor):
         self.kenv = kenv  # Kind environment
         self.tenv = tenv  # Type environment
         self.fvar = ""    # Current function name
+        self.local = set()
 
         # State management for transformation
         self.varnums = []            # List of (locus, type, var_map) for the current state
@@ -302,8 +307,12 @@ class ProgramTransfer(ProgramVisitor):
         This is the main orchestrator for the predicate transformation process.
         """
         """Translates a single Qafny method into a Dafny method."""
+        self.log(f"\n self.tenv {self.tenv}")
         # --- Initialize State ---
+        self.local.clear()
         self.fvar = str(ctx.ID())
+        # for bundle in METHOD_BUNDLES.get(self.fvar, []):
+        #     self.addFuns.extend(bundle)
 #        self.log(f"\n self.fvar {self.fvar}")
         self.fkenv = self.kenv.get(self.fvar)
         self.current_line = ctx.line_number()
@@ -339,6 +348,8 @@ class ProgramTransfer(ProgramVisitor):
             var_map = make_dafny_vars_for_locus(locus, q_type, self.counter)
             self.counter += 1
             self.outvarnums.append((locus, q_type, var_map))
+        
+        self.log(f"\n outvarnums: {self.outvarnums}")
 
         # --- Translate Method Body ---
         dafny_body = []
@@ -447,7 +458,7 @@ class ProgramTransfer(ProgramVisitor):
         # For an H gate on a TyNor state:
         if isinstance(qty, TyNor) and ctx.op() == "H":
             self.libFuns.add('hadNorHad')
-            call = DXCall("hadNorHad", list(old_vars.values()), line=ctx.line_number())
+            call = DXCall("hadNorHad", list(old_vars.values()), False, line=ctx.line_number())
             assign_stmt = DXAssign(list(new_vars.values()), call, line=ctx.line_number())
             
             # --- Transform Predicate (To be implemented) ---
@@ -530,6 +541,7 @@ class ProgramTransfer(ProgramVisitor):
         if unification_stmts:
             lemma_map = {
                 "pow": "powTimesMod",
+                "powTimesMod": "powModLeft",
         #        "sqrt": "triggerSqrtMul",
         #        "mergeAmpEn": "invPow2Step"
             }
@@ -607,7 +619,7 @@ class ProgramTransfer(ProgramVisitor):
                 lhs_expr = indexed_new
                 indexed_old = self._create_indexed_var(old_bind, iterators)
                 if var_name != 'amp' and not EqualityVisitor().visit(rhs_expr, indexed_old):
-                    lhs_expr = DXCall("castBVInt", [indexed_new])
+                    lhs_expr = DXCall("castBVInt", [indexed_new], False)
                     self.libFuns.add('castBVInt')
                 
                 all_equalities.append(DXComp("==", lhs_expr, rhs_expr))
@@ -641,6 +653,8 @@ class ProgramTransfer(ProgramVisitor):
         """
         assignments = []
         mapping = {}
+
+    #    self.log(f"\n outvarnums in final assignment: {self.outvarnums} \n varnums: {self.varnums}")
         
         for locus, return_qty, return_vars_map in outvarnums:
             # Initialize variables to store the found state
@@ -693,7 +707,7 @@ class ProgramTransfer(ProgramVisitor):
     # ==========================================================================
 
     def visitBind(self, ctx: QXBind):
-        
+    #    self.log(f"\n ctx in visitBind {ctx}")
         if isinstance(ctx.type(), TySingle):
             ty = ctx.type().accept(self)
             return DXBind(ctx.ID(), ty, None, line=ctx.line_number())
@@ -705,8 +719,6 @@ class ProgramTransfer(ProgramVisitor):
         return ctx.spec().accept(self)
 
     def visitEnsures(self, ctx: QXEnsures):
-        # This is no longer the primary path for ensures clauses,
-        # but can be kept for other uses.
         return ctx.spec().accept(self)
 
     def visitQSpec(self, ctx: QXQSpec):
@@ -740,12 +752,12 @@ class ProgramTransfer(ProgramVisitor):
         sum_vars = ctx.sums()
     #    print(f"\n sum_vars {sum_vars}")
 
-        def _build_sum_forall(body, iterators):
+        def _build_sum_forall(body, iterators, cond_flag=False):
             """Helper to wrap a pred in nested foralls."""
             nested_forall = body
             for i in range(len(iterators) - 1, -1, -1):
                 drange = DXInRange(iterators[i], sum_vars[i].range().left().accept(self), sum_vars[i].range().right().accept(self), line=self.current_line)
-                if sum_vars[i].condition():
+                if sum_vars[i].condition() and cond_flag:
                     drange = DXBin('&&', drange, sum_vars[i].condition().accept(self))
                 nested_forall = DXAll(iterators[i], DXLogic("==>", drange, nested_forall, line=self.current_line), line=self.current_line)
             return nested_forall
@@ -788,7 +800,7 @@ class ProgramTransfer(ProgramVisitor):
             amp_val = ctx.amp().accept(self)
             idx_amp = makeIndex(ampvar, sum_vars)
             body = DXComp("==", idx_amp, amp_val, line=ctx.line_number())
-            tmp.append(_build_sum_forall(body, [DXBind(sv.ID(), SType("nat"), line=ctx.line_number()) for sv in sum_vars]))
+            tmp.append(_build_sum_forall(body, [DXBind(sv.ID(), SType("nat"), line=ctx.line_number()) for sv in sum_vars], True))
 
         # Value predicates
     #    self.log(f"\n kets {ctx.kets()}")
@@ -800,9 +812,9 @@ class ProgramTransfer(ProgramVisitor):
             if ket is None:
                 continue
             idx = ket.accept(self)
-            eq = DXComp("==", DXCall('castBVInt', [makeIndex(dvar, sum_vars)]), idx, line=ctx.line_number())
+            eq = DXComp("==", DXCall('castBVInt', [makeIndex(dvar, sum_vars)], False), idx, line=ctx.line_number())
             self.libFuns.add('castBVInt')
-            tmp.append(_build_sum_forall(eq, [DXBind(sv.ID(), SType("nat"), line=ctx.line_number()) for sv in sum_vars]))
+            tmp.append(_build_sum_forall(eq, [DXBind(sv.ID(), SType("nat"), line=ctx.line_number()) for sv in sum_vars], True))
 
         
         return tmp
@@ -861,14 +873,95 @@ class ProgramTransfer(ProgramVisitor):
             self.libFuns.add('castBVInt')
         
         return predicates
+    
+    #measure in Qafny returns witness, measured value, prob and the normalization scale
+    def visitMeasure(self, ctx: QXMeasure):
+        rvars = ctx.ids()
+        res = subLocus(ctx.locus(), self.varnums)
+        if not res:
+            return []
+        loc, qty, var_map = res
+        target_names = [l.location() for l in ctx.locus()] 
+        other_ranges = [l.accept(self) for l in loc if l.location() not in target_names]           
+        target_vars = [var for name, var in var_map.items() if name in target_names]
+        for name, var in var_map.items():
+            if name == ctx.locus()[0].location():
+                tvar = var
+            elif name == 'amp':
+                avar = var
+            else:
+                pass
+        
+        # Determine the number of iterators needed
+        nesting_depth = 0
+        if isinstance(qty, TyEn):
+            nesting_depth = qty.flag().num()     
+        iterators = [DXBind(f"k{i}", SType("nat")) for i in range(nesting_depth)]
+
+        stmt = []
+ #       self.counter += 1
+        if isinstance(qty, TyEn):
+            #create new var and witness
+            new_tvar = DXBind(f"{ctx.locus()[0].location()}", tvar.type().type(), self.counter)
+            wit_var = DXBind(f"k", SType("nat"), self.counter)
+            mea_var = DXBind(f"v", SType('nat'), self.counter)
+            
+            wit_constr = DXWitness(wit_var, DXInRange(wit_var, DXNum(0), DXLength(tvar)))
+            var_ass = DXAssign([new_tvar], DXIndex(tvar, wit_var))
+            mea_ass = DXAssign([mea_var], DXCall('castBVInt', [new_tvar], False))
+            
+            stmt.extend([wit_constr, var_ass, mea_ass])
+                
+            if len(loc) > nesting_depth: 
+                #partial measurement -> proj
+                #it collapses the other locus to a subset of basis ket
+                #condtioned amp build
+                   
+
+                #find normalization scale
+                proj_var = DXBind(f's', SType("nat", self.counter))
+                
+                proj_ass = DXAssign([proj_var], DXCall(f'projEn{nesting_depth}', [tvar, avar, mea_var], False))
+                proj_lm = DXCall(f'projEn{nesting_depth}LowerBound', [tvar, avar, mea_var, wit_var], True)
+
+                self.libFuns.add(f'projEn{nesting_depth}')
+                self.libFuns.add(f'projEn{nesting_depth}LowerBound')
+
+                stmt.extend([proj_ass, proj_lm])
+
+                #normalize the amp
+                new_avar = DXBind(f"amp", avar.type(), self.counter)
+                condition = DXComp('==', DXCall('castBVInt', [self._create_indexed_var(tvar, iterators)], False), mea_var, line=ctx.line_number())
+                then_expr = DXBin('/', self._create_indexed_var(avar, iterators), DXCall('sqrt', [proj_var], False))
+                else_expr = DXNum(0.0)
+
+                inner_comprehension_body = DXIfExp(condition, then_expr, else_expr)
+
+                self.log(f'inner_comp: {inner_comprehension_body}')
+                comprehension = inner_comprehension_body
+                seq_comp = self._create_seq_comp(iterators, avar, comprehension)  
+                self.log(f'seq_comp: {seq_comp}')             
+                amp_ass = DXAssign([new_avar], seq_comp)
+
+                stmt.extend([amp_ass])
+            
+            elif len(loc) == 1: # total measurement
+                pass
+
+
+    #    print(f"\n ctx in visitMeasure {ctx}: \n {self.varnums}, \n locus: {loc}, {qty}, {var_map}")
+        return stmt
 
     def visitFor(self, ctx: QXFor) -> list:
         # Step 1: Setup Loop Counter
         iterator_name = ctx.ID()
+        init_flag = iterator_name in self.local
         iterator = DXBind(iterator_name, SType("nat"))
         lower_bound = ctx.range().left().accept(self)
         upper_bound = ctx.range().right().accept(self)
-        init_stmt = DXAssign([iterator], lower_bound, True, line=self.current_line)
+        if not init_flag:
+            self.local.add(iterator_name)
+        init_stmt = DXAssign([iterator], lower_bound, not(init_flag), line=self.current_line)
         loop_condition = DXComp("<", iterator, upper_bound, line=self.current_line)
 
         # Step 2: Generate Invariant's Base Case and Loop Variables
@@ -891,7 +984,7 @@ class ProgramTransfer(ProgramVisitor):
             for stmt in ctx.stmts():
                 res = stmt.accept(self)
                 if res: loop_body_stmts.extend(res if isinstance(res, list) else [res])
-            self.log(f"\n self.varnums {self.varnums} \n loop_states {loop_states}")
+     #       self.log(f"\n self.varnums {self.varnums} \n loop_states {loop_states}")
             assignments, _ = self._get_final_assignments_and_mapping(loop_states)
             loop_body_stmts.extend(assignments)
             # Add helper lemma calls required by the loop body's operations
@@ -913,11 +1006,16 @@ class ProgramTransfer(ProgramVisitor):
         # Step 4: Update Main State for After the Loop
         if loop_states:
             modified_reg_names = {l.location() for inv in qafny_inv for l in inv.spec().locus()}
-            subst = SubstDAExp(iterator.ID(), upper_bound)
+            subst = SubstAExp(iterator.ID(), ctx.range().right())
+            self.log(f"\n ctx.range().right(): {ctx.range().right()} \n subst: {subst}")
             new_varnums = [e for e in self.varnums if e[0][0].location() not in modified_reg_names]
             for locus, qty, var_map in loop_states:
-                final_locus = [QXQRange(l.location(), crange=QXCRange(subst.visit(l.crange().left().accept(self)), subst.visit(l.crange().right().accept(self)))) for l in locus]
-                
+#                final_locus = [QXQRange(l.location(), crange=QXCRange(subst.visit(l.crange().left().accept(self)), subst.visit(l.crange().right().accept(self)))) for l in locus]
+                final_locus = []
+                for loc in locus:
+                    floc = subst.visit(loc)
+                    final_locus.extend(floc if isinstance(floc, list) else [floc])
+                self.log(f"\n final_locus after subst: {final_locus}")
                 if not any(EqualityVisitor().visit(fl.crange().left(), fl.crange().right()) for fl in final_locus):
                     new_varnums.append((final_locus, qty, var_map))
             self.varnums = new_varnums
@@ -989,7 +1087,7 @@ class ProgramTransfer(ProgramVisitor):
                     q_locus = next(l for l in locus if l.location() == name)
                     width_expr = q_locus.crange().right().accept(self)
                     if substitutor: width_expr = substitutor.visit(width_expr)
-                    inner_body = DXCall("castIntBV", [inner_body, width_expr])
+                    inner_body = DXCall("castIntBV", [inner_body, width_expr], False)
                     self.libFuns.add("castIntBV")
                 
                 comprehension = inner_body
@@ -1035,20 +1133,22 @@ class ProgramTransfer(ProgramVisitor):
         if ctx.op() == '^':
             if isinstance(left, DXNum) and left.val() == 2:
                 self.libFuns.add('pow2')
-                return DXCall('pow2',[right], line=ctx.line_number())
+                return DXCall('pow2',[right], False, line=ctx.line_number())
             else:
                 self.libFuns.add('pow')
-                return DXCall('pow',[left, right], line=ctx.line_number())
+                return DXCall('pow',[left, right], False, line=ctx.line_number())
 
         elif ctx.op() == '/':
             if isinstance(left, DXNum) and left.val() == 1.0:
-#            self.log('\ntransfer', DXBin(ctx.op(),  DXNum(1), right, line=ctx.line_number()))
-                return DXBin(ctx.op(), DXNum(1.0), right, line=ctx.line_number())
+                node = DXBin('/', DXNum(1.0), right, line=ctx.line_number())
+                psub = PatternSubstDAExp([rule_invpow2])
+                node = psub.visit(node)
+                return node
         
         #need to refine the dot product for two vectors
         elif ctx.op() == '.':
             self.libFuns.add('dotProd')
-            return DXCall('dotProd', [DXCall('castIntBV', left, right), right], line=ctx.line_number())
+            return DXCall('dotProd', [DXCall('castIntBV', left, right), right], False, line=ctx.line_number())
         
 
         return DXBin(ctx.op(), ctx.left().accept(self), ctx.right().accept(self), line=ctx.line_number())
@@ -1069,12 +1169,12 @@ class ProgramTransfer(ProgramVisitor):
     def visitCall(self, ctx: Programmer.QXCall):
     #    self.log('\nvisitCall', ctx.ID())
         self.libFuns.add(str(ctx.ID()))
-        return DXCall(str(ctx.ID()), [x.accept(self) for x in ctx.exps()], line=ctx.line_number())
+        return DXCall(str(ctx.ID()), [x.accept(self) for x in ctx.exps()], False, line=ctx.line_number())
     
     def visitUni(self, ctx: Programmer.QXUni):
         if ctx.op() == 'sqrt':
             self.libFuns.add('sqrt')
-            return DXCall('sqrt', [DXCast(SType('real'), ctx.next().accept(self), ctx.line_number())])
+            return DXCall('sqrt', [DXCast(SType('real'), ctx.next().accept(self))], False, line=ctx.line_number())
         return DXUni(ctx.op(), ctx.next().accept(self), line=ctx.line_number())
     
     def visitSingleT(self, ctx: Programmer.TySingle):
@@ -1098,9 +1198,9 @@ class ProgramTransfer(ProgramVisitor):
         # ensure omega is in our list of library functions
         self.libFuns.add('omega')
         if ctx.state() == "+":
-            return DXCall("omega", [DXNum(0), DXNum(2)], line=ctx.line_number())
+            return DXCall("omega", [DXNum(0), DXNum(2)], False, line=ctx.line_number())
         else:
-            return DXCall("omega", [DXNum(1), DXNum(2)], line=ctx.line_number())
+            return DXCall("omega", [DXNum(1), DXNum(2)], False, line=ctx.line_number())
     
     def visitCast(self, ctx: Programmer.QXCast):
         """Handles explicit type casting of a quantum state."""
@@ -1138,7 +1238,7 @@ class ProgramTransfer(ProgramVisitor):
         new_vars = self._update_vars_type(vars_map, TyEn(QXNum(1)))
      #   self.log(f"\n new_vars in cast: {new_vars}")
 
-        call = DXCall("hadEn", list(vars_map.values()), line=line_number)
+        call = DXCall("hadEn", list(vars_map.values()), False, line=line_number)
         # Use DXAssign with init=True to generate 'var ... :='
         stmts.append(DXAssign(list(new_vars.values()), call, True, line=line_number))
         self.libFuns.add('hadEn')
@@ -1173,6 +1273,7 @@ class ProgramTransfer(ProgramVisitor):
         """
 
         self.log(f"\n en_vars: {en_vars} \n had_var: {had_var}")
+        depth = self._get_total_nesting_depth(next(iter(en_vars.values())).type())
         stmts = []
         new_vars = {}
 
@@ -1200,18 +1301,24 @@ class ProgramTransfer(ProgramVisitor):
 
         ctrl_reg_name = ctrl_loc.location()
         ctrl_idx = ctrl_loc.crange().left().accept(self)
-        original_q_var = None
         
         for name, var in en_vars.items():
             new_var_bind = DXBind(name, var.type(), self.counter) # Simplified type
             
-            if name == 'amp':               
-                call = DXCall('mergeAmpEn', [var, q_control_bit], line=line_number)
-                self.libFuns.add('mergeAmpEn')
-            elif name == ctrl_reg_name: 
-                original_q_var = var             
-                call = DXCall('mergeBitEn', [var, ctrl_idx], line=line_number)
-                self.libFuns.add('mergeBitEn')
+            if name == 'amp':   
+                if depth == 1:            
+                    call = DXCall('mergeAmpEn', [var, q_control_bit], False, line=line_number)
+                    self.libFuns.add('mergeAmpEn')
+                else :
+                    call = DXCall(f'mergeAmpEn{depth}', [var, q_control_bit], False, line=line_number) 
+                    self.libFuns.add(f'mergeAmpEn{depth}')
+            elif name == ctrl_reg_name:   
+                if depth == 1: 
+                    call = DXCall('mergeBitEn', [var, ctrl_idx], False, line=line_number)
+                    self.libFuns.add('mergeBitEn')
+                else :
+                    call = DXCall(f'mergeBitEn{depth}', [var, ctrl_idx], False, line=line_number) 
+                    self.libFuns.add(f'mergeBitEn{depth}')
             else:
                 # call = DXCall('duplicateMergeBitEn', [var], line=line_number) 
                 # self.libFuns.add('duplicateMergeBitEn')
@@ -1559,7 +1666,7 @@ class ProgramTransfer(ProgramVisitor):
                 self.log(f"\n control_var: {control_var}")
                 indexed_control = self._create_indexed_var(control_var, iterators)
     #            control_bit = DXIndex(indexed_control, control_qubit.crange().left().accept(self))
-                condition = DXComp(">=", DXCall("castBVInt", [indexed_control]), DXCall("pow2", [control_qubit.crange().left().accept(self)]))
+                condition = DXComp(">=", DXCall("castBVInt", [indexed_control], False), DXCall("pow2", [control_qubit.crange().left().accept(self)], False))
 #                condition = DXComp("==", control_bit, DXNum(1))
                 self.log(f"\n condition {condition}")
                 
@@ -1590,12 +1697,6 @@ class ProgramTransfer(ProgramVisitor):
         if is_conditional:
             self.en_factor.push(condition)
         
-        # if self.en_factor:
-        #     self.en_factor = DXBin('&&', self.en_factor.conds(), condition)
-        # else:
-        #     if is_conditional:
-        #         self.en_factor = EnFactor(condition)
-        
         return stmts, new_vars
     
     def _get_comprehension_logic(self, q_assign: QXQAssign, unified_vars: dict, iterators: list, qty: QXQTy):
@@ -1625,7 +1726,7 @@ class ProgramTransfer(ProgramVisitor):
                 for i, binder in enumerate(operation.bindings()):
                     placeholder_name = binder.ID()
                     target_reg_name = target_loci[i].location()
-                    subst_map[placeholder_name] = DXCall("castBVInt", [self._create_indexed_var(unified_vars[target_reg_name], iterators)])
+                    subst_map[placeholder_name] = DXCall("castBVInt", [self._create_indexed_var(unified_vars[target_reg_name], iterators)], False)
                 
                 self.libFuns.add("castBVInt")
                 for placeholder, subst_val in subst_map.items():
@@ -1641,7 +1742,7 @@ class ProgramTransfer(ProgramVisitor):
             for i, binder in enumerate(operation.bindings()):
                 placeholder_name = binder.ID()
                 target_reg_name = target_loci_names[i]
-                subst_map[placeholder_name] = DXCall("castBVInt", [self._create_indexed_var(unified_vars[target_reg_name], iterators)])
+                subst_map[placeholder_name] = DXCall("castBVInt", [self._create_indexed_var(unified_vars[target_reg_name], iterators)], False)
             self.libFuns.add("castBVInt")
 
             for i, name in enumerate(target_loci_names):
@@ -1653,7 +1754,7 @@ class ProgramTransfer(ProgramVisitor):
                 
                 # Convert the final nat expression back to seq<bv1>
                 width_expr = DXLength(self._create_indexed_var(unified_vars[name], iterators))
-                logic_map[name] = DXCall("castIntBV", [final_ket_expr, width_expr])
+                logic_map[name] = DXCall("castIntBV", [final_ket_expr, width_expr], False)
                 self.libFuns.add("castIntBV")
             
             # if 'amp' in unified_vars:
@@ -1721,7 +1822,7 @@ class ProgramTransfer(ProgramVisitor):
                         x = operation.bindings()[0]
                         # Find the corresponding qubit register 
                         q_in_var = lambda_input_vars[q_assign.location()[0].location()]
-                        subst = SubstDAExp(x.ID(), DXCall("castBVInt", [q_in_var]))
+                        subst = SubstDAExp(x.ID(), DXCall("castBVInt", [q_in_var], False))
                         self.libFuns.add("castBVInt")
                         phase_expr = subst.visit(phase_expr)
                     ensures.append(DXEnsures(DXComp("==", out_var, DXBin("*", in_var, phase_expr))))
@@ -1743,11 +1844,11 @@ class ProgramTransfer(ProgramVisitor):
                     # Substitute placeholders in the ket expression
                     for binder, in_name in zip(operation.bindings(), sorted(target_names)):
                         if in_name in lambda_input_vars:
-                            replace = DXCall("castBVInt", [lambda_input_vars[in_name]])
+                            replace = DXCall("castBVInt", [lambda_input_vars[in_name]], False)
                             subst = SubstDAExp(binder.ID(), replace)
                             ket_expr = subst.visit(ket_expr)
     #                self.log(f"\n ket_expr: {ket_expr}")
-                    ensures.append(DXEnsures(DXComp("==", DXCall("castBVInt", [out_var]), ket_expr)))
+                    ensures.append(DXEnsures(DXComp("==", DXCall("castBVInt", [out_var], False), ket_expr)))
                     self.libFuns.add("castBVInt")
                     ket_idx += 1
 
@@ -1800,7 +1901,7 @@ class ProgramTransfer(ProgramVisitor):
                 placeholder_id = oracle.bindings()[0].ID()
                 old_qubit_var = next(iter(qubit_vars.values()))
                 indexed_old_qubit = self._create_indexed_var(old_qubit_var, iterators)
-                subst_val = DXCall("castBVInt", [indexed_old_qubit])
+                subst_val = DXCall("castBVInt", [indexed_old_qubit], False)
                 self.libFuns.add('castBVInt')
                 subst = SubstDAExp(placeholder_id, subst_val)
                 final_phase_expr = subst.visit(phase_template)
@@ -1864,7 +1965,7 @@ class ProgramTransfer(ProgramVisitor):
         sorted_old_vars = sorted(old_vars.values(), key=lambda v: v.ID())
         sorted_new_vars = sorted(new_vars.values(), key=lambda v: v.ID())
         
-        call = DXCall(lib_func_name, sorted_old_vars, line=ctx.line_number())
+        call = DXCall(lib_func_name, sorted_old_vars, False, line=ctx.line_number())
         
         stmts.append(DXAssign(sorted_new_vars, call, True, line=ctx.line_number()))
         
@@ -1921,7 +2022,7 @@ class ProgramTransfer(ProgramVisitor):
                 
                 if iterator == iterator_new:
                     # The range for the new dimension is based on the size of the target locus from the AST.
-                    comp_range = DXCall("pow2", [size_of_operated_reg])
+                    comp_range = DXCall("pow2", [size_of_operated_reg], False)
                 else:
                     range_var = self._create_indexed_var(rep_old_var, temp_old_iters)
                     comp_range = DXLength(range_var)
@@ -2001,13 +2102,13 @@ class ProgramTransfer(ProgramVisitor):
                 indexed_control = self._create_indexed_var(control_var, iterators_old)
     #            self.log(f"\n indexed_control {indexed_control}")
     #        control_bit = DXIndex(indexed_control, control_qubit.crange().left().accept(self))
-                condition = DXComp(">=", DXCall("castBVInt", [indexed_control]), DXCall("pow2", [control_qubit.crange().left().accept(self)]))
+                condition = DXComp(">=", DXCall("castBVInt", [indexed_control], False), DXCall("pow2", [control_qubit.crange().left().accept(self)], False))
             elif isinstance(control_qubit, QXQComp):
                 control_var = old_vars[control_qubit.left().location()]
                 indexed_control = self._create_indexed_var(control_var, iterators_old)
-                condition = DXComp(control_qubit.op(), DXCall("castBVInt", [indexed_control]), control_qubit.right().accept(self))
+                condition = DXComp(control_qubit.op(), DXCall("castBVInt", [indexed_control], False), control_qubit.right().accept(self))
                 if name == control_qubit.index().ID():
-                    then_expr = DXCall("castIntBV", [DXNum(1), DXLength(old_var)])
+                    then_expr = DXCall("castIntBV", [DXNum(1), DXLength(old_var)], False)
                     self.libFuns.add("castIntBV")
             self.libFuns.add("castBVInt")
 #            factor = EnFactor(condition)
@@ -2030,7 +2131,7 @@ class ProgramTransfer(ProgramVisitor):
                         range_var = target_var
                     else:
                         range_var = self._create_indexed_var(old_vars[target_name], iterators_old)
-                    comp_range = DXCall("pow2", [DXLength(range_var)])
+                    comp_range = DXCall("pow2", [DXLength(range_var)], False)
                 else:
                     # The iterators for the outer dimensions need to be mapped back to the old state
                     outer_iterators_for_old = [it for it in iterators_new[:i] if it in iterators_old]
@@ -2058,24 +2159,24 @@ class ProgramTransfer(ProgramVisitor):
         if name == 'amp':
             old_amp_slice = self._create_indexed_var(old_var, iterators_old)
             
-            pow2_size = DXCall("pow2", [size_of_operated_reg])
+            pow2_size = DXCall("pow2", [size_of_operated_reg], False)
             self.libFuns.add("pow2")
-            scaling_factor = DXBin("/", DXNum(1.0), DXCall("sqrt", [DXCast(SType("real"), pow2_size)]))
+            scaling_factor = DXBin("/", DXNum(1.0), DXCall("sqrt", [DXCast(SType("real"), pow2_size)], False))
             self.libFuns.add("sqrt")
 
             
             if self._get_total_nesting_depth(target_var.type()) == 0:
                 return DXBin('*', old_amp_slice, scaling_factor)
             else:
-                target_reg_val = DXCall("castBVInt", [self._create_indexed_var(old_vars[target_name], iterators_old)])
+                target_reg_val = DXCall("castBVInt", [self._create_indexed_var(old_vars[target_name], iterators_old)], False)
                 phase_term = DXBin("*", iterator_new, target_reg_val)
                 self.libFuns.add("castBVInt")
                 
                 if op.op() == "H":
                     rou_pow = DXNum(2)
                 elif op.op() == "QFT":
-                    rou_pow = DXCall("pow2", [size_of_operated_reg])
-                phase = DXCall("omega", [phase_term, rou_pow])
+                    rou_pow = DXCall("pow2", [size_of_operated_reg], False)
+                phase = DXCall("omega", [phase_term, rou_pow], False)
                 self.libFuns.add("omega")
 
                 return DXBin("*", old_amp_slice, DXBin("*", scaling_factor, phase))
@@ -2083,7 +2184,7 @@ class ProgramTransfer(ProgramVisitor):
         elif name == target_name:
             # The TARGET register's value becomes the new iterator's value.
             self.libFuns.add("castIntBV")
-            return DXCall("castIntBV", [iterator_new, size_of_operated_reg])
+            return DXCall("castIntBV", [iterator_new, size_of_operated_reg], False)
 
         else: # Non-target registers
             # The NON-TARGET register's value is preserved from the outer loop.
@@ -2141,3 +2242,28 @@ class ProgramTransfer(ProgramVisitor):
             range_check = DXInRange(iterator, DXNum(0), DXLength(indexed_for_range), line=self.current_line)
             nested_forall = DXAll(iterator, DXLogic("==>", range_check, nested_forall, line=self.current_line), line=self.current_line)
         return nested_forall
+    
+    def _get_qrange_size_expr(self, qrange: QXQRange) -> DXAExp:
+        """
+        Calculates the size of a QXQRange (right - left) and returns it
+        as a Dafny AST expression.
+        """
+        left = qrange.range().left().accept(self)
+        right = qrange.range().right().accept(self)
+        self.log(f"\n left: {left}, right: {right}")
+        
+        # Optimization for ranges starting at 0
+        if isinstance(left, DXNum) and left.val() == 0:
+            return right
+        else:
+            return DXBin("-", right, left)
+        
+    def _create_seq_comp(self, iterators, var, comprehension):
+        for i in range(len(iterators) - 1, -1, -1):
+            iterator = iterators[i]
+            range_var = self._create_indexed_var(var, iterators[:i])
+            comprehension_range = DXLength(range_var)
+            spec = DXRequires(DXInRange(iterator, DXNum(0), comprehension_range))
+            comprehension = DXSeqComp(comprehension_range, iterator, spec, comprehension)
+        return comprehension
+        

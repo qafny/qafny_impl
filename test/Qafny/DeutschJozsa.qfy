@@ -38,7 +38,7 @@ method DeutschJozsa(n : nat, q : Q[n], p : Q[1],  f : nat -> bool) returns (k : 
   //this kind of switching is general in many problems.
   q[0, n) *= H;
   //so omega phase position needs to have either omega, or sum of omega
-  assert { q[0, n) , p[0] : en(2) ↦ ∑ j ∈ [0, 2 ^ n) . ∑ i ∈ [0, 2 ^ n) . 1 / sqrt(2^n) * ω (f(i) + i * j, 2)  |j⟩ |-⟩ };
+  assert { q[0, n) , p[0] : en(2) ↦ ∑ j ∈ [0, 2 ^ n) . ∑ i ∈ [0, 2 ^ n) . 1 / 2^n * ω (f(i) + i * j, 2)  |j⟩ |-⟩ };
   
   // measurement need to be measure to. The measurement in DJ is a specific one, to be 0. we only care about the 0 case.
   //such as prob := measure q[0,n) to 0

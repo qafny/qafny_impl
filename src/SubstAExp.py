@@ -7,10 +7,7 @@ from TypeChecker import *
 class SubstAExp(ProgramVisitor):
 
     def __init__(self, id: str, e : QXAExp):
-        # need st --> state we are deling with
-        # kind map from fun vars to kind maps
-        #self.kenv = kenv
-        # the checked type env at index
+        #replace all occurrences of id with e
         self.id = id
         self.exp = e
 
@@ -37,7 +34,7 @@ class SubstAExp(ProgramVisitor):
 
     def visitQRange(self, ctx: Programmer.QXQRange):
         v = ctx.crange().accept(self)
-        return QXQRange(ctx.ID(), v)
+        return QXQRange(ctx.location(), crange=v)
 
 
     def visitCRange(self, ctx: Programmer.QXCRange):

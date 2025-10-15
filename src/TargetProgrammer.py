@@ -457,7 +457,7 @@ class DXEnsures(DXConds):
 
 class DXCall(DXStmt, DXAExp):
 
-    def __init__(self, id: str, exps: [DXAExp], end: bool = False, line: int = None):
+    def __init__(self, id: str, exps: [DXAExp], end: bool = True, line: int = None):
         self._id = id
         self._exps = exps
         self._end = end #variable to check if this is just a function call without assignment so that we can add a semi-colon at the end in PrinterVisitor
@@ -804,3 +804,27 @@ class DXSeqComp(DXAExp):
     
     def __repr__(self):
         return f'DXSeqComp(length={self._size}, value={self._lambd})'
+
+class DXWitness(DXAExp):
+    def __init__(self, bind: DXBind, constrs: DXAExp, init: bool = None):
+        self._bind = bind
+        self._constrs = constrs
+        self._init = init
+    
+    def accept(self, visitor):
+        return visitor.visitWitness(self)
+
+    def bind(self):
+        return self._bind
+    
+    def init(self):
+        return self._init
+    
+    def constrs(self):
+        return self._constrs
+    
+    # def line(self):
+    #     return self._line
+    
+    def __repr__(self):
+        return f'DXWitness(bind={self._bind}, constrs={self._constrs}, init={self._init})'

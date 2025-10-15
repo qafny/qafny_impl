@@ -129,7 +129,7 @@ class TypeCollector(ProgramVisitor):
         for elem in conditions:
             if not isinstance(elem, condition_type):
                 continue
-                
+    #        print(f"\n elem in _create_default_vars: {elem} with condition_type {condition_type}")
             if isinstance(elem.spec(), QXQSpec):
                 # Mark variables that have explicit loci
                 for ran in elem.spec().locus():
@@ -146,11 +146,12 @@ class TypeCollector(ProgramVisitor):
         
         # Create default loci for unspecified quantum variables
         result = []
-        for var in quantum_vars - specified_vars:
-            flag = self.fkenv[0][var].flag()
-            locus = [QXQRange(var, crange=QXCRange(QXNum(0), flag))]
-            ty = TyEn(QXNum(1))
-            result.append((locus, ty))
+        if condition_type == QXInvariant:     
+            for var in quantum_vars - specified_vars:
+                flag = self.fkenv[0][var].flag()
+                locus = [QXQRange(var, crange=QXCRange(QXNum(0), flag))]
+                ty = TyEn(QXNum(1))
+                result.append((locus, ty))
         
         return result
 

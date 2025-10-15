@@ -29,18 +29,20 @@ class DafnyLibrary:
                 else ((bit(x[0]) * bit(y[0])) + dotProd(x[1..], y[1..]))
               }''',
     'sqrt': '''function {:axiom} sqrt(a:real): real
-                requires a > 0.0
-                ensures sqrt(a) > 0.0
+                ensures a > 0.0 ==> sqrt(a) > 0.0
                 ensures sqrt(a) * sqrt(a) == a''',
     'sqrt1': '''lemma {:axiom} sqrt1() 
                 ensures sqrt(1.0) == 1.0''',
-    'castBVInt': Method('''function castBVInt(x : seq<bv1>) : nat
+    'castBVInt':'''function {:axiom} castBVInt(x : seq<bv1>) : nat
                 ensures castBVInt(x) >= 0
-                ensures castBVInt(x) < pow2(|x|) 
-                {
-                  if |x| == 0 then 0
-                  else bv1ToNat(x[0]) + 2 * castBVInt(x[1..])
-                }''', ['pow2', 'bv1ToNat']),
+                ensures castBVInt(x) < pow2(|x|) ''', 
+    # 'castBVInt': Method('''function castBVInt(x : seq<bv1>) : nat
+    #             ensures castBVInt(x) >= 0
+    #             ensures castBVInt(x) < pow2(|x|) 
+    #             {
+    #               if |x| == 0 then 0
+    #               else bv1ToNat(x[0]) + 2 * castBVInt(x[1..])
+    #             }''', ['pow2', 'bv1ToNat']),
     'bv1ToNat': '''function bv1ToNat(b: bv1): nat { if b == 1 then 1 else 0 }''',
     'castIntBV': Method('''function {:axiom} castIntBV(x: nat, n: nat) : seq<bv1>
                 ensures castBVInt(castIntBV(x, n)) == x
@@ -75,12 +77,12 @@ class DafnyLibrary:
                 requires a > 0.0
                 ensures sqrt(a) > 0.0''', ['sqrt']),
    
-    'countN': '''function countN(x: nat): nat
+    'countN': Method('''function countN(x: nat): nat
               ensures countN(x) <= x
             {
               if x == 0 then 0
               else (if x % 2 == 1 then 1 else 0) + countN(x / 2)
-            }''', 
+            }''', ['countNLEn']),
    
     'countStep': Method('''lemma {:axiom} countStep(i:nat)
               ensures forall k: nat :: k < pow2(i) ==> countN(k + pow2(i)) == countN(k) + 1''', ['pow2', 'countN']),
@@ -99,7 +101,7 @@ class DafnyLibrary:
                 y := y + [omega(bv1ToNat(x[i]), 2)];
                 i := i + 1;
               }
-            }''', ['omega']),
+            }''', ['omega', 'bv1ToNat']),
     'hadEn': Method('''method {:axiom} hadEn(x: seq<real>)
             returns (amp: seq<real>, y : seq<seq<bv1>>) 
             requires forall k :: 0 <= k < |x| ==> x[k] == omega(0,2)
@@ -267,11 +269,11 @@ class DafnyLibrary:
     
     'mergeAmpEn' : Method('''method mergeAmpEn(amp: seq<real>, q : real) returns (amp1: seq<real>)
           ensures |amp1| == |amp| * 2
-          ensures forall k :: 0 <= k < |amp| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k]
-          ensures forall k :: |amp| <= k < |amp1| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k-|amp|] * q
+          ensures forall k :: 0 <= k < |amp| ==> amp1[k] == invPow2(1) * amp[k]
+          ensures forall k :: |amp| <= k < |amp1| ==> amp1[k] == invPow2(1) * amp[k-|amp|] * q
           {
-            var left  := seq(|amp|, k requires 0 <= k < |amp|=> (1.0 / sqrt(pow2(1) as real)) * amp[k]);
-            var right := seq(|amp|, k requires 0 <= k < |amp|=> (1.0 / sqrt(pow2(1) as real)) * amp[k] * q);
+            var left  := seq(|amp|, k requires 0 <= k < |amp|=> (invPow2(1)) * amp[k]);
+            var right := seq(|amp|, k requires 0 <= k < |amp|=> (invPow2(1)) * amp[k] * q);
             amp1 := left + right;
           }''', ['sqrt', 'pow2']),
 
@@ -280,10 +282,10 @@ class DafnyLibrary:
                 ensures forall r :: 0 <= r < |amp| ==> |amp1[r]| == |amp[r]|
                 ensures forall r :: |amp| <= r < |amp1| ==> |amp1[r]| == |amp[r - |amp|]|
 
-                ensures forall r :: 0 <= r < |amp| ==> forall k :: 0 <= k < |amp[r]| ==> amp1[r][k] == 1.0 / sqrt(pow2(1) as real) * amp[r][k]
-                ensures forall r :: |amp| <= r < |amp1| ==> forall k ::0 <= k < |amp1[r]| ==> amp1[r][k] == 1.0 / sqrt(pow2(1) as real) * amp[r-|amp|][k] * q
+                ensures forall r :: 0 <= r < |amp| ==> forall k :: 0 <= k < |amp[r]| ==> amp1[r][k] == invPow2(1) * amp[r][k]
+                ensures forall r :: |amp| <= r < |amp1| ==> forall k ::0 <= k < |amp1[r]| ==> amp1[r][k] == invPow2(1) * amp[r-|amp|][k] * q
               {
-                var s := 1.0 / sqrt(pow2(1) as real);
+                var s := invPow2(1);
 
                 var left  := seq(|amp|, r requires 0 <= r < |amp| =>
                                 seq(|amp[r]|, k requires 0 <= k < |amp[r]| => s * amp[r][k]));
@@ -354,11 +356,60 @@ class DafnyLibrary:
 
     'pow2sqrt' : Method('''lemma {:axiom} pow2sqrt()
         ensures forall k :nat  :: sqrt(pow2(2 * k) as real) == pow2(k) as real''', ['sqrt', 'pow2']),
+    
     'invPow2Step': Method('''lemma {:axiom}invPow2Step(i: nat)
         ensures invPow2(i) * invPow2(1) == invPow2(i + 1)''', ['invPow2']), 
+    
     'invPow2': Method('''function invPow2(i: nat): real { 1.0 / sqrt(pow2(i) as real) }''', ['sqrt', 'pow2']),
+    
     'powModLeft': '''lemma {:axiom} powModLeft()
   ensures forall k: nat, add: nat, j: nat, Y: nat, N: nat {:trigger pow(k, add) * ((pow(k, j) * Y) % N)} :: N > 0 ==> (pow(k, add) * ((pow(k, j) * Y) % N)) % N == ((pow(k, j + add) * Y) % N)''',
+   
+   'choose': '''function choose(n: nat, v: nat): nat
+            {
+              if v > n then 0
+              else if v == 0 || v == n then 1
+              else choose(n - 1, v - 1) + choose(n - 1, v)
+            }''', 
+   
+   'measureEn1': '''
+    method measureEn1(p: seq<seq<bv1>>) returns (v: nat)
+        requires |p| > 0
+        ensures exists k :: 0 <= k < |p| && v == castBVInt(p[k])
+      {
+        var k :| 0 <= k < |p|;
+        v := castBVInt(p[k]);
+      }''',
+    
+    'countNLEn':'''lemma {:axiom} countNLEn(n: nat, k: nat)
+    ensures k < pow2(n) ==> countN(k) <= n''', 
+  
+  'hammingProjMass':'''lemma {:axiom} hammingProjMass(n: nat, v: nat, S: real)
+  requires 0 <= v <= n
+  ensures  S == (choose(n, v) as real) * (invPow2(n) * invPow2(n))
+  ensures  sqrt(S) == sqrt(choose(n, v) as real) * invPow2(n)''',
+  
+  'projEn1': Method('''function projEn1(p: seq<seq<bv1>>, amp: seq<real>, v: nat): real
+  requires |p| == |amp|
+{
+  projEn1From(p, amp, v, 0)
+}''', ['projEn1From']), 
+
+'projEn1From': '''function projEn1From(p: seq<seq<bv1>>, amp: seq<real>, v: nat, i: nat): real
+  requires |p| == |amp|
+  requires i <= |p|
+  decreases |p| - i
+{
+  if i == |p| then 0.0
+  else (if castBVInt(p[i]) == v then amp[i] * amp[i] else 0.0)
+       + projEn1From(p, amp, v, i + 1)
+}''', 
+
+'projEn1LowerBound': '''lemma {:axiom} projEn1LowerBound(p: seq<seq<bv1>>, amp: seq<real>, s1: nat, w: nat)
+  requires |p| == |amp|
+  requires 0 <= w < |p|
+  ensures  castBVInt(p[w]) == s1 ==> projEn1(p, amp, s1) >= amp[w]*amp[w]'''
+
   }
   
   @staticmethod

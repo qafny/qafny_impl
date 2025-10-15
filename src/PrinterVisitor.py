@@ -111,7 +111,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return ctx.op() + '(' + ctx.next().accept(self) + ')'
 
     def visitBind(self, ctx: TargetProgrammer.DXBind):
-#       print('\nvisitBind', ctx)
+    #    print('\nvisitBind', ctx)
         return ctx.ID() + (str(ctx.num()) if ctx.num() else '')
 
     def visitNum(self, ctx: TargetProgrammer.DXNum):
@@ -172,7 +172,7 @@ class PrinterVisitor(TargetProgramVisitor):
         return 'if (' + ctx.cond().accept(self) + '){\n' + stmts + '}' + elsepart
 
     def visitIndex(self, ctx: TargetProgrammer.DXIndex):
-    #    print('\nvisitIndex in PV', ctx)
+     #   print('\nvisitIndex in PV', ctx)
         if ctx.bind():
             return ctx.bind().accept(self) + '[' + ctx.index().accept(self) + ']'
         else:
@@ -223,3 +223,8 @@ class PrinterVisitor(TargetProgramVisitor):
         if ctx.high() is not None:
             high_str = ctx.high().accept(self)
         return f'{id_str}[{low_str}..{high_str}]'
+    
+    def visitWitness(self, ctx: TargetProgrammer.DXWitness):
+        bind_str = ctx.bind().accept(self)
+        constrs_str = ctx.constrs().accept(self)
+        return f'var {bind_str} :| {constrs_str};'

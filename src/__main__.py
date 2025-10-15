@@ -64,11 +64,11 @@ DEFAULT_FILENAMES = [
     #  example_program("GHZ"),
 #     example_program("Teleportation"),
     # example_program("Superdense"),
-     example_program("Shors"),
+    # example_program("Shors"),
       example_program("HammingWeight"),  
     # example_program("DeutschJozsa"),
     # example_program("simon"),
-     example_program("DiscreteLog"),
+   #  example_program("DiscreteLog"),
     # example_program("Grovers"),
     # example_program("QPE"),
     # example_program("SWAPTest"),
@@ -180,7 +180,7 @@ if __name__ == "__main__":
             # Pass the result through a Cleanup Visitor to perform final cleanup operations
             cleanup = CleanupVisitor()
             dafny_ast = cleanup.visitProgram(dafny_ast)
-#            print(dafny_ast)
+            print(dafny_ast)
             dafny_code = ''
 
             # add library functions
