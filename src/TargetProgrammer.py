@@ -693,7 +693,7 @@ class DXAssert(DXStmt):
 
 class DXAssign(DXStmt):
 
-    def __init__(self, ids: [DXAExp], exp : DXAExp, init: bool = None, line: int = None):
+    def __init__(self, ids: [DXAExp], exp : DXAExp, init: bool = True, line: int = None):
         self._ids = ids
         self._exp = exp
         self._init = init

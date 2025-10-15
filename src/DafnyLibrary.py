@@ -366,11 +366,13 @@ class DafnyLibrary:
   ensures forall k: nat, add: nat, j: nat, Y: nat, N: nat {:trigger pow(k, add) * ((pow(k, j) * Y) % N)} :: N > 0 ==> (pow(k, add) * ((pow(k, j) * Y) % N)) % N == ((pow(k, j + add) * Y) % N)''',
    
    'choose': '''function choose(n: nat, v: nat): nat
-            {
-              if v > n then 0
-              else if v == 0 || v == n then 1
-              else choose(n - 1, v - 1) + choose(n - 1, v)
-            }''', 
+ requires n >= v
+ ensures choose(n, v) > 0
+{
+  if v > n then 0
+  else if v == 0 || v == n then 1
+  else choose(n - 1, v - 1) + choose(n - 1, v)
+}''', 
    
    'measureEn1': '''
     method measureEn1(p: seq<seq<bv1>>) returns (v: nat)

@@ -239,6 +239,7 @@ class ProgramTransfer(ProgramVisitor):
         self.t_ensures = False  # Flag to indicate if we are in a postcondition context
         self.t_inv = False
         self.classical_args = [] # To store classical arguments of the current method
+        self.classical_rets = []
         
 
         # ---- Debug controls  ----
@@ -327,7 +328,7 @@ class ProgramTransfer(ProgramVisitor):
         # --- Translate Arguments ---
         self.classical_args = [b.accept(self) for b in ctx.bindings() if b.accept(self) is not None]
         dafny_args = self.classical_args[:]
-#        self.log(f"\n dafny_args before varnums: {dafny_args}")
+        self.log(f"\n dafny_args before varnums: {dafny_args}")
         for _, _, var_map in self.varnums:
             dafny_args.extend(sorted(var_map.values(), key=lambda v: v.ID()))
 
@@ -341,6 +342,7 @@ class ProgramTransfer(ProgramVisitor):
                     preds_list = preds if isinstance(preds, list) else [preds]
                     self.final_requires.extend(DXRequires(p, line=self.current_line) for p in preds_list if p is not None)
 #        self.log(f"\n final_requires: {final_requires}")
+        
         # --- Prepare for Postcondition Translation ---
         out_tenv = self.tenv.get(self.fvar)[1]  
         self.outvarnums = []
@@ -350,6 +352,7 @@ class ProgramTransfer(ProgramVisitor):
             self.outvarnums.append((locus, q_type, var_map))
         
         self.log(f"\n outvarnums: {self.outvarnums}")
+        self.classical_rets = [r.accept(self) for r in ctx.returns() if r.accept(self) is not None]
 
         # --- Translate Method Body ---
         dafny_body = []
@@ -374,9 +377,10 @@ class ProgramTransfer(ProgramVisitor):
                     preds_list = res if isinstance(res, list) else [res]
                     final_ensures.extend(DXEnsures(p, line=self.current_line) for p in preds_list if p is not None)
         self.t_ensures = False
-         #-- translate Returns ---           
         
-        dafny_returns = [r.accept(self) for r in ctx.returns() if r.accept(self) is not None]
+        #-- translate Returns ---                        
+        dafny_returns = self.classical_rets[:]
+        self.log(f"\n self.classical_ret {self.classical_rets}")
         for _, _, var_map in self.outvarnums:            
             dafny_returns.extend(sorted(var_map.values(), key=lambda v: v.ID()))
         
@@ -681,7 +685,7 @@ class ProgramTransfer(ProgramVisitor):
                 return_vars = sorted(return_vars_map.values(), key=lambda v: v.ID())
 
                 if final_vars and return_vars:
-                    assignments.append(DXAssign(return_vars, final_vars, line=self.current_line))
+                    assignments.append(DXAssign(return_vars, final_vars, False, line=self.current_line))
                     for i in range(len(final_vars)):
                         mapping[final_vars[i].ID()] = return_vars[i]
                             
@@ -859,6 +863,7 @@ class ProgramTransfer(ProgramVisitor):
                 
         # --- Value Predicate ---
         ket_val = ctx.kets()[0].accept(self)
+        self.log(f"\n ket_val {ket_val}")
         
         # The range for the forall loop, e.g., 0 <= i < |dvar|
         if isinstance(qty, TyHad):
@@ -868,29 +873,27 @@ class ProgramTransfer(ProgramVisitor):
         elif isinstance(qty, TyNor):
             drange = DXInRange(iterator, DXNum(0), DXLength(dvar), line=ctx.line_number())
             body = DXComp("==", DXIndex(dvar, iterator), ket_val, line=ctx.line_number())
-            predicates.append(DXAll(iterator, DXLogic("==>", drange, body), line=ctx.line_number())) 
+            if isinstance(ket_val, DXNum) and (ket_val.val() == 0 or ket_val.val() == 1):
+                predicates.append(DXAll(iterator, DXLogic("==>", drange, body), line=ctx.line_number())) 
             predicates.append(DXComp("==", DXCall("castBVInt", [dvar], False), ket_val, line=ctx.line_number()))
             self.libFuns.add('castBVInt')
         
         return predicates
     
-    #measure in Qafny returns witness, measured value, prob and the normalization scale
+    #measure in Qafny returns witness, measured value and the prob of measurement
     def visitMeasure(self, ctx: QXMeasure):
-        rvars = ctx.ids()
+        rvars = [id.accept(self) for id in ctx.ids()]
         res = subLocus(ctx.locus(), self.varnums)
         if not res:
             return []
         loc, qty, var_map = res
         target_names = [l.location() for l in ctx.locus()] 
-        other_ranges = [l.accept(self) for l in loc if l.location() not in target_names]           
-        target_vars = [var for name, var in var_map.items() if name in target_names]
-        for name, var in var_map.items():
-            if name == ctx.locus()[0].location():
-                tvar = var
-            elif name == 'amp':
-                avar = var
-            else:
-                pass
+     #   other_ranges = [l.accept(self) for l in loc if l.location() not in target_names]           
+     #   target_vars = [var for name, var in var_map.items() if name in target_names]
+        
+        tname = ctx.locus()[0].location()
+        tvar = var_map[tname]
+        avar = var_map.get('amp')
         
         # Determine the number of iterators needed
         nesting_depth = 0
@@ -899,17 +902,18 @@ class ProgramTransfer(ProgramVisitor):
         iterators = [DXBind(f"k{i}", SType("nat")) for i in range(nesting_depth)]
 
         stmt = []
+        rets = []
  #       self.counter += 1
         if isinstance(qty, TyEn):
             #create new var and witness
             new_tvar = DXBind(f"{ctx.locus()[0].location()}", tvar.type().type(), self.counter)
-            wit_var = DXBind(f"k", SType("nat"), self.counter)
-            mea_var = DXBind(f"v", SType('nat'), self.counter)
-            
+            wit_var = DXBind(f"k", SType("nat"), self.counter)                
+            mea_var = DXBind(f"v", SType('nat'), self.counter)         
             wit_constr = DXWitness(wit_var, DXInRange(wit_var, DXNum(0), DXLength(tvar)))
             var_ass = DXAssign([new_tvar], DXIndex(tvar, wit_var))
             mea_ass = DXAssign([mea_var], DXCall('castBVInt', [new_tvar], False))
             
+            rets.extend([wit_var, mea_var])
             stmt.extend([wit_constr, var_ass, mea_ass])
                 
             if len(loc) > nesting_depth: 
@@ -919,7 +923,8 @@ class ProgramTransfer(ProgramVisitor):
                    
 
                 #find normalization scale
-                proj_var = DXBind(f's', SType("nat", self.counter))
+                proj_var = DXBind(f's', SType("nat"), self.counter)
+                rets.append(proj_var)
                 
                 proj_ass = DXAssign([proj_var], DXCall(f'projEn{nesting_depth}', [tvar, avar, mea_var], False))
                 proj_lm = DXCall(f'projEn{nesting_depth}LowerBound', [tvar, avar, mea_var, wit_var], True)
@@ -935,15 +940,40 @@ class ProgramTransfer(ProgramVisitor):
                 then_expr = DXBin('/', self._create_indexed_var(avar, iterators), DXCall('sqrt', [proj_var], False))
                 else_expr = DXNum(0.0)
 
-                inner_comprehension_body = DXIfExp(condition, then_expr, else_expr)
+                inner_body = DXIfExp(condition, then_expr, else_expr)
 
-                self.log(f'inner_comp: {inner_comprehension_body}')
-                comprehension = inner_comprehension_body
+                self.log(f'inner_comp: {inner_body}')
+                comprehension = inner_body
                 seq_comp = self._create_seq_comp(iterators, avar, comprehension)  
                 self.log(f'seq_comp: {seq_comp}')             
                 amp_ass = DXAssign([new_avar], seq_comp)
 
                 stmt.extend([amp_ass])
+
+                #update env
+                new_varnums = [v for v in self.varnums if v is not res]
+                new_locus = [l for l in loc if l.location() not in target_names]
+                new_var_map = {name: var for name, var in var_map.items() if name not in target_names}
+                new_var_map['amp'] = new_avar
+                new_varnums.append((new_locus, qty, new_var_map))
+                
+                mea_locus = ctx.locus()
+                mea_var_map = {name: new_tvar for name in target_names}
+                new_varnums.append((mea_locus, TyNor(), mea_var_map))
+                
+                self.varnums = new_varnums
+
+
+                #match the return vars
+                classical_ret_names = {ret_var.ID() for ret_var in self.classical_rets}
+                for i, var in enumerate(rvars):
+                    self.log(f'\n rvars: {var} \n self.classical_rets: {self.classical_rets} \n self.classical_args {self.classical_args}')
+                    is_init = False if var.ID() in classical_ret_names else True
+                    ass = DXAssign([var], rets[i], is_init)
+                    stmt.append(ass)
+
+
+
             
             elif len(loc) == 1: # total measurement
                 pass
@@ -1025,7 +1055,7 @@ class ProgramTransfer(ProgramVisitor):
 #        range_pred = DXLogic('&&', DXComp("<=", lower_bound, iterator), DXComp("<=", iterator, upper_bound))
     #    range_pred = DXComp("<=", lower_bound, DXComp("<=", iterator, upper_bound))
     #    dafny_predicates.append(range_pred)      
-        increment_stmt = DXAssign([iterator], DXBin("+", iterator, DXNum(1)))
+        increment_stmt = DXAssign([iterator], DXBin("+", iterator, DXNum(1)), False)
         loop_body_stmts.append(increment_stmt)
         while_loop = DXWhile(loop_condition, loop_body_stmts, dafny_predicates, line=self.current_line)
         final_assert = DXAssert(DXComp('==', iterator, upper_bound))
