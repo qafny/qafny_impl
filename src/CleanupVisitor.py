@@ -83,6 +83,7 @@ class CleanupVisitor(TargetProgramVisitor):
 
         stmts = []
         for stmt in ctx.stmts():
+            print(f"\n stmt in CV {stmt}")
             stmts.append(stmt.accept(self))
 
         return DXMethod(id, axiom, bindings, returns, conds, stmts, ctx.is_function(), line=ctx.line())

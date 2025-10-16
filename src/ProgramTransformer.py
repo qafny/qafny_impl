@@ -186,13 +186,21 @@ class ProgramTransformer(ExpVisitor):
         elif ctx.whileexp() is not None:
             return [self.visitWhileexp(ctx.whileexp())]
         elif ctx.fcall() is not None:
-            return [self.visitFcall(ctx.fcall())]
+            return [self.visitFcallStmt(ctx.fcall())]
         elif ctx.returnStmt() is not None:
             return [self.visitReturnStmt(ctx.returnStmt())]
         elif ctx.breakStmt() is not None:
             return [self.visitBreakStmt(ctx.breakStmt())]
         else:
             raise ValueError("[UNREACHABLE] Unreachable branch in visitStmt.")
+        
+    
+    def visitFcallStmt(self, ctx: ExpParser.FcallContext):
+        # check for inverse
+        inverse = False
+        if ctx.getChild(1) is not None and ctx.getChild(1).getText() == '^{-1}':
+            inverse = True
+        return QXCallstmt(ctx.ID(), self.visitArithExprsOrKets(ctx.arithExprsOrKets()), inverse, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#spec.
     def visitSpec(self, ctx: ExpParser.SpecContext):
@@ -750,12 +758,12 @@ class ProgramTransformer(ExpVisitor):
         if ctx.arithExpr() is not None:
             restrict = self.visitArithExpr(ctx.arithExpr())
 
-        stmts.append(QXMeasureAbort(assign_to, locus, restrict, ctx,line_number=ctx.start.line))
+        stmts.append(QXMeasureAbort(assign_to, locus, restrict, line_number=ctx.start.line))
         return stmts
 
     # Visit a parse tree produced by ExpParser#return.
     def visitReturnStmt(self, ctx: ExpParser.ReturnStmtContext):
-        return QXReturn([QXBind(id) for id in self.visitIds(ctx.ids())], ctx,line_number=ctx.start.line)
+        return QXReturn([QXBind(id) for id in self.visitIds(ctx.ids())], line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#break.
     def visitBreakStmt(self, ctx: ExpParser.BreakStmtContext):
@@ -816,6 +824,13 @@ class ProgramTransformer(ExpVisitor):
 
         return QXWhile(bexp, invs, stmts, ctx,line_number=ctx.start.line)
 
+    def visitFcallStmt(self, ctx: ExpParser.FcallContext):
+        # check for inverse
+        inverse = False
+        if ctx.getChild(1) is not None and ctx.getChild(1).getText() == '^{-1}':
+            inverse = True
+        return QXCallStmt(ctx.ID(), self.visitArithExprsOrKets(ctx.arithExprsOrKets()), inverse, line_number=ctx.start.line)    
+    
     # Visit a parse tree produced by ExpParser#fcall.
     def visitFcall(self, ctx: ExpParser.FcallContext):
         # check for inverse
@@ -967,7 +982,7 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#notExpr.
     def visitNotExpr(self, ctx: ExpParser.NotExprContext):
-        return QXUni("not", self.visitArithExpr(ctx.arithExpr()), ctx,line_number=ctx.start.line)
+        return QXUni("not", self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#absExpr.
     def visitAbsExpr(self, ctx: ExpParser.AbsExprContext):

@@ -36,6 +36,8 @@ class ProgramVisitor(AbstractProgramVisitor):
                 return self.visitBreak(ctx)
             case QXCall():
                 return self.visitCall(ctx)
+            case QXCallStmt():
+                return self.visitCallStmt(ctx)
             case QXCAssign():
                 return self.visitCAssign(ctx)
             case QXCast():
@@ -219,6 +221,10 @@ class ProgramVisitor(AbstractProgramVisitor):
         for elem in ctx.exps():
             elem.accept(self)
         return ctx.ID()
+    
+    def visitCallStmt(self, ctx: Programmer.QXCallStmt):
+        call_expr = ctx.call_expr()
+        return call_expr.accept(self)
 
     def visitCAssign(self, ctx: Programmer.QXCAssign):
         ctx.aexp().accept(self)

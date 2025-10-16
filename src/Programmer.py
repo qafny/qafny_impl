@@ -1645,7 +1645,7 @@ class QXWhile(QXStmt):
 
 @qafny.auto.rich_repr
 @qafny.auto.equality
-class QXCall(QXStmt, QXAExp):
+class QXCall(QXAExp):
 
     def __init__(self, id: str, exps: [QXAExp], inverse: bool = False , line_number = None):
          
@@ -1672,6 +1672,26 @@ class QXCall(QXStmt, QXAExp):
     def line_number(self):
         return self._line_number
 
+
+@qafny.auto.rich_repr
+@qafny.auto.equality
+class QXCallStmt(QXStmt):
+    """
+    Represents a function call that is used as a STANDALONE STATEMENT.
+    This class is now a simple wrapper around a QXCall object.
+    """
+    def __init__(self, id: str, exps: [QXAExp], inverse: bool = False , line_number = None):
+        self._call_expr = QXCall(id, exps, inverse, line_number)
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitCallStmt(self)
+    
+    def call_expr(self) -> QXCall:
+        """Provides access to the underlying call expression."""
+        return self._call_expr
+    
+    def line_number(self):
+        return self._call_expr.line_number()
 
 @qafny.auto.rich_repr
 @qafny.auto.equality

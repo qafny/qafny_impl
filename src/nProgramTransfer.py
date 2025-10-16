@@ -967,19 +967,14 @@ class ProgramTransfer(ProgramVisitor):
                 #match the return vars
                 classical_ret_names = {ret_var.ID() for ret_var in self.classical_rets}
                 for i, var in enumerate(rvars):
-                    self.log(f'\n rvars: {var} \n self.classical_rets: {self.classical_rets} \n self.classical_args {self.classical_args}')
                     is_init = False if var.ID() in classical_ret_names else True
                     ass = DXAssign([var], rets[i], is_init)
                     stmt.append(ass)
-
-
-
             
             elif len(loc) == 1: # total measurement
                 pass
-
-
     #    print(f"\n ctx in visitMeasure {ctx}: \n {self.varnums}, \n locus: {loc}, {qty}, {var_map}")
+        self.counter += 1
         return stmt
 
     def visitFor(self, ctx: QXFor) -> list:
@@ -1200,6 +1195,11 @@ class ProgramTransfer(ProgramVisitor):
     #    self.log('\nvisitCall', ctx.ID())
         self.libFuns.add(str(ctx.ID()))
         return DXCall(str(ctx.ID()), [x.accept(self) for x in ctx.exps()], False, line=ctx.line_number())
+    
+    def visitCallStmt(self, ctx: Programmer.QXCallStmt):
+        call = ctx.call_expr()
+        self.libFuns.add(str(call.ID()))
+        return DXCall(str(call.ID()), [x.accept(self) for x in call.exps()], True, line=call.line_number())
     
     def visitUni(self, ctx: Programmer.QXUni):
         if ctx.op() == 'sqrt':
