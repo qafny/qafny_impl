@@ -102,7 +102,7 @@ def sub_locus_from_env(q2: [QXQRange], qs: [([QXQRange], QXQTy, dict)]):
     # Iterate with an index to make removing the found element easy.
     for i, state_tuple in enumerate(qs):
         existing_locus, _, _ = state_tuple
-        print(f"\n q2 {q2}, \n existing_locus: {existing_locus}")
+    #    print(f"\n q2 {q2}, \n existing_locus: {existing_locus}")
         
         # We want to see if the required locus 'q2' is a sub-part of an 'existing_locus'.
         if compareLocus(q2, existing_locus) is not None:
@@ -240,6 +240,7 @@ class ProgramTransfer(ProgramVisitor):
         self.t_inv = False
         self.classical_args = [] # To store classical arguments of the current method
         self.classical_rets = []
+        self.lemma = []
         
 
         # ---- Debug controls  ----
@@ -328,7 +329,7 @@ class ProgramTransfer(ProgramVisitor):
         # --- Translate Arguments ---
         self.classical_args = [b.accept(self) for b in ctx.bindings() if b.accept(self) is not None]
         dafny_args = self.classical_args[:]
-        self.log(f"\n dafny_args before varnums: {dafny_args}")
+#        self.log(f"\n dafny_args before varnums: {dafny_args}")
         for _, _, var_map in self.varnums:
             dafny_args.extend(sorted(var_map.values(), key=lambda v: v.ID()))
 
@@ -887,6 +888,7 @@ class ProgramTransfer(ProgramVisitor):
         if not res:
             return []
         loc, qty, var_map = res
+        self.log(f"\n res: {res}")
         target_names = [l.location() for l in ctx.locus()] 
      #   other_ranges = [l.accept(self) for l in loc if l.location() not in target_names]           
      #   target_vars = [var for name, var in var_map.items() if name in target_names]
@@ -894,7 +896,7 @@ class ProgramTransfer(ProgramVisitor):
         tname = ctx.locus()[0].location()
         tvar = var_map[tname]
         avar = var_map.get('amp')
-        
+        self.log(f"\n avar: {avar}")
         # Determine the number of iterators needed
         nesting_depth = 0
         if isinstance(qty, TyEn):
@@ -942,16 +944,17 @@ class ProgramTransfer(ProgramVisitor):
 
                 inner_body = DXIfExp(condition, then_expr, else_expr)
 
-                self.log(f'inner_comp: {inner_body}')
+#                self.log(f'inner_comp: {inner_body}')
                 comprehension = inner_body
                 seq_comp = self._create_seq_comp(iterators, avar, comprehension)  
-                self.log(f'seq_comp: {seq_comp}')             
+#                self.log(f'seq_comp: {seq_comp}')             
                 amp_ass = DXAssign([new_avar], seq_comp)
 
                 stmt.extend([amp_ass])
 
                 #update env
-                new_varnums = [v for v in self.varnums if v is not res]
+                _, new_varnums = sub_locus_from_env(loc, self.varnums)
+    #            self.log(f"\n res: {res} \n new_varnums: {new_varnums}")
                 new_locus = [l for l in loc if l.location() not in target_names]
                 new_var_map = {name: var for name, var in var_map.items() if name not in target_names}
                 new_var_map['amp'] = new_avar
@@ -962,7 +965,7 @@ class ProgramTransfer(ProgramVisitor):
                 new_varnums.append((mea_locus, TyNor(), mea_var_map))
                 
                 self.varnums = new_varnums
-
+                self.log(f'\n self.varnums after measurement: {self.varnums}')
 
                 #match the return vars
                 classical_ret_names = {ret_var.ID() for ret_var in self.classical_rets}
@@ -1032,7 +1035,7 @@ class ProgramTransfer(ProgramVisitor):
         if loop_states:
             modified_reg_names = {l.location() for inv in qafny_inv for l in inv.spec().locus()}
             subst = SubstAExp(iterator.ID(), ctx.range().right())
-            self.log(f"\n ctx.range().right(): {ctx.range().right()} \n subst: {subst}")
+    #        self.log(f"\n ctx.range().right(): {ctx.range().right()} \n subst: {subst}")
             new_varnums = [e for e in self.varnums if e[0][0].location() not in modified_reg_names]
             for locus, qty, var_map in loop_states:
 #                final_locus = [QXQRange(l.location(), crange=QXCRange(subst.visit(l.crange().left().accept(self)), subst.visit(l.crange().right().accept(self)))) for l in locus]
@@ -1040,7 +1043,7 @@ class ProgramTransfer(ProgramVisitor):
                 for loc in locus:
                     floc = subst.visit(loc)
                     final_locus.extend(floc if isinstance(floc, list) else [floc])
-                self.log(f"\n final_locus after subst: {final_locus}")
+     #           self.log(f"\n final_locus after subst: {final_locus}")
                 if not any(EqualityVisitor().visit(fl.crange().left(), fl.crange().right()) for fl in final_locus):
                     new_varnums.append((final_locus, qty, var_map))
             self.varnums = new_varnums
@@ -1199,11 +1202,14 @@ class ProgramTransfer(ProgramVisitor):
     def visitCallStmt(self, ctx: Programmer.QXCallStmt):
         call = ctx.call_expr()
         self.libFuns.add(str(call.ID()))
-        return DXCall(str(call.ID()), [x.accept(self) for x in call.exps()], True, line=call.line_number())
+        result = DXCall(str(call.ID()), [x.accept(self) for x in call.exps()], True, line=call.line_number())
+        self.lemma.append(result)
+        return result
     
     def visitUni(self, ctx: Programmer.QXUni):
         if ctx.op() == 'sqrt':
             self.libFuns.add('sqrt')
+#            self.log(f"\n visitUni {ctx.next().accept(self)}")
             return DXCall('sqrt', [DXCast(SType('real'), ctx.next().accept(self))], False, line=ctx.line_number())
         return DXUni(ctx.op(), ctx.next().accept(self), line=ctx.line_number())
     
@@ -2010,8 +2016,58 @@ class ProgramTransfer(ProgramVisitor):
         
         # 1. Define the new, deeper quantum state
         input_depth = qty.flag().num()
+
+        if len(loc) == input_depth: 
+        #some phase interfereces happened. look for lemma and extract the info from the lemma. 
+        #build a brand new based on the info of the lemma
+        #if no lemma is found, return error, 
+            self.log(f"\n self.lemma {self.lemma}")
+
+            new_vars = self._update_vars(old_vars)
+            iterators = [DXBind(f"k{i}", SType("nat")) for i in range(input_depth)]
+            
+            helper_lemma = self.lemma[0]
+            #well, we have to do it case by case now.
+            if helper_lemma.ID() == 'Period':
+                size = helper_lemma.exps()[0]
+                period = helper_lemma.exps()[1]
+                total_size = DXCall("pow2", [size])
+                stride = DXBin("/", total_size, period)
+                
+                #let's assume en(1) here for now
+                # Build body for qubit registers
+                q_body = {}
+                target_name = loc[0].location()
+                q_body[target_name] = DXCall("castIntBV", [iterators[0], size])
+                           
+                if_cond = DXComp("==", DXBin("%", iterators[0], stride), DXNum(0))
+                self.log(f"\n period {period}")
+                then_expr = DXBin("/", DXNum(1.0), DXCall('sqrt', [DXCast(SType('real'), period)])) 
+                else_expr = DXNum(0.0)
+                amp_body = DXIfExp(if_cond, then_expr, else_expr)
+
+                # --- Wrap bodies in nested sequence comprehensions ---
+                for name, body in {**q_body, 'amp': amp_body}.items():
+                    comprehension = body
+                    for i in range(len(iterators) - 1, -1, -1):
+                        iterator = iterators[i]
+                        size = DXCall("pow2", [size])
+                        spec = DXRequires(DXInRange(iterator, DXNum(0), size))
+                        comprehension = DXSeqComp(size, iterator, spec, comprehension)
+                    
+                    stmts.append(DXAssign([new_vars[name]], comprehension, True))
+
+                return stmts, qty, new_vars
+            
+            
+            
+
+
+
+
         output_depth = input_depth + 1
         new_qty = TyEn(QXNum(output_depth))
+        self.log(f"\n self.counter {self.counter}")
         new_vars = make_dafny_vars_for_locus(loc, new_qty, self.counter)
         self.counter += 1
 

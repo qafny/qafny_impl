@@ -410,7 +410,12 @@ class DafnyLibrary:
 'projEn1LowerBound': '''lemma {:axiom} projEn1LowerBound(p: seq<seq<bv1>>, amp: seq<real>, s1: nat, w: nat)
   requires |p| == |amp|
   requires 0 <= w < |p|
-  ensures  castBVInt(p[w]) == s1 ==> projEn1(p, amp, s1) >= amp[w]*amp[w]'''
+  ensures  castBVInt(p[w]) == s1 ==> projEn1(p, amp, s1) >= amp[w]*amp[w]''',
+
+'Period':'''lemma {:axiom} Period(n: nat, r: nat)
+  requires 0 < r <= pow2(n)
+  requires pow2(n) % r == 0
+  ensures  true''', 
 
   }
   

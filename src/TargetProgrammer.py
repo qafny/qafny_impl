@@ -457,7 +457,7 @@ class DXEnsures(DXConds):
 
 class DXCall(DXStmt, DXAExp):
 
-    def __init__(self, id: str, exps: [DXAExp], end: bool = True, line: int = None):
+    def __init__(self, id: str, exps: [DXAExp], end: bool = False, line: int = None):
         self._id = id
         self._exps = exps
         self._end = end #variable to check if this is just a function call without assignment so that we can add a semi-colon at the end in PrinterVisitor
