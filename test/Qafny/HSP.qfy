@@ -31,7 +31,7 @@ method HSP (q : Q[n], p : Q[n], n:nat, f : [Bool] -> [Bool], q:nat, prime:nat, c
   q[0,n) *= QFT;
 
   for i in [0, n) with q[i]
-  //  separates q[0, i), p[0, n)
+    separates q[0, i), p[0, n)
     invariant {
       q[0, i), p[0, n) : en ↦ ∑ k ∈ [0, 2^i)) . 1 / sqrt(2^n) . | k , f(k, p[k]) ⟩
     }
