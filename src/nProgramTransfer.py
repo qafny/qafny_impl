@@ -897,11 +897,18 @@ class ProgramTransfer(ProgramVisitor):
         tvar = var_map[tname]
         avar = var_map.get('amp')
         self.log(f"\n avar: {avar}")
+        
         # Determine the number of iterators needed
         nesting_depth = 0
         if isinstance(qty, TyEn):
             nesting_depth = qty.flag().num()     
         iterators = [DXBind(f"k{i}", SType("nat")) for i in range(nesting_depth)]
+
+        #prepare new env
+        _, new_varnums = sub_locus_from_env(loc, self.varnums)
+#            self.log(f"\n res: {res} \n new_varnums: {new_varnums}")
+        new_locus = [l for l in loc if l.location() not in target_names]
+        new_var_map = {name: var for name, var in var_map.items() if name not in target_names}
 
         stmt = []
         rets = []
@@ -911,33 +918,35 @@ class ProgramTransfer(ProgramVisitor):
             new_tvar = DXBind(f"{ctx.locus()[0].location()}", tvar.type().type(), self.counter)
             wit_var = DXBind(f"k", SType("nat"), self.counter)                
             mea_var = DXBind(f"v", SType('nat'), self.counter)         
-            wit_constr = DXWitness(wit_var, DXInRange(wit_var, DXNum(0), DXLength(tvar)))
+            wit_constr = DXWitness(wit_var, DXLogic('&&', DXInRange(wit_var, DXNum(0), DXLength(tvar)), DXComp('>', DXIndex(avar, wit_var), DXNum(0.0)))) # need to check condition in amp
             var_ass = DXAssign([new_tvar], DXIndex(tvar, wit_var))
             mea_ass = DXAssign([mea_var], DXCall('castBVInt', [new_tvar], False))
             
             rets.extend([wit_var, mea_var])
             stmt.extend([wit_constr, var_ass, mea_ass])
+            
+            proj_var = DXBind(f's', SType("nat"), self.counter)
+            rets.append(proj_var)
+                
+            proj_ass = DXAssign([proj_var], DXCall(f'projEn{nesting_depth}', [tvar, avar, mea_var], False))
+            stmt.append(proj_ass)
                 
             if len(loc) > nesting_depth: 
                 #partial measurement -> proj
                 #it collapses the other locus to a subset of basis ket
-                #condtioned amp build
-                   
-
+                #condtioned amp build                  
                 #find normalization scale
-                proj_var = DXBind(f's', SType("nat"), self.counter)
-                rets.append(proj_var)
-                
-                proj_ass = DXAssign([proj_var], DXCall(f'projEn{nesting_depth}', [tvar, avar, mea_var], False))
+
                 proj_lm = DXCall(f'projEn{nesting_depth}LowerBound', [tvar, avar, mea_var, wit_var], True)
 
                 self.libFuns.add(f'projEn{nesting_depth}')
                 self.libFuns.add(f'projEn{nesting_depth}LowerBound')
 
-                stmt.extend([proj_ass, proj_lm])
+                stmt.extend([proj_lm])
 
                 #normalize the amp
                 new_avar = DXBind(f"amp", avar.type(), self.counter)
+                new_var_map['amp'] = new_avar
                 condition = DXComp('==', DXCall('castBVInt', [self._create_indexed_var(tvar, iterators)], False), mea_var, line=ctx.line_number())
                 then_expr = DXBin('/', self._create_indexed_var(avar, iterators), DXCall('sqrt', [proj_var], False))
                 else_expr = DXNum(0.0)
@@ -952,30 +961,32 @@ class ProgramTransfer(ProgramVisitor):
 
                 stmt.extend([amp_ass])
 
-                #update env
-                _, new_varnums = sub_locus_from_env(loc, self.varnums)
-    #            self.log(f"\n res: {res} \n new_varnums: {new_varnums}")
-                new_locus = [l for l in loc if l.location() not in target_names]
-                new_var_map = {name: var for name, var in var_map.items() if name not in target_names}
-                new_var_map['amp'] = new_avar
-                new_varnums.append((new_locus, qty, new_var_map))
-                
-                mea_locus = ctx.locus()
-                mea_var_map = {name: new_tvar for name in target_names}
-                new_varnums.append((mea_locus, TyNor(), mea_var_map))
-                
-                self.varnums = new_varnums
-                self.log(f'\n self.varnums after measurement: {self.varnums}')
 
-                #match the return vars
-                classical_ret_names = {ret_var.ID() for ret_var in self.classical_rets}
-                for i, var in enumerate(rvars):
-                    is_init = False if var.ID() in classical_ret_names else True
-                    ass = DXAssign([var], rets[i], is_init)
-                    stmt.append(ass)
+            #update env    
+            new_varnums.append((new_locus, qty, new_var_map))
             
-            elif len(loc) == 1: # total measurement
-                pass
+            mea_locus = ctx.locus()
+            mea_var_map = {name: new_tvar for name in target_names}
+            new_varnums.append((mea_locus, TyNor(), mea_var_map))
+            
+            self.varnums = new_varnums
+            self.log(f'\n self.varnums after measurement: {self.varnums}')
+
+
+            
+            # elif len(loc) == 1: # total measurement
+            #     proj_var = DXBind(f's', SType("nat"), self.counter)
+            #     rets.append(proj_var)
+                
+            #     proj_ass = DXAssign([proj_var], DXCall(f'projEn{nesting_depth}', [tvar, avar, mea_var], False))
+            #     stmt.append(proj_ass)
+
+            #match the return vars
+            classical_ret_names = {ret_var.ID() for ret_var in self.classical_rets}
+            for i, var in enumerate(rvars):
+                is_init = False if var.ID() in classical_ret_names else True
+                ass = DXAssign([var], rets[i], is_init)
+                stmt.append(ass)
     #    print(f"\n ctx in visitMeasure {ctx}: \n {self.varnums}, \n locus: {loc}, {qty}, {var_map}")
         self.counter += 1
         return stmt
@@ -2029,16 +2040,16 @@ class ProgramTransfer(ProgramVisitor):
             helper_lemma = self.lemma[0]
             #well, we have to do it case by case now.
             if helper_lemma.ID() == 'Period':
-                size = helper_lemma.exps()[0]
+                qsize = helper_lemma.exps()[0]
                 period = helper_lemma.exps()[1]
-                total_size = DXCall("pow2", [size])
+                total_size = DXCall("pow2", [qsize])
                 stride = DXBin("/", total_size, period)
                 
                 #let's assume en(1) here for now
                 # Build body for qubit registers
                 q_body = {}
                 target_name = loc[0].location()
-                q_body[target_name] = DXCall("castIntBV", [iterators[0], size])
+                q_body[target_name] = DXCall("castIntBV", [iterators[0], qsize])
                            
                 if_cond = DXComp("==", DXBin("%", iterators[0], stride), DXNum(0))
                 self.log(f"\n period {period}")
@@ -2051,7 +2062,7 @@ class ProgramTransfer(ProgramVisitor):
                     comprehension = body
                     for i in range(len(iterators) - 1, -1, -1):
                         iterator = iterators[i]
-                        size = DXCall("pow2", [size])
+                        size = DXCall("pow2", [qsize])
                         spec = DXRequires(DXInRange(iterator, DXNum(0), size))
                         comprehension = DXSeqComp(size, iterator, spec, comprehension)
                     

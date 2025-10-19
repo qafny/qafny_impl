@@ -42,7 +42,7 @@ method Shors(n: nat, q: Q[n], p: Q[n], N: nat, base: nat, r: nat , c: nat) retur
   //in the following ω (v * x + r * k * x, 2^n) can be break down ω (v * x) * ω (r * k * x, 2^n), and the first one is one since it can be moved out of the sum k.
   //assert { q[0, n) : en(1) ↦ ∑ x ∈ [0, 2^n) . ∑ k ∈ [0, 2 ^ n / r) . 1 / sqrt(2^n / r) * 1 / sqrt(2^n) * ω (v * x + r * k * x, 2^n) |x⟩ };
   // assert { q[0, n) : en(1) ↦ ∑ x ∈ [0, 2^n)@ (base^x % N == v) . ∑ k ∈ [0, 2^n) . 1 / sqrt(2^n/r) * 1 / sqrt(2^n) * ω (x*k, 2^n)|y⟩ };
-  w, y, py *= measure(q[0, n));
+  w1, y, py *= measure(q[0, n));
 //  w, v, s*= measure(q[0, n), c*2^n/r); //what is c*2^n/r?
   //will need to support a lemma (does not need proof), to show that ∑ k ∈ [0 .. 2^n / r] . ω (r * k * x, 2^n) is 4 / (pi * pi * r) when y = c * 2^n / r
 }  
