@@ -4,16 +4,16 @@
 // Can I assume q comes with phi stored on it already?
 // What to do if the algorithm fails to produce H?
 
-method Stabilizer (q : Q[n], k:nat, n:nat, a:array<bv1>, F : nat, [Bool] -> [Bool], H:set<nat>, M:set<nat>) returns (h:set<nat>)
+method Stabilizer (q : Q[n], k:nat, n:nat, a:nat, F : nat -> nat -> nat, h:[nat], m:[nat]) returns (h:[nat])
     //requires q : Nor -> |psi> - how do I express that q has value of psi as a condition?
-    requires a.Length == n //is array<bv1> the correct data type for a?
-    requires forall k :: 0 <= k < |M| ==> F(0, M[k]) == M[k] //for any element x of M, F(0,x)==x
-    requires forall k :: 0 <= k < |M| ==> 
+    requires a < 2^n //is array<bv1> the correct data type for a?
+    requires forall k :: 0 <= k < |m| ==> F(0, m[k]) == m[k] //for any element x of M, F(0,x)==x
+    requires forall k :: 0 <= k < |m| ==> 
         forall i :: 0 <= i < 2^n ==>
         forall j :: 0 <= j < 2^n ==>
-        F(i + j, M[k]) == F(i, F(j, M[k]))
+        F(i + j, m[k]) == F(i, F(j, m[k]))
     //postcondition: for all elements of h, F(h,a) == a
-    ensures h != null ==> forall k :: 0 <= k < |h| ==> F(h[k], a) == a
+    ensures forall k :: 0 <= k < |h| ==> F(h[k], a) == a
 {
     h := [];
     i := 0;
@@ -26,9 +26,9 @@ method Stabilizer (q : Q[n], k:nat, n:nat, a:array<bv1>, F : nat, [Bool] -> [Boo
 
         q'[0,n) *= H;
 
-        y, p *= measure(q');
+        y, p *= measure(q'[0,n));
         // y is an element of H
-        assert y ∈ H;
+        assert y ∈ h;
         assert F(y, a) == a;
 
         h := h + [y]; // perhaps h := h \/ y is better
@@ -39,10 +39,10 @@ method Stabilizer (q : Q[n], k:nat, n:nat, a:array<bv1>, F : nat, [Bool] -> [Boo
 
     // check if h is correct
 
-    if h == H
-    {
-        return h;
-    }
+    //if h == h
+   // {
+   //     return h;
+   // }
     // what if it isn't? try again until it succeeds (prove termination?) or just return as a failure?
-    return null;
+   // return [ ];
 }

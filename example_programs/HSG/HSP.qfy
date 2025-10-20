@@ -15,17 +15,17 @@ method HSP (q : Q[n], p : Q[n], n:nat, f : [Bool] -> [Bool], q:nat, prime:nat, c
   q[0, n) *= H;
   p[0, n) *= H;
   
-  for i in [0, n) with q[i]
-    separates q[0, i), p[0, n)
+  for i in [0, n) 
+   // separates q[0, i), p[0, n)
     invariant {
-      q[0, i), p[0, n) : En ↦ ∑ k ∈ [0, 2^i)) . 1 / sqrt(2^n) . | f(k, p[k]), k ⟩
+      q[0, i), p[0, n) : En ↦ ∑ k ∈ [0, 2^i) . 1 / sqrt(2^n) | f(k, p[k])⟩ |k ⟩
     }
     invariant {
       q [i , n) : Had ↦ |+⟩
     }
   {
     //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
-    q[0, n) *= λ ((x: Q n, y:Q n) => (((x + f(x))), y));
+    if (q[i]) { q[0, n) *= λ(x => |x + f(x)⟩);}
 
     // This is super hacky, but I have no good way to do this now....
     // TODO: find out one way to take the reference of the underlying range
@@ -35,17 +35,16 @@ method HSP (q : Q[n], p : Q[n], n:nat, f : [Bool] -> [Bool], q:nat, prime:nat, c
 
   q[0,n) *= QFT;
 
-  for i in [0, n) with q[i]
-    separates q[0, i), p[0, n)
+  for i in [0, n)
     invariant {
-      q[0, i), p[0, n) : En ↦ ∑ k ∈ [0, 2^i)) . 1 / sqrt(2^n) . | k , f(k, p[k]) ⟩
+      q[0, i), p[0, n) : En ↦ ∑ k ∈ [0, 2^i) . 1 / sqrt(2^n) | k , f(k, p[k]) ⟩
     }
     invariant {
       q [i , n) : Had ↦ |+⟩
     }
   {
     //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
-    q[0, n) *= λ ((x: Q n, y:Q n) => (x, ((y + f(x)))));
+    if (q[i]) {q[0, n) *= λ (x,y => |x⟩ |y + f(x)⟩);}
 
     // This is super hacky, but I have no good way to do this now....
     // TODO: find out one way to take the reference of the underlying range
@@ -55,7 +54,7 @@ method HSP (q : Q[n], p : Q[n], n:nat, f : [Bool] -> [Bool], q:nat, prime:nat, c
 
   q[0,n) *= RQFT;
 
-  y,prob *= measure(q);
+  y,prob *= measure(q[0,n));
 
-  s *= NOT(y)
+  s := not(y);
 }

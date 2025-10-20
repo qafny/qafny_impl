@@ -5,12 +5,12 @@
 //lambda value here is the eigenvalue for U, so you will need to say the eigen value property about U here.
 
 method QPE(q : Q[n], p : Q[n], n:nat, U : Q[n] -> Q[n], psi: Q[n], lambda : [Bool]) returns (y:nat, p : real)
-  requires forall k :: 0 <= k < 2^(n-1) ==> f(n2b(k)) == f(s xor n2b(k+2^n))
+  //requires forall k :: 0 <= k < 2^(n-1) ==> f(n2b(k)) == f(s xor n2b(k+2^n))
   requires b2n(s) != 0
     // we can assume that all elements in the function are lined up with, without losing generality, since we do not rely on the structure
   requires { q[0 , n) : Nor ↦ |0⟩ }
   requires { p[0 , n) : En ↦ psi } 
-  requires forall k, U(k, psi) == ω (k * lambda, 1) . psi
+  requires { U(k, psi) == ω (k * lambda, 1) . psi}
     // need to have a way to say, we can increment the phase to a quantum state psi.
     // ω (k * lambda, 1) = e^(2pi * i * k * lambda / 1)
   ensures y  == lambda * 2^n ==> p == 4 / PI^2 //using the probablitic theorems listed in the QPE, can be hard-code.
@@ -19,10 +19,10 @@ method QPE(q : Q[n], p : Q[n], n:nat, U : Q[n] -> Q[n], psi: Q[n], lambda : [Boo
 
   //assert { p[0..n] : En ↦ ∑ k ∈ [0, 2^n) . e^(2pi * i * k * lambda) | k , p[k]  ⟩ };
   
-  for k in [0, n) with q[k]
-    separates q[0, k), p[0, n)
+  for k in [0, n) 
+    //separates q[0, k), p[0, n)
     invariant {
-      q[0, k), p[0, n) : En ↦ ∑ j ∈ [0, 2^k)) . 1 / sqrt(2^k) . ω (j * lambda, 1)  . | j ⟩ psi
+      q[0, k), p[0, n) : En ↦ ∑ j ∈ [0, 2^k) . 1 / sqrt(2^k) . ω (j * lambda, 1)  | j ⟩ psi
        //splitting the basis of q[0, k), p[0, n) into two parts, maybe we can split q[0, k), p[0, n) into q[0, k) and p[0, n)
        //q[0, k) : En ↦ ∑ k ∈ [0, 2^k)) . 1 / sqrt(2^k) . ω (k * lambda, 1)   . | k ⟩ and p[0, n) ↦ psi
     }
@@ -31,7 +31,7 @@ method QPE(q : Q[n], p : Q[n], n:nat, U : Q[n] -> Q[n], psi: Q[n], lambda : [Boo
     }
   {
     //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
-    U(2^k, p[0, n));
+    if (q[k]) {U(2^k, p[0, n));}
 
     // This is super hacky, but I have no good way to do this now....
     // TODO: find out one way to take the reference of the underlying range
@@ -43,11 +43,11 @@ method QPE(q : Q[n], p : Q[n], n:nat, U : Q[n] -> Q[n], psi: Q[n], lambda : [Boo
   //--> En ↦ ∑ j ∈ [0, 2^n)) . 1 / sqrt(2^n) * 1 / sqrt(2^n) . (∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (- j * v, 2^n)  . | v ⟩ )
   q[0,n) *= RQFT;
   //the 1 / sqrt(2^n) * 1 / sqrt(2^n) can be rewritten as 1 / 2^n, but we can keep it in 1 / sqrt(2^n) * 1 / sqrt(2^n) or 1/ (sqrt(2^n) * sqrt(2^n))
-  assert { q[0,n) : En ↦  ∑ j ∈ [0, 2^n)) . 1 / sqrt(2^n) * 1 / sqrt(2^n) . (∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (- j * v, 2^n)  . | v ⟩ ) };
-  assert { q[0,n) : En ↦  ∑ v ∈ [0, 2^n)) . 1 / (2^n) . (∑ j ∈ [0, 2^n) . ω (j * lambda * 2^n - j * v, 2/n) )  . | v ⟩ };
+  assert { q[0,n) : En ↦  ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n) * 1 / sqrt(2^n) . (∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (- j * v, 2^n)  | v ⟩ ) };
+  assert { q[0,n) : En ↦  ∑ v ∈ [0, 2^n) . 1 / (2^n) . ∑ j ∈ [0, 2^n) . ω (j * lambda * 2^n - j * v, 2/n)   | v ⟩ };
    // the above step rearrange the arrays from ∑ j  and ∑ v
    //can do something smart, we can start with the one in line 47, 
-  y,p *= measure(q);
+  y,p *= measure(q[0,n));
   //we will need the post-analysis leading to the above result set up in https://en.wikipedia.org/wiki/Simon%27s_problem
 }  
 

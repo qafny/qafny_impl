@@ -1,411 +1,207 @@
-predicate boundedSame (x : seq<bv1>, y : seq<bv1> , n:nat) 
-  requires n <= |x|
-  requires n <= |y|
-{
-  forall k :: 0 <= k < n ==> x[k] == y[k]
-}
+lemma {:axiom} triggerSqrtMul()
+                      ensures forall k, j :: k > 0.0 && j > 0.0 ==> sqrt(k) * sqrt(j) == sqrt(k * j)
 
-function {:axiom} omega(n:nat, a:nat): real
+
+function {:axiom} samebit(x: seq<bv1>, y: seq<bv1>, n :nat) : bool
+    requires |x| >= n
+    requires |y| >= n
+    ensures samebit(x, y, n) == forall k :: 0 <= k < n ==> x[k] == y[k]
+      
+
+function {:axiom} powN(N:nat, k: nat) : int
+                    ensures powN(N, k) > 0
+
+function {:axiom} abs(n : int) : nat
+                ensures abs(n) == if n >= 0 then n else -n
+
+method {:axiom} cutHad(x: seq<real>) returns (x1: seq<real>)
+          requires 0 < |x|
+          ensures |x1| == |x| - 1
+          ensures forall k :: 0 <= k < |x1| ==> x1[k] == x[k+1]
+
+method  mergeBitEn(x: seq<seq<bv1>>, i : nat) returns (x1: seq<seq<bv1>>)
+          requires |x| == pow2(i)
+          requires forall k :: 0 <= k < |x| ==> |x[k]| == i
+    //      requires |x| == pow2(n)
+          ensures |x1| == |x| * 2 
+          ensures |x1| == pow2(i + 1)
+          ensures forall k :: 0 <= k < |x1| ==> |x1[k]| == i + 1
+          ensures forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k], i)
+          ensures forall k :: |x| <= k < |x1| ==> samebit(x[k-|x|], x1[k], i) 
+          ensures forall k :: 0 <= k < |x| ==> x1[k][i] == 0
+          ensures forall k :: |x| <= k < |x1| ==> x1[k][i] == 1
+          {
+            var left  := seq(|x|,  k requires 0 <= k < |x|=> x[k] + [0]);
+            var right := seq(|x|,  k requires 0 <= k < |x|=> x[k] + [1]);
+            x1 := left + right;
+     //       pow2add();
+          }
 
 function {:axiom} sqrt(a:real): real
-
-lemma {:axiom} SqrtGt(a:real)
-  requires a > 0.0
-  ensures sqrt(a) > 0.0
-
-lemma {:axiom} omegaplus(a:nat, b:nat, c:nat)
-  ensures omega(b+c,a) == omega(b,a) * omega(c,a)
-  
-method hadH(x:bv1) returns (y : int) 
-  ensures y == x as int
-{
-  y := x as int;
-}
-
-function castBVInt (x:seq<bv1>) : nat
-{
-  if (|x|==0) then 0 else (x[0] as nat) + 2 * castBVInt(x[1..])
-}
-
-function b2n (x:seq<bv1>, i:nat) : nat
-  requires i <= |x|
-{
-  if (i==0) then 0 else (x[i-1] as nat) * pow2(i-1) + b2n(x[..i-1],i-1)
-}
+                requires a > 0.0
+                ensures sqrt(a) > 0.0
+                ensures sqrt(a) * sqrt(a) == a
 
 
-method {:axiom} n2b(x:nat, n:nat) returns (y:seq<bv1>)
-    ensures |y| == n
-    ensures castBVInt(y) == x
+method mergeAmpEn(amp: seq<real>, q : real) returns (amp1: seq<real>)
+          ensures |amp1| == |amp| * 2
+          ensures forall k :: 0 <= k < |amp| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k]
+          ensures forall k :: |amp| <= k < |amp1| ==> amp1[k] == 1.0 / sqrt(pow2(1) as real) * amp[k-|amp|] * q
+          {
+            var left  := seq(|amp|, k requires 0 <= k < |amp|=> (1.0 / sqrt(pow2(1) as real)) * amp[k]);
+            var right := seq(|amp|, k requires 0 <= k < |amp|=> (1.0 / sqrt(pow2(1) as real)) * amp[k] * q);
+            amp1 := left + right;
+          }
 
-function pow2(N:nat):int
-  ensures pow2(N) > 0
-{
-	if (N==0) then 1 else 2 * pow2(N-1)
-}
+function {:axiom} omega(a:nat, n:nat): real
 
-function Pow(b: int, e: nat): int
-    decreases e
-  {
-    if e == 0 then
-      1
-    else
-      b * Pow(b, e - 1)
-  }
+lemma {:axiom} mergeBitTrigger(x: seq<seq<bv1>>, x1: seq<seq<bv1>>, i:nat)
+          requires forall k :: 0 <= k < |x| ==> |x[k]| == i
+          //requires forall k :: 0 <= k < |x| ==> castBVInt(x[k]) == k
+          requires |x1| == |x| * 2 
+          requires forall k :: 0 <= k < |x1| ==> |x1[k]| == i + 1
+  //        requires forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k], i)
+  //        requires forall k :: |x| <= k < |x1| ==> samebit(x[k-|x|], x1[k], i) 
+          requires forall k :: 0 <= k < |x| ==> x1[k][i] == 0
+          requires forall k :: |x| <= k < |x1| ==> x1[k][i] == 1
+          ensures forall k :: 0 <= k < |x1| ==> castBVInt(x1[k]) == k
 
-//apply H to a Nor typed array x, to a Had type
-// x[0,n) <- H, detect the type of x[0,n): nor
-//call the function hadNorHad: y
-// y' := hadNorHad(x)
-//after the above line, we have the following constarints
-// 1. |y'| == |x|, 
-// 2. forall k :: 0 <= k < |x| ==> y'[k] == omega(x[k] as int,2)
+// function {:axiom} castBVInt(x : seq<bv1>) : nat
+//                 ensures castBVInt(x) >= 0
+//                 ensures castBVInt(x) < pow2(|x|) 
+
+function bv1ToNat(b: bv1): nat { if b == 1 then 1 else 0 }
+
+function castBVInt(x: seq<bv1>): nat
+      ensures castBVInt(x) >= 0
+      ensures castBVInt(x) < pow2(|x|)
+      decreases x
+    {
+      if |x| == 0 then 0
+      else bv1ToNat(x[0]) + 2 * castBVInt(x[1..])
+    }
+
+function {:axiom} castIntBV(x: nat, n: nat) : seq<bv1>
+ //               requires x < pow2(n)
+                ensures castBVInt(castIntBV(x, n)) == x
+                ensures |castIntBV(x, n)| == n
+
+
+method duplicateMergeBitEn(x: seq<seq<bv1>>) returns (x1: seq<seq<bv1>>)
+          ensures |x1| == |x| * 2
+          ensures forall k :: 0 <= k < |x| ==> |x1[k]| == |x[k]|
+          ensures forall k :: |x| <= k < |x1| ==> |x1[k]| == |x[k - |x|]|
+          ensures forall k :: 0 <= k < |x| ==> samebit(x[k], x1[k], |x[k]|)
+          ensures forall k :: 0 <= k < |x| ==> castBVInt(x1[k]) == castBVInt(x[k])
+          ensures forall k :: |x| <= k < |x1| ==> samebit(x[k - |x|], x1[k], |x[k - |x|]|)
+          ensures forall k :: |x| <= k < |x1| ==> castBVInt(x1[k]) == castBVInt(x[k - |x|])
+          {
+            x1 := x + x;
+          }
+
+function pow2(n:nat): nat
+            ensures pow2(n) > 0
+            {
+              if n == 0 then 1
+              else 2 * pow2(n-1)
+            }
+
+lemma {:axiom} omega0()
+                    ensures forall k : nat :: omega(0, k) == 1.0
+
+lemma {:axiom} pow2add()
+                      ensures forall k : nat :: pow2(k) * 2 == pow2(k + 1)
+
+lemma {:axiom} powNTimesMod()
+          ensures forall k: nat, j: nat, l : nat, N:nat {:trigger powN(k, j) * (powN(k, l) % N)}:: N > 0 ==> powN(k, j) * (powN(k, l) % N) % N == powN(k, j + l) % N
+
+lemma {:axiom} pow2mul()
+                ensures forall k : nat, j : nat :: pow2(k) * pow2(j) == pow2(k + j)
+
+lemma {:axiom} sqrt1() 
+    ensures sqrt(1.0) == 1.0
+
 method hadNorHad(x:seq<bv1>) returns (y : seq<real>) 
-  ensures |y| == |x|
-  ensures forall k :: 0 <= k < |x| ==> y[k] == omega(x[k] as int,2)
-{//for validating them in Dafny
-  var i := 0;
-  y := [];
-  while i < |x| 
-    invariant 0 <= i <= |x|
-    invariant |y| == i
-    invariant forall k :: 0 <= k < i ==> y[k] == omega(x[k] as int,2)
-  {
-    y := y + [omega(x[i] as int, 2)];
-    i := i + 1;
-  }
-}
+              ensures |y| == |x|
+              ensures forall k :: 0 <= k < |x| ==> y[k] == omega(if x[k] == 1 then 1 else 0, 2)
+            {
+              var i := 0;
+              y := [];
+              while i < |x| 
+                invariant 0 <= i <= |x|
+                invariant |y| == i
+                invariant forall k :: 0 <= k < i ==> y[k] == omega(if x[k] == 1 then 1 else 0, 2)
+              {
+                y := y + [omega(if x[i] == 1 then 1 else 0, 2)];
+                i := i + 1;
+              }
+            }
 
-// fills a sequence of length n with a sequence of bv1's that (when combined) equal k.
-// see: copy(k, n)
-method b2ns (k:nat, n:nat) returns (x: seq<seq<bv1>>)
-   ensures |x| == n
-   ensures forall j :: 0 <= j < n ==> castBVInt(x[j]) == k
-{
-  x := [];
-  var i := 0;
-  while i < n
-    invariant 0 <= i <= n
-    invariant |x| == i
-    invariant forall j :: 0 <= j < i ==> castBVInt(x[j]) == k
-  {
-    var v := n2b(k,n);
-    x := x + [v];
-    i := i + 1;
-  }
-}
-
-// makes a n-length sequence of real nunmbers that are all equal to k.
-// a more general form of zeroes(n) (i.e. copy(0, n))
-method copy (k:real, n:nat) returns (x:seq<real>)
-   ensures |x| == n
-   ensures forall j :: 0 <= j < n ==> x[j] == k
-{
-  x := [];
-  var i := 0;
-  while i < n
-    invariant 0 <= i <= n
-    invariant |x| == i
-    invariant forall j :: 0 <= j < i ==> x[j] == k
-  {
-    x := x + [k];
-    i := i + 1;
-  }
-}
-
-//apply had typed to en(1) typed state
-//x[0,n) <- H;
-//now the following is a function call for had to en(1)
-// x has type had
-//in general we are dealing with en(t)
-//if x has en(2), we need to add seq as x:seq<seq<seq<bv1>>>
-//In Dafny, seq<?> is a sequence of ?
-method {:axiom} hadEn(x: seq<real>)
-            returns (y : seq<seq<bv1>>, ampy: seq<real>, py: seq<real>) 
-  requires forall k :: 0 <= k < |x| ==> x[k] == omega(0,2)
-  ensures |y| == |ampy| == |py|
-  ensures forall k :: 0 <= k < |y| ==> |y[k]| == |x|
-  ensures |y| == pow2(|x|)
-  ensures forall k :: 0 <= k < |y| ==> castBVInt(y[k]) == k 
-  ensures forall k :: 0 <= k < |ampy| ==> 
-                            assert sqrt(pow2(|x|) as real) > 0.0 by {SqrtGt(pow2(|x|) as real);}
-                            ampy[k] == 1.0 / (sqrt(pow2(|x|) as real))
-  ensures forall k :: 0 <= k < |py| ==> py[k] == omega(0,2)
-/*
+ method Shors(n: nat, p: seq<bv1>, q: seq<bv1>, base: nat, N: nat) returns (p1: seq<seq<bv1>>, q1: seq<seq<bv1>>, amp1: seq<real>)
+  requires |q| == n
+  requires n > 0
+  requires N > 0
+  requires forall i :: 0 <= i < |q| ==> q[i] == 0
+  requires castBVInt(q) == 0
+  requires |p| == n
+  requires forall i :: 0 <= i < |p| ==> p[i] == 0
+  requires castBVInt(p) == 0
+//  ensures |p1| == pow2(n)
+//  ensures |q1| == pow2(n)
+//  ensures |amp1| == pow2(n)
+//  ensures forall k :: 0 <= k < |q1| ==> |q1[k]| == n
+ // ensures forall k :: 0 <= k < |p1| ==> |p1[k]| == n 
+//  ensures forall k :: 0 <= k < |amp1| ==> amp1[k] == 1.0 / sqrt(pow2(n) as real)
+//  ensures forall k :: 0 <= k < |q1| ==> castBVInt(q1[k]) == k
+//  ensures forall k :: 0 <= k < |p1| ==> castBVInt(p1[k]) == (powN(base, k) % N)
 {
   var i := 0;
-  y := [];
-  ampy := [];
-  py := [];
-  while i < |x|
-    // bound the range of i.
-    invariant 0 <= i <= |x|
+  var q2 := hadNorHad(q);  
+  //base case with i == 0
+  var q3 := seq(pow2(i), _ => castIntBV(i, i));
+  var p3 := seq(pow2(i), _ => castIntBV(powN(base, i) % N, n));
+  var amp3 := seq(pow2(i), _ => 1.0/ sqrt(pow2(i) as real));
+  //sqrt1(); 
+  //while i < n
+   // invariant |q3| == pow2(i)
+  //  invariant |p3| == pow2(i)
+   // invariant |amp3| == pow2(i)
+   // invariant |q2| == n - i
+   // invariant forall k :: 0 <= k < |q2| ==> q2[k] == omega(0, 2)
+   // invariant forall k :: 0 <= k < |q3| ==> |q3[k]| == i
+   // invariant forall k :: 0 <= k < |p3| ==> |p3[k]| == n
+   // invariant forall k :: 0 <= k < |amp3| ==>  amp3[k] == (1.0 / sqrt(pow2(i) as real))
+   // invariant forall k :: 0 <= k < |q3| ==> castBVInt(q3[k]) == k
+  //  invariant forall k :: 0 <= k < |p3| ==> castBVInt(p3[k]) == (powN(base, k) % N)
+  {
+   
+    var q5 := q2[0];
+    var q4 := cutHad(q2);
+    var q6 := mergeBitEn(q3, i);
+    var p6 := duplicateMergeBitEn(p3);
+    var amp6 := mergeAmpEn(amp3, q5);
+//    assert forall k :: 0 <= k < |p3| ==> castBVInt(p3[k]) == (powN(base, k) % N);
     
-    // the length of the returned sequences should be exactly equal to the current iteration number
-    invariant |y| == i
-    invariant |ampy| == i
-    invariant |py| == i
+   // omega0();
+   // mergeBitTrigger(q3, q6, |q3[0]|);
+   // triggerSqrtMul();
+    //pow2mul();
 
-    // the length of the sub sequences that have been created should be equal to the length of x
-    invariant forall k :: 0 <= k < i ==> |y[k]| == |x|
-    invariant forall k :: 0 <= k < i ==> |ampy[k]| == |amp|
-    invariant forall k :: 0 <= k < i ==> |py[k]| == |phase|
+   // var p7 := seq(|p6|,
+    //  k0 requires 0 <= k0 < |p6| =>
+    //    if castBVInt(q6[k0]) >= pow2(i) then
+    //     castIntBV(((powN(base, pow2(i)) * castBVInt(p6[k0])) % N), |p6[k0]|) 
+    //     else p6[k0]
+    //);
 
-    // constrain the values of the basis kets
-    invariant forall k :: 0 <= k < i ==> forall j :: 0 <= j < |y[k]| ==> castBVInt(y[k][j]) == k
-    // constrain the values of the amplitudes
-    invariant forall k :: 0 <= k < i ==> forall j :: 0 <= j < |ampy[k]| ==> 
-                                    assert sqrt(pow2(|x|) as real) > 0.0 by {SqrtGt(pow2(|x|) as real);}
-                                    ampy[k][j] == 1.0 / (sqrt(pow2(|x|) as real)) * amp[j]
-    // constrain the values of the phases
-    invariant forall k :: 0 <= k < i ==> forall j :: 0 <= j < |py[k]| ==> py[k][j] == omega(castBVInt(x[j]) * k, 2) * phase[j]
-  {
-    // add the next basis ket
-    var basis_kets := b2ns(i, |x|); // seq<seq<bv1>>
-    y := y + [basis_kets];
-    
-    // add the next amplitude
-    var amplitudes := []; // copy(amplitude, |amp|); dont copy
-    var j := 0;
-    while j < |amp| 
-      // bound the range of j
-      invariant 0 <= j <= |amp|
-      invariant j == |amplitudes|
-      invariant forall k :: 0 <= k < j ==> 
-        assert sqrt(pow2(|x|) as real) > 0.0 by {SqrtGt(pow2(|x|) as real);}
-        amplitudes[k] == (1.0 / (sqrt(pow2(|x|) as real)) * amp[k])
-    {
-      // prove that computing the amplitude (next statement) won't result in a divide by zero error
-      assert sqrt (pow2(|x|) as real) > 0.0 by {SqrtGt(pow2(|x|) as real);}
-      amplitudes := amplitudes + [1.0 / (sqrt(pow2(|x|) as real)) * amp[j]];
-      j := j + 1;
-    }
-
-    ampy := ampy + [amplitudes];
-
-    // add the next phase
-    var yphases := [];
-    // reset our iterator
-    j := 0;
-    while j < |phase| 
-      // bound the range of j
-      invariant 0 <= j <= |phase|
-      invariant j == |yphases|
-      invariant forall k :: 0 <= k < j ==> yphases[k] == omega(castBVInt(x[k]) * i, 2) * phase[k]
-    {
-      yphases := yphases + [omega(castBVInt(x[j]) * i, 2) * phase[j]];
-      j := j + 1;
-    }
-
-    py := py + [yphases];
-
+    //q3 := q6;
+    //p3 := p7;
+   // amp3 := amp6;
+   // q2 := q4;
     i := i + 1;
   }
-}
-*/
-
-//maybe we should break had compilation into smaller steps
-//One operation that is very useful is the en type casting
-//we need to cast en(t) to en(t+1) type
-//below is an example to cast en(1) to en(2)
-//for en(t), one just need to add seq< ... seq< ...  before the type
-method castBaseEn(x: seq<seq<bv1>>) returns (y : seq<seq<seq<bv1>>>)
-  ensures |x| == |y|
-  ensures forall k :: 0 <= k < |y| ==> y[k] == x 
-{
-  y := [];
-  var i := 0;
-  while(i < |x|)
-    invariant 0 <= i <= |x|
-    invariant |y| == i
-    invariant forall j :: 0 <= j < i ==> y[j] == x
-  {
-    y := y + [x];
-    i := i + 1;
-  }
-}
-
-function sumFun(f: nat -> bv1, n:nat) : nat
-{
-  if n == 0 then 0 else f(n) as nat + sumFun(f,n-1)
-}
-
-lemma {:axioms} constantFun(f: nat -> bv1, n:nat)
-  ensures forall k :: 0 <= k <  pow2(n) ==> f(k) == 0
-
-lemma {:axioms} balanceFun(f: nat -> bv1, n:nat)
-  requires 0 < n
-  ensures forall k :: 0 <= k < pow2(n-1) ==> f(k) == 0
-  ensures forall k :: pow2(n-1) <= k < pow2(n) ==> f(k) == 1
-
-//cast en(t) to en(t+1) function for amplitude and phase.
-//these two should be the same
-method castBaseAmp(x: seq<real>) returns (y : seq<seq<real>>)
-  ensures |x| == |y|
-  ensures forall k :: 0 <= k < |y| ==> y[k] == x 
-{
-  y := [];
-  var i := 0;
-  while(i < |x|)
-    invariant 0 <= i <= |x|
-    invariant |y| == i
-    invariant forall j :: 0 <= j < i ==> y[j] == x
-  {
-    y := y + [x];
-    i := i + 1;
-  }
-}
-
-//cast had state to en(1) function for phase
-method castHadEnPhase(x: seq<real>) returns (y : seq<seq<real>>)
-  ensures |x| == |y|
-  ensures forall k :: 0 <= k < |y| ==> y[k] == x
-{
-  y := [];
-  var i := 0;
-  while(i < |x|)
-    invariant 0 <= i <= |x|
-    invariant |y| == i
-    invariant forall j :: 0 <= j < i ==> y[j] == x
-  {
-    y := y + [x];
-    i := i + 1;
-  }
-}
-
-
-//oracleFun is a template
-// x[0,n) <- lambda(y => |f(y)>), e.g., f could be a * y %N. where a and N are constants
-//f can be arbitary
-function {:axiom} oracleFun (x:nat) : nat
-  //ensures ... fill this out to be the spec indicated in a lambda term
-  //for example, if we have lambda(x => |x + n>), the 
-  //the ensures can be ensures oracleFun(x) == x + n
-
-//when x is of type Nor
-method {:axiom} lambdaBaseNor(x: seq<bv1>) returns (y : seq<bv1>) 
-  ensures |x| == |y|
-  ensures castBVInt(x) == oracleFun(castBVInt(y))
-  //another way to deal with this is to just modify the left hand side above
-
-//the following is an template for en(1)
-//for en(t), one can generate the template accordingly
-//the function take en(1) and outputs en(1)
-/// x[0,n) <- lambda(y => |f(y)>)
-//// x[0,n),z[0,m) <- lambda(y,u => |f(y)>|g(u)>)
-// have oraclef, and oracleg
-// call the below once for x --> after this call, f(y) is stored in some new var 
-// x' ==> y' := lambdaBaseEn(x') with oracleFun ==> oraclef
-//call it another time for z
-// z' ==> u' := lambdaBaseEn(z') with oracleFun ==> oracleg
-method lambdaBaseEn(x: seq<seq<bv1>>) returns (y : seq<seq<bv1>>) 
-  ensures |x| == |y|
-  ensures forall k :: 0 <= k < |y| ==> castBVInt(x[k]) == oracleFun(castBVInt(y[k]))
-{
-  y := [];
-  var i := 0;
-  while (i < |x|)
-    invariant 0 <= i <= |x|
-    invariant i == |y|
-    invariant forall j :: 0 <= j < i ==> castBVInt(x[j]) == oracleFun(castBVInt(y[j]))
-  {
-    var t := lambdaBaseNor(x[i]);
-    y := y + [t];
-    i := i + 1;
-  }
-}
-
-function {:axiom} oraclePhase (x:seq<bv1>) : real
-  //ensures ... fill this out to be the spec indicated in a lambda term
-  //for example, if we have lambda(x => phase(x) |x>), the 
-  //the ensures can be ensures oraclePhase(x) == phase(x)
-  //phase is always in the form of omega(a, b)
-
-//x[0,n) <- lambda(y => g(x1) ? |x1>), where g(x1) == omega(g'(x1), 2)
-// x[0,n) into amp, phase, basis.
-//x': seq<real> is the original phase array for x
-//the above expression means to take each element in x',
-//and multiply x'[j] with g(x1)[j]
-//the following is a template function for adding phase in lambda expr
-// this assumes the phase(x1) function only talks about a single range
-//which is the most common case, but the phase(x1) function could be something like
-//phase(x1,x2,...), in this case, we need to put the variable x1, x2, ... in the arguments
-//each of the x1, x2, ... have type seq<seq<bv1>>, this is assumed that
-//their types are en(1), if dealing with en(t) type case, we also need to modify the type
-method lambdaPhaseEn(x: seq<real>, x1 : seq<seq<bv1>>) returns (y : seq<real>) 
-  requires |x| == |x1| 
-  ensures |x| == |y|
-  ensures forall k :: 0 <= k < |y| ==> y[k] == x[k] * oraclePhase(x1[k])
-{//the body is not necessary, but it is for ensuring the requires and ensures are ok.
-  y := [];
-  var i := 0;
-  while (i < |x|)
-    invariant 0 <= i <= |x|
-    invariant |x| == |x1|
-    invariant i == |y|
-    invariant forall j :: 0 <= j < i ==> y[j] == x[j] * oraclePhase(x1[j])
-  {
-    var t := x[i] * oraclePhase(x1[i]);
-    y := y + [t];
-    i := i + 1;
-  }
-}
-
-// modular multiplication lambda
-function {:axiom} multmod(x: seq<bv1>, a: nat, n: nat) :seq<bv1>
-  requires 1 < a < n
-  ensures |multmod(x,a,n)| == |x| 
-  ensures b2n(multmod(x,a,n), |x|) == a * b2n(x, |x|) % n
-
-
-  lemma {:axiom} b2nEqSeq(a:nat, N:nat, i:nat, x : seq<seq<bv1>>, y: seq<seq<bv1>>, n:nat, ni:nat)
-    requires i < |y|
-    requires |y| <= |x| 
-    requires 1 < a < N
-    requires |y[i]| == n
-    requires |x[i]| == ni + 1
-    ensures  b2n(y[i], n) == Pow(a, b2n(x[i], ni + 1)) % N
-
-// quantum conditionals require different strategies depending on the body of the conditional 
-//quantum conditional for en(1)
-//this is a template for mod-mult
-// controls on the last bit of z0, apply modular multiplication on z1
-method ctrU(z0:seq<seq<bv1>>,z1:seq<seq<bv1>>,ni: nat , n:nat, a : nat,  N : nat)
-  returns (u1:seq<seq<bv1>>) //template for modification. clearly, z0 is not modified,
-                             //so the compiler needs to determine which seq is modified or not
-                             //and then put the modification one as returns
-  requires 1 < a < N
-  requires 0 < n
-  requires |z0| == |z1|
-  requires forall k :: 0 <= k < |z0| ==> |z0[k]| == ni + 1
-  requires forall k :: 0 <= k < |z1| ==> |z1[k]| == n
-  //the above requirements should be universally true for every quantum conditional
-  //the below one is specific to a special conditional, here, it is used in mod-mult circuit
-  requires forall k :: 0 <= k < |z1| ==> b2n(z1[k], n) == Pow(a, b2n(z0[k], ni)) % N
-  ensures |u1| == |z0|
-  ensures forall k :: 0 <= k < |u1| ==> |u1[k]| == n
-  //the above ensures should be universally true for every quantum conditional
-  //the below one is specific to a special conditional, here, it is used in mod-mult circuit
-  ensures forall k :: 0 <= k < |u1| ==> b2n(u1[k], n) == Pow(a, b2n(z0[k], ni + 1)) % N
-{
-  u1 := [];
-  var i := 0;
-  while i < |z0|
-    invariant i <= |z0|
-    invariant i == |u1|
-    invariant forall k :: 0 <= k < i ==> |u1[k]| == n
-    invariant forall k :: 0 <= k < i ==> b2n(u1[k], n) == Pow(a, b2n(z0[k], ni + 1)) % N
-  {
-    if z0[i][ni] == 1 {
-      u1 := u1 + [multmod(z1[i], a, N)];      
-    }
-    else {
-      u1 := u1 + [z1[i]];
-    }
-    assert |u1[i]| == n;
-    //should be part of a template and it requires user input below.
-    //if no input, then we should have a general pattern.
-    assert (b2n(u1[i], n) == Pow(a, b2n(z0[i], ni + 1)) % N) by {b2nEqSeq(a,N,i,z0,u1,n,ni); } // b2nEqSeq is generated by the compiler per the user's input
-    i := i+1;
-  }
+  
+  q1 := q3;
+  p1 := p3;
+  amp1 := amp3;
 }
