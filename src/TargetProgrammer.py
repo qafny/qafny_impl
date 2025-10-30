@@ -105,7 +105,7 @@ class FunType(DXType):
         self._line = line
 
     def accept(self, visitor : AbstractTargetVisitor):
-        return visitor.visitSeqType(self)
+        return visitor.visitFunType(self)
 
     def left(self):
         return self._left

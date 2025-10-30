@@ -22,8 +22,6 @@ class CleanupVisitor(TargetProgramVisitor):
                 return self.visitComp(ctx)
             case DXEnsures():
                 return self.visitEnsures(ctx)
-            case FunType():
-                return self.visitFunType(ctx)
             case DXIf():
                 return self.visitIf(ctx)
             case DXInit():
@@ -44,6 +42,8 @@ class CleanupVisitor(TargetProgramVisitor):
                 return self.visitSeqType(ctx)
             case SType():
                 return self.visitSType(ctx)
+            case FunType():
+                return self.visitFunType(ctx)
             case DXWhile():
                 return self.visitWhile(ctx)
             case DXCall():

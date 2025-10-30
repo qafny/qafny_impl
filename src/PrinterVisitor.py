@@ -23,6 +23,7 @@ class PrinterVisitor(TargetProgramVisitor):
 
         bindings = ''
         for binding in ctx.bindings():
+            print(f"\n binding in CV: {binding}")
             bindings += binding.ID() + (str(binding.num()) if binding.num() else '') + ': ' + binding.type().accept(self) + ', ' if binding.type() else '' 
         bindings = bindings[:-2]
 
@@ -228,3 +229,9 @@ class PrinterVisitor(TargetProgramVisitor):
         bind_str = ctx.bind().accept(self)
         constrs_str = ctx.constrs().accept(self)
         return f'var {bind_str} :| {constrs_str};'
+    
+    def visitFunType(self, ctx: TargetProgrammer.FunType):
+        left = [elem.accept(self) for elem in ctx.left()]
+        left = left[0] if len(left) == 1 else tuple(left)
+        right = ctx.right().accept(self)
+        return f'{left} -> {right}'

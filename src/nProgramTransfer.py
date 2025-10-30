@@ -329,7 +329,7 @@ class ProgramTransfer(ProgramVisitor):
         # --- Translate Arguments ---
         self.classical_args = [b.accept(self) for b in ctx.bindings() if b.accept(self) is not None]
         dafny_args = self.classical_args[:]
-#        self.log(f"\n dafny_args before varnums: {dafny_args}")
+        self.log(f"\n dafny_args before varnums: {dafny_args}")
         for _, _, var_map in self.varnums:
             dafny_args.extend(sorted(var_map.values(), key=lambda v: v.ID()))
 
@@ -424,7 +424,7 @@ class ProgramTransfer(ProgramVisitor):
 
         elif isinstance(operation, QXSingle):
             if isinstance(qty, TyEn):
-                stmts, new_qty, final_vars = self._hadamard_on_entangled_transform(ctx, loc, qty, old_vars)
+                stmts, new_qty, final_vars = self._single_op_on_entangled_transform(ctx, loc, qty, old_vars)
             else:
                 stmts, new_qty, final_vars = self._direct_call_transform(ctx, loc, qty, old_vars)
         else:
@@ -716,6 +716,10 @@ class ProgramTransfer(ProgramVisitor):
         if isinstance(ctx.type(), TySingle):
             ty = ctx.type().accept(self)
             return DXBind(ctx.ID(), ty, None, line=ctx.line_number())
+        elif isinstance(ctx.type(), TyFun):
+            ty = ctx.type().accept(self)
+            return DXBind(ctx.ID(), ty, None, line=ctx.line_number())
+            
         if ctx.ID() and not ctx.type():
             return DXBind(ctx.ID(), None, line=ctx.line_number())
         return None
@@ -906,7 +910,7 @@ class ProgramTransfer(ProgramVisitor):
 
         #prepare new env
         _, new_varnums = sub_locus_from_env(loc, self.varnums)
-#            self.log(f"\n res: {res} \n new_varnums: {new_varnums}")
+#       self.log(f"\n res: {res} \n new_varnums: {new_varnums}")
         new_locus = [l for l in loc if l.location() not in target_names]
         new_var_map = {name: var for name, var in var_map.items() if name not in target_names}
 
@@ -1207,7 +1211,9 @@ class ProgramTransfer(ProgramVisitor):
     
     def visitCall(self, ctx: Programmer.QXCall):
     #    self.log('\nvisitCall', ctx.ID())
-        self.libFuns.add(str(ctx.ID()))
+        
+        if ctx.ID() not in [arg.ID() for arg in self.classical_args]:
+            self.libFuns.add(str(ctx.ID()))
         return DXCall(str(ctx.ID()), [x.accept(self) for x in ctx.exps()], False, line=ctx.line_number())
     
     def visitCallStmt(self, ctx: Programmer.QXCallStmt):
@@ -1232,7 +1238,9 @@ class ProgramTransfer(ProgramVisitor):
         return SeqType(ty, line=ctx.line_number())
 
     def visitFun(self, ctx: Programmer.TyFun):
-        super().visitFun(ctx, line=ctx.line_number())
+        in_ = [param.accept(self) for param in ctx.params()]
+        out_ = ctx.return_type().accept(self)
+        return FunType(in_, out_, line=ctx.line_number())
 
     def visitQ(self, ctx: Programmer.TyQ):
         return ctx.flag().accept(self)
@@ -1430,6 +1438,7 @@ class ProgramTransfer(ProgramVisitor):
 
         return tmp
 
+    @DeprecationWarning
     def _update_vars_sub(self, v: dict, qs:set):
         tmp = dict()
         for key in v.keys():
@@ -1440,8 +1449,7 @@ class ProgramTransfer(ProgramVisitor):
                 tmp.update({key: v.get(key)})
         return tmp
 
-    #create new DXBind with TyNor and TyHad type Only
-    #and for TyEn, we increment the type to 1
+    #create new DXBind with TyNor, TyHad and TyEn(1)
     def _update_vars_type(self, v: dict, t: QXQTy):
         tmp = dict()
         for key in v.keys():
@@ -1460,6 +1468,10 @@ class ProgramTransfer(ProgramVisitor):
         self.counter += 1
 
         return tmp
+    
+    #mainly for oracle entangle
+#    def mergeLocus(self, q2: [QXQRange]):
+
 
     def superLocus(self, q2: [QXQRange], ty:QXQTy):
         """
@@ -1470,7 +1482,7 @@ class ProgramTransfer(ProgramVisitor):
         vs = []
         for i in range(len(self.varnums)):
             loc, qty, vars = self.varnums[i]
-            self.log(f"\n loc {loc} \n qty {qty} \n vars {vars}")
+            self.log(f"\n superLocus: \n loc {loc} \n qty {qty} \n vars {vars}")
             if EqualityVisitor().visit(ty, qty):
                 # Check for any overlap by seeing if any component of one locus
                 # is a sub-locus of the other.
@@ -2018,9 +2030,9 @@ class ProgramTransfer(ProgramVisitor):
         
         return stmts, new_qty, new_vars
     
-    def _hadamard_on_entangled_transform(self, ctx: QXQAssign, loc, qty, old_vars):
+    def _single_op_on_entangled_transform(self, ctx: QXQAssign, loc, qty, old_vars):
         """
-        Handles H on an entangled state by generating imperative sequence comprehensions
+        Handles single op on an entangled state by generating imperative sequence comprehensions
         that directly construct the new, transformed state, based on the user's logic.
         """
         stmts = []
@@ -2031,14 +2043,14 @@ class ProgramTransfer(ProgramVisitor):
         if len(loc) == input_depth: 
         #some phase interfereces happened. look for lemma and extract the info from the lemma. 
         #build a brand new based on the info of the lemma
-        #if no lemma is found, return error, 
+        #if no lemma is found, return error 
             self.log(f"\n self.lemma {self.lemma}")
 
             new_vars = self._update_vars(old_vars)
             iterators = [DXBind(f"k{i}", SType("nat")) for i in range(input_depth)]
             
             helper_lemma = self.lemma[0]
-            #well, we have to do it case by case now.
+            #well, we have to do it case by case.
             if helper_lemma.ID() == 'Period':
                 qsize = helper_lemma.exps()[0]
                 period = helper_lemma.exps()[1]
