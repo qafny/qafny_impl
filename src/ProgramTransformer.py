@@ -1242,7 +1242,16 @@ class ProgramTransformer(ExpVisitor):
         elif isinstance(ctx, ExpParser.QBitStringTypeContext):
             return TyQ(self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
         else:
-            raise ValueError("[UNREACHABLE] Unreachable branch in baseTy parse.")
+            token_text = ctx.getText().strip()
+            line = ctx.start.line
+            col = ctx.start.column
+            ctx_type = ctx.__class__.__name__
+
+            raise ValueError(
+                f"[ERROR] Unknown base type '{token_text}' at line {line}:{col} "
+                f"(context: {ctx_type}). "
+                f"Add support for this type in visitBaseTy()."
+            )
 
 
     # Visit a parse tree produced by ExpParser#NaturalType.
