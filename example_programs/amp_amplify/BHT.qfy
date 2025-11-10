@@ -3,16 +3,16 @@
 //we assume that a preprocessing step is done to select k elements, and the query value is stored in l[k] for each k elements.
 //the id of the k elements are from 0 to k without losing genelarity.
 //The function f takes in a 
-
+//take(y) is y[1..]
 function exists(k:nat,y : nat[k])
 {
-  if k == 0 then false else if y[0] == k then exists(k-1,y[1..]) else true
+  if (k == 0) then false else { if (y[0] == k) then exists(k-1,take(y)) else true }
 }
 
-method BHT(q : Q[k * n], k:nat, n:nat, l : nat[k], f : [Bool] -> nat, m:nat, N : nat) returns (y:nat[k], p : real)
+method BHT(q : Q[k * n], k:nat, n:nat, l : nat[k], f : nat -> nat, m:nat, N : nat) returns (y:nat[k], p : real)
   requires m < 2^n
   requires forall k :: 0 <= k < m ==> f(n2b(k)) == 1
-  requires forlal k :: m <= k < m ==> f(n2b(k)) == 0
+  requires forall k :: m <= k < n ==> f(n2b(k)) == 0
   requires { q[0 , n) : Nor ↦ |0⟩ }
   //we should have a way of only specifying basis.
   //but we also care about amplitudes here.
@@ -21,17 +21,14 @@ method BHT(q : Q[k * n], k:nat, n:nat, l : nat[k], f : [Bool] -> nat, m:nat, N :
 {
   //state prepration mapping to different states.
   for i in [0, k)
-    invariant {
-      forall 0 <= i < k ==> 
-        q[k * i, k*i + n) : En ↦ forall j ∈ [0, 2^n) . 1 / sqrt(2^n) . |j + i * 2^n⟩ 
-    }
+    invariant { forall i :: 0 <= i < k ==> q[k * i, k*i + n) : En ↦ ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n)  |j + i * 2^n⟩  }
   {
     q[k * i, k * i + n) *= H;
-    q[k * i, k * i + n) *= λ (y:Q n => y + i * 2^n);
+    q[k * i, k * i + n) *= λ (y => | y + i * 2^n⟩);
   }
   
   //put all q in sin format
-  assert { forall 0 <= i < k ==>  q[k * i, k*i + n) : En ↦ forall j ∈ [0, 2^n) . (sin theta : f(j) == 1, cos theta : f(j) == 0) . |j+i*2^n⟩ }
+  assert { forall 0 <= i < k ==> q[k * i, k*i + n) : En ↦ ∑ j ∈ [0, 2^n) . (sin theta : f(j) == 1, cos theta : f(j) == 0) . |j+i*2^n⟩ };
 
   for i in [0, N)
     invariant {
