@@ -5,13 +5,13 @@ method {:axiom} uf(q: Q[n], n:nat)
 
 method {:axiom} vf(q: Q[n], n:nat)
 
-function {:axiom) add(uf : Q[n] -> nat -> Q[n], vf : Q[n] -> nat -> Q[n]) //need to define a sum function of two functions, which will be an array map of sum function
+function {:axiom} add(uf : Q[n] -> nat -> Q[n], vf : Q[n] -> nat -> Q[n]) //need to define a sum function of two functions, which will be an array map of sum function
 
-method LCU(q : Q[n], p : Q[1], n : nat) returns { sa: nat}
+method LCU(q : Q[n], p : Q[1], n : nat) returns ( sa: nat)
               //do we really want nat -> nat or bitvector, like seq<bv1> ? we can have bitvectors in our system
   requires n >= 1
   requires { p[0] : Nor ↦ |0⟩  }
-  ensures { sa == 0 ==> q[0,n) == add(uf,vf)(old(q[0,n)), n) }
+  ensures sa == 0 ==> q[0,n) == add(uf,vf,q[0,n))
 {
   p[0] *= H;
 
@@ -27,12 +27,11 @@ method LCU(q : Q[n], p : Q[1], n : nat) returns { sa: nat}
   if (not p[0]) { vf(q,n); }
   
   //below is the structure after the above two quantum conditional.
-  assert {p[0],q[0,n) : En ↦ 1/sqrt(2) (|0⟩ (uf(q[0,n),n)) + |1⟩ (vf(q[0,n),n))) }
+  assert {p[0],q[0,n) : En ↦ ∑ j ∈ [0 , 2) .  1/sqrt(2) |j⟩ ⊗ (if j == 0 then uf(q[0,n),n) else vf(q[0,n),n)) };
   
   //after applying the H, |0⟩ is turned to |+⟩, and |1⟩ is turned to |-⟩, if we rearrange the qubit to the following, we can see that we have the sum of uf and vf effect. 
   p[0] *= H;
-  assert {p[0],q[0,n) : En ↦ 1/2 (|0⟩ (uf(q[0,n),n) + vf(q[0,n),n)) + |1⟩ (uf(q[0,n),n) - vf(q[0,n),n))) }
-
-  sa, prob := measure (p[0]); //once p[0] is measured, the result will push add(uf,vf) to be applied on q[0,n)
+  assert { p[0],q[0,n) : En ↦  ∑ j ∈ [0 , 2) . 1/2 |j⟩ ⊗ (if j == 0 then uf(q[0,n),n) else vf(q[0,n),n)) };
+  sa, prob *= measure (p[0]); //once p[0] is measured, the result will push add(uf,vf) to be applied on q[0,n)
 }
 

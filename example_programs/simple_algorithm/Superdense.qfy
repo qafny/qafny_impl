@@ -3,7 +3,7 @@ include BellPair.qfy //should we allow inclusion? This is not an important featu
 
 //we should have a boolean type for our system, and then we should make bv1 and boolean type to be the same.
 //In quantum algorithms, they are the same.
-method Superdense(q : Q[2], x : Bool, y: Bool) returns (u:Bool, v:Bool, probu: real, probv:real)
+method Superdense(q : Q[2], x : nat, y: nat) returns (u:nat, v:nat, probu: real, probv:real)
   requires { q[0, 2) : Nor ↦ |0⟩ }
   ensures u == x
   ensures v == y
@@ -16,20 +16,20 @@ method Superdense(q : Q[2], x : Bool, y: Bool) returns (u:Bool, v:Bool, probu: r
   
   //q[0, 2) : En ↦ (∑ j ∈ [0 , 2) . 1/sqrt(2) |j⟩) === 1/sqrt(2) (|00⟩ + |11⟩)
   //x and y are classical booleans.
-  if y then { q[0] := λ (x => (x + 1)); }
-  if x then { q[1] := λ (x => Rz(x,1)); } //we need to have a phase gate Rz gate. Z is Rz 1, need to think of a way to apply to phases
+  if (y == 1) { q[0] *= λ (x => |(x + 1)⟩); }
+  if (x == 1) { q[1] *= λ (x => ω (1, 2) |x⟩); } //we need to have a phase gate Rz gate. Z is Rz 1, need to think of a way to apply to phases
   
   //the analysis of the protocol is to divide the case into two regarding y.
   //assert y == 0 ==> 1/sqrt(2) (|00⟩ + (omega(x))|11⟩)
   //assert y == 1 ==> 1/sqrt(2) ((omega(x))|10⟩ + |01⟩)
 
-  if q[0] { q[1]  *= λ (x => (x + 1)); } //cx gate, 
+  if (q[0]) { q[1]  *= λ (x => |(x + 1)⟩); } //cx gate, 
   q[0] *= H;
   
   //assert y == 0 ==> 1/sqrt(2) (|00⟩ + (omega(x))|10⟩) ==> first qubit == x
   //assert y == 1 ==> 1/sqrt(2) ((omega(x))|11⟩ + |01⟩) ==> first qubit == x, second qubit == 1
 
-  u,probu := measure(q[0]); //u is x in 100%
-  v,probv := measure(q[1]); //v is y in 100%
+  u,probu *= measure(q[0]); //u is x in 100%
+  v,probv *= measure(q[1]); //v is y in 100%
    
 }
