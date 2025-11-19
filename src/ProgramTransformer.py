@@ -1240,7 +1240,7 @@ class ProgramTransformer(ExpVisitor):
             v = ctx.arithExpr().accept(self)
             return TyArray(ty, v, line_number=ctx.start.line)
         elif isinstance(ctx, ExpParser.QBitStringTypeContext):
-            return TyQ(self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
+            return TyQ(self.visit(ctx.arithExpr()), line_number=ctx.start.line)
         else:
             token_text = ctx.getText().strip()
             line = ctx.start.line

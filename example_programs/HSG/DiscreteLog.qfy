@@ -1,6 +1,6 @@
 //Discrete Log algorithm is very very similar to Shor's algorithm.
 //The idea is to have two H qubit arrays.
-method DLog(q : Q[n], p : Q[n], t : Q[n], n:nat, N : nat, x : nat, g:nat, r:nat, c:nat) returns (u:nat, v:nat, p : real)
+method DLog(n:nat, N : nat, x : nat, g:nat, r:nat, c:nat, q : Q[n], p : Q[n], t : Q[n]) returns (u:nat, v:nat, p : real)
   requires 1 < base < N <= 2^n //if we do not want allow this syntax, fine.
   requires gcd(x,N) == 1
   requires gcd(g,N) == 1
