@@ -162,7 +162,7 @@ setInstance : '[' (arithExpr (',' arithExpr)*)? ']';
 
 memberAccess: ID (TDot ID)+;
 
-expr : SHad | SQFT | RQFT | lambdaT | dis | ID;
+expr : SHad | SQFT | SNot | RQFT | lambdaT | dis | ID;
 
 // we could make these take typeOptionalBindings?
 lambdaT: 'λ' '^{-1}'? '(' (ids | '(' bindings ')') '=>' omegaExpr manyket ')'
@@ -305,6 +305,8 @@ En : 'en' | 'En';
 
 // qafny gates
 SHad : 'H';
+
+SNot : 'X';
 
 SQFT : 'QFT';
 

@@ -9,12 +9,12 @@ method HammingWeight(n: nat, q: Q[n], p: Q[n]) returns (v: nat)
 {
     q[0, n) *= H;
     for i in [0, n)
-        invariant { q[0, i), p[0, n): en ↦ ∑ k ∈ [0, 2^i) . 1/sqrt(2^i) |k⟩ |countN(k)⟩ }
-        invariant { q[i, n): Had ↦ |+⟩ }
+//        invariant { q[0, i), p[0, n): en ↦ ∑ k ∈ [0, 2^i) . 1/sqrt(2^i) |k⟩ |countN(k)⟩ }
+//        invariant { q[i, n): Had ↦ |+⟩ }
     {
         if (q[i]) {p[0, n) *= λ (x => | x + 1⟩);}
     }
     w, v, s*= measure(p[0, n)); //w is witness, v is measured value; 
-    countNLEn(n,w); 
-    hammingProjMass(n,v,s);   
+//    countNLEn(n,w); 
+//    hammingProjMass(n,v,s);   
 }

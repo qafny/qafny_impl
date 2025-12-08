@@ -119,7 +119,7 @@ class ProgramTransformer(ExpVisitor):
         # convert decreases
         for a_exp in ctx.arithExpr():
             conds.append(QXDecreases(self.visitArithExpr(a_exp), line_number=ctx.start.line))
-        print(f"\n visitConds {conds}")
+ #       print(f"\n visitConds {conds}")
         return conds
 
     # Visit a parse tree produced by ExpParser#reen.
@@ -247,7 +247,7 @@ class ProgramTransformer(ExpVisitor):
         if ctx.logicImply() is not None:
             v2 = self.visitLogicImply(ctx.logicImply())
             v1 = self.visitAllspec(ctx.allspec())
-            return QXLogic("==>", v1, v2, ctx,line_number=ctx.start.line)
+            return QXLogic("==>", v1, v2, line_number=ctx.start.line)
         elif ctx.qunspec() is not None:
             return self.visitQunspec(ctx.qunspec())
         else:
@@ -1018,6 +1018,8 @@ class ProgramTransformer(ExpVisitor):
     def visitExpr(self, ctx: ExpParser.ExprContext):
         if ctx.SHad() is not None:
             return QXSingle("H", line_number=ctx.start.line)
+        if ctx.SNot() is not None:
+            return QXSingle("X", line_number=ctx.start.line)
         if ctx.SQFT() is not None:
             return QXSingle("QFT", line_number=ctx.start.line)
         if ctx.RQFT() is not None:

@@ -368,9 +368,10 @@ class DXBoolValue(DXBool):
 
     def __init__(self, v:bool, line: int = None):
         self._bool = v
+        self._line = line
 
     def accept(self, visitor: AbstractTargetVisitor):
-        return visitor.visitBind(self)
+        return visitor.visitBool(self)
 
     def value(self):
         return self._bool

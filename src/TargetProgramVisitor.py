@@ -68,6 +68,8 @@ class TargetProgramVisitor(AbstractTargetVisitor):
                 return self.visitSeqComp(ctx)
             case DXWitness():
                 return self.visitWitness(ctx)
+            case DXBool():
+                return self.visitBool(ctx)
             case _:
                 raise NotImplementedError(f"No visit method defined for {type(ctx)}")
 
@@ -197,4 +199,6 @@ class TargetProgramVisitor(AbstractTargetVisitor):
         ctx.bind().accept(self)
         ctx.constrs().accept(self)
         return ctx
-
+    
+    def visitBool(self, ctx: DXBoolValue):
+        return ctx

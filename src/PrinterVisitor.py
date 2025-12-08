@@ -23,7 +23,7 @@ class PrinterVisitor(TargetProgramVisitor):
 
         bindings = ''
         for binding in ctx.bindings():
-            print(f"\n binding in CV: {binding}")
+#            print(f"\n binding in CV: {binding}")
             bindings += binding.ID() + (str(binding.num()) if binding.num() else '') + ': ' + binding.type().accept(self) + ', ' if binding.type() else '' 
         bindings = bindings[:-2]
 

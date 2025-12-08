@@ -83,7 +83,7 @@ def findQVars(v: QXBool, vars: [str]):
         return findQVars(v.next(), vars)
 
     if isinstance(v, QXComp):
-        print(f"\n findQVars: {v} in vars {vars}")
+#        print(f"\n findQVars: {v} in vars {vars}")
         return (findQAVars(v.left(),vars) + findQAVars(v.right(),vars))
 
 def subStrs(a: [str], b:[str]):
