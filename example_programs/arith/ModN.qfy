@@ -17,10 +17,8 @@ method EntangleOne1(q : Q[1], p : Q[N], N : nat, base : nat)
   requires { p[0,N) : En ↦ |1⟩ }
   ensures { q[0,1), p [0,N) : en ↦ ∑ k ∈ [0, Pow2(N)) . |k⟩ |(Pow(base, k) % N)⟩ }
 
-//separates is not yet implemented
 {
   if (q[0,1))
-    separates p[0,N)
   {
      p[0,N) *= λ (x => ((Pow(base, 1)) * x) % N);
   }
