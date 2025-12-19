@@ -1,10 +1,11 @@
 method HammingWeight(n: nat, q: Q[n], p: Q[n]) returns (v: nat)
     requires { q[0, n) : nor ↦ |0⟩ } 
     requires { p[0, n) : nor ↦ |0⟩ } //ancilla
-  //  ensures { q[0, n), p[0, n): en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) |k⟩ |countN(k)⟩}
-    ensures { p[0, n): nor ↦ |v⟩}
+  //  ensures { q[0, n), p[0, n): en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) |k⟩ |countN(k)⟩}   
+  //  ensures { p[0, n): nor ↦ |v⟩}
     ensures 0 <= v <= n
   //  ensures prob == choose(n, v) / 2^n
+  //  ensures { q[0, n), p[0, n): en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(choose(n, v)) |k⟩ |v⟩}
     ensures { q[0, n): en ↦ ∑ k ∈ [0, 2^n)@(countN(k)==v) . 1/sqrt(choose(n, v)) |k⟩ }
 {
     q[0, n) *= H;

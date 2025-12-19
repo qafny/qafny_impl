@@ -6,6 +6,7 @@ method BellPair(q : Q[2])
   q[0] *= H;
   //assert { q [0] : had ↦ |+⟩ };
   if (q[0]) { 
-    q[1] *= λ (x => |(x + 1) % 2 ⟩); 
+      q[1] *= X;
+//    q[1] *= λ (x => |(x + 1) % 2 ⟩); 
     } //can be remove the % 2, since q[1] is one qubit, why the type checking cannot infer that the % 2 is unnecessary
 }

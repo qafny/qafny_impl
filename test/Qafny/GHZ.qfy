@@ -1,8 +1,9 @@
 //The GHZ proof in Qafny
 method GHZ(n: nat, q: Q[n])  //change type name to qreg[n]
   requires n >= 2 //why should be just n > 1, need to change
-  requires { q[0, n) : nor ↦ |0⟩ } //nor, en should be capitalized
-  ensures  { q[0, n) : en ↦ ∑ j ∈ [0, 2) . 1/sqrt(2) |j⟩ } //change en01 to en, there is no difference between en01 and en
+  requires { q[0, n) : nor ↦ ⊗ i ∈ [0, n) . |0⟩ } //nor, en should be capitalized
+  ensures { q[0, n) : en ↦ ∑ j ∈ [0, 2). 1/sqrt(2) . ⊗ i ∈ [0, n) . |j⟩ } 
+//  ensures  { q[0, n) : en ↦ ∑ j ∈ [0, 2^n) @ j==0 || j==2^n. 1/sqrt(2) |j⟩ } //change en01 to en, there is no difference between en01 and en
                                                                             //maybe we can take some flag to enforce the j is a bit-string, etc.
                                                                             //but a good type checking should be able to infer
                                                                             //need to write amplitude, like the above
@@ -19,12 +20,12 @@ method GHZ(n: nat, q: Q[n])  //change type name to qreg[n]
   for i in [0, (n - 1))
     // provide hints on how to perform separation
     //separates q[0, (i + 1)) //you have the splitting above, and then you have the separate, why?
-    invariant {
-      q [0, (i + 1)) : en ↦ ∑ j ∈ [0, 2) . 1/sqrt(2) |j⟩
-    }
-    invariant {
-      q [i + 1, n) : nor ↦ |0⟩
-    }
+  //  invariant {
+  //    q [0, (i + 1)) : en ↦ ∑ j ∈ [0, 2) . 1/sqrt(2) |j⟩
+  //  }
+  //  invariant {
+  //    q [i + 1, n) : nor ↦ |0⟩
+  //  }
   {
     if (q[i]) { q[i + 1] *= λ (x => | (x + 1) % 2 ⟩); }
   }
