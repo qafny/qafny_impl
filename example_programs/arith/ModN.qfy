@@ -28,7 +28,7 @@ method EntangleOne1(q : Q[1], p : Q[N], N : nat, base : nat)
 method MultiMod(q : Q[N], p : Q[N], N : nat, base : nat )
   requires N >= 1
   requires base >= 1
-  requires { q[1 , N) : Had ↦ ⊗ i . 1 }
+  requires { q[1 , N) : Had ↦ ⊗ i . |+⟩ }
   //we should have a way of only specifying basis.
   //but we also care about amplitudes here.
   requires { q[0], p[0 , N) : En ↦
