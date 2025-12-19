@@ -22,7 +22,9 @@ from CleanupVisitor import CleanupVisitor # usage: perforaming final cleanup ope
 from QafnyPP import QafnyPP
 import subprocess # usage: calling dafny to verify generated code
 import re # to extract the error line number from dafny output
-from compiler import SPVisitor
+#from sp_visitor import SPVisitor
+from sp_calc import compute_sp
+from Programmer import QXNum
 
 from error_reporter.CodeReport import CodeReport
 
@@ -62,12 +64,12 @@ DEFAULT_FILENAMES = [
 #      example_program("test13"),
 #       example_program("test14"),
 #      example_program("BellPair"),
-    #  example_program("GHZ"),
+#      example_program("GHZ"),
 #     example_program("Teleportation"),
     # example_program("Superdense"),
 #     example_program("Shors"),
       example_program("HammingWeight"),  
-     example_program("DeutschJozsa"),
+#     example_program("DeutschJozsa"),
     # example_program("simon"),
    #  example_program("DiscreteLog"),
     # example_program("Grovers"),
@@ -171,17 +173,31 @@ if __name__ == "__main__":
             qafny_ast = transformer.visitProgram(ast)
             print(qafny_ast)
             
-
             # MODE 1: PBT Concolic Execution
             if args.mode == 'pbt':
-                sp_visitor = SPVisitor()
-                sp_visitor.visit(qafny_ast)
-                assertions = sp_visitor.asserts
+                res = compute_sp(qafny_ast, want_trace=True)
+                print("paths:", len(res.finals))
+                from sp_pretty import pp_vc
+
+                print(f"VCs: {len(res.vcs)}")
+                for k, vc in enumerate(res.vcs, 1):
+                    print(f"  VC{k}: {pp_vc(vc)}")
+                
+                #need to be fixed 
+                for i, ev in enumerate(res.trace, 1):
+                    print(f"\n--- TRACE {i} ---")
+                    print("STMT:", ev.stmt)
+                    print("qstate:\n", ev.qstore_snapshot)
+                    print("pc:\n", ev.pc_snapshot)
+
+
+    #            for vc in res.vcs:
+    #                print(f"qstore: {vc.antecedent_qstore}, \n pc: {vc.antecedent_pc}, \n org: {vc.origin}, \n line: {vc.source_line}, \n consq: {vc.consequent}")
                 
                 #visualization
-                rich.print(f"[bold yellow]Generated {len(assertions)} assertions.[/]")
-                for i, assertion in enumerate(assertions):
-                    rich.print(f"  [yellow]{i+1}. {assertion}[/]")
+                # rich.print(f"[bold yellow]Generated {len(assertions)} assertions.[/]")
+                # for i, assertion in enumerate(assertions):
+                #     rich.print(f"  [yellow]{i+1}. {assertion}[/]")
 
 
             # MODE 2: Dafny tranlator

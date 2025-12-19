@@ -1189,7 +1189,7 @@ class ProgramTransformer(ExpVisitor):
                     next_num = -index.right().num() + 1
                 if next_num != 0:
                     op = '+' if next_num > 0 else '-'
-                    crange = QXCRange(index, QXBin(op, index.left(), QXNum(abs(next_num),line_number=ctx.start.line),line_number=ctx.start.line), ctx.index(),line_number=ctx.start.line)
+                    crange = QXCRange(index, QXBin(op, index.left(), QXNum(abs(next_num),line_number=ctx.start.line),line_number=ctx.start.line), line_number=ctx.start.line)
                 else:
                     # for the second one (upper bound), we can ignore the summand
                     crange = QXCRange(index, index.left(),line_number=ctx.start.line)
