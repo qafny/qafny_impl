@@ -1,4 +1,3 @@
-# sp_pretty.py
 from __future__ import annotations
 from typing import Any, Iterable
 
@@ -202,6 +201,12 @@ def pp(obj: Any) -> str:
 
         except Exception:
             return "Function(...)"
+        
+    if cn == "VC":
+        return pp_vc(obj)
+    
+    if cn == "DischargeResult":
+        return pp_discharge_result(obj)
 
 
     # fallback
@@ -239,3 +244,13 @@ def pp_vc(vc: Any) -> str:
     lhs = f"({pp_pc(ant_pc)} ∧ {pp_qstore(ant_qs)})"
     rhs = pp(consq)
     return f"{header} {lhs} ⇒ {rhs}"
+
+def pp_discharge_result(res: Any) -> str:
+    status = "OK" if res.ok else "FAIL"
+    reason = res.reason
+    vc_str = pp_vc(res.norm_vc)
+    # Indent the VC for better readability
+    indented_vc = vc_str.replace('\n', '\n    ')
+    return (f"  Result: [{status}]\n"
+            f"  Reason: {reason}\n" 
+            f"  {indented_vc}") 

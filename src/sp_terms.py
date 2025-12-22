@@ -1,4 +1,3 @@
-# sp_terms.py
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, List, Sequence, Tuple
@@ -71,7 +70,6 @@ class IPostSelect:
     meas_locus: Tuple[Any, ...]   # e.g. (QXQRange(p, [0,n)),)
     meas_value: Any               # e.g. QXBind('v')
     prob_sym: Any | None = None   # optional: QXBind('prob') or similar
-
 
 
 def apply_op_to_term(op: Any, target_locus: Sequence[Any], term: Any) -> Any:

@@ -175,20 +175,20 @@ if __name__ == "__main__":
             
             # MODE 1: PBT Concolic Execution
             if args.mode == 'pbt':
-                res = compute_sp(qafny_ast, want_trace=True)
+                res = compute_sp(qafny_ast, want_trace=True, want_discharge=True)
                 print("paths:", len(res.finals))
-                from sp_pretty import pp_vc
+                from sp_pretty import pp_vc, pp_discharge_result
 
                 print(f"VCs: {len(res.vcs)}")
-                for k, vc in enumerate(res.vcs, 1):
-                    print(f"  VC{k}: {pp_vc(vc)}")
+                # for k, vc in enumerate(res.vcs, 1):
+                #     print(f"  VC{k}: {pp_vc(vc)}")
                 
-                #need to be fixed 
-                for i, ev in enumerate(res.trace, 1):
-                    print(f"\n--- TRACE {i} ---")
-                    print("STMT:", ev.stmt)
-                    print("qstate:\n", ev.qstore_snapshot)
-                    print("pc:\n", ev.pc_snapshot)
+                for k, ok in enumerate(res.ok_vcs):
+                    print(f"  vc_ok_{k}: {pp_discharge_result(ok)}")
+
+                for k, bad in enumerate(res.bad_vcs):
+                    print(f"  vc_bad_{k}: {pp_discharge_result(bad)}")
+                
 
 
     #            for vc in res.vcs:

@@ -8,7 +8,8 @@ from sp_eval import try_eval_int, as_bool_not
 
 from sp_terms import ICtrlGate, IIter, ILoopSummary, IStep, IPostSelect, IMeasure, apply_op_to_qspec
 from sp_components import ensure_component_for
-# from sp_rewrite import normalize_qspec
+from sp_normalization import normalize_qspec
+from sp_discharge import DischargeResult, discharge_all
 
 
 
@@ -16,21 +17,39 @@ from sp_components import ensure_component_for
 class SPResult:
     finals: List[ExecState]
     vcs: List[VC]
+    ok_vcs: List[DischargeResult]
+    bad_vcs: List[DischargeResult]
     trace: Optional[List[TraceStep]] = None
 
 
-def compute_sp(ast, arg_values: Optional[Dict[str, Any]] = None, want_trace: bool = False) -> SPResult:
+def compute_sp(ast, arg_values: Optional[Dict[str, Any]] = None, want_trace: bool = False, want_discharge: bool = True) -> SPResult:
     """Compute strongest postcondition(s) for a Qafny program.
     It is path-aware for classical if; quantum-if is summarized without path splitting.
     """
-    v = SPVisitor(arg_values=arg_values or {}, want_trace=want_trace)
+    v = SPVisitor(arg_values=arg_values or {}, want_trace=want_trace, want_discharge=want_discharge)
 
     try:
         ast.accept(v)
     except Exception:
         raise
+    finals = v.finals
+    vcs = v.all_vcs()
 
-    return SPResult(finals=v.finals, vcs=v.all_vcs(), trace=v.trace if want_trace else None)
+    ok_vcs, bad_vcs = ([], [])
+    if want_discharge:
+        ok_vcs, bad_vcs = discharge_all(finals)
+
+    print('\n ok: ', ok_vcs)
+    print('\n bad: ', bad_vcs)
+
+    return SPResult(
+        finals=finals,
+        vcs=vcs,
+        ok_vcs=ok_vcs,
+        bad_vcs=bad_vcs,
+        trace=v.trace if want_trace else None,
+    )
+
 
 
 # -----------------------------
@@ -43,9 +62,10 @@ class SPVisitor:
 
     """
 
-    def __init__(self, *, arg_values: Dict[str, Any], want_trace: bool = False):
+    def __init__(self, *, arg_values: Dict[str, Any], want_trace: bool = False, want_discharge: bool = False):
         self.arg_values = dict(arg_values)
         self.want_trace = want_trace
+        self.want_discharge = want_discharge
         self.trace: Optional[List[TraceStep]] = [] if want_trace else None
 
         self.paths: List[ExecState] = []
@@ -53,8 +73,8 @@ class SPVisitor:
         self.finals: List[ExecState] = []
 
     def visitProgram(self, prog: Any) -> List[ExecState]:
-        """Handle QXProgram roots.
-
+        """
+        Handle QXProgram roots.
         If multiple methods exist, we compute SP for each and keep the finals for the last one.
         VCs are accumulated in each path state.
         """
@@ -144,8 +164,7 @@ class SPVisitor:
                 pass
 
         # Process method conditions: requires into pc/qstore; collect ensures specs.
-        # IMPORTANT: do not rely on Python identity of AST classes (multiple loads of Programmer.py
-        # can cause isinstance() to fail). Instead, use duck-typing + class-name checks.
+        # duck-typing + class-name checks.
         self._ensures = []
 
         def _clsname(x: Any) -> str:
@@ -280,14 +299,12 @@ class SPVisitor:
     def visitFor(self, stmt: Any) -> List[ExecState]:
         self._trace_pre(stmt)
 
-        # unrolling
+        # unrolling and loop summary
         out: List[ExecState] = []
         for st in self.paths:
             out.extend(_sp_for_with_visitor(stmt, st, self))
         self.paths = out
         return self.paths
-    
-        # loop summary/invariant
 
 
 # -----------------------------
@@ -592,15 +609,23 @@ def _sp_measure(stmt: Any, st: "ExecState") -> "ExecState":
 
 def _sp_assert(stmt: Any, st: ExecState) -> None:
     spec = stmt.spec()
-   # norm_qstore = {cid: normalize_qspec(spec, st) for cid, spec in st.qstore.items()}
-    st.vcs.append(VC(
-   #     antecedent_qstore=norm_qstore,
+ #   norm_qstore = {cid: normalize_qspec(qs, st) for cid, qs in st.qstore.items()}
+    vc = VC(
+ #       antecedent_qstore=norm_qstore,
         antecedent_qstore=dict(st.qstore),
         antecedent_pc=list(st.pc),
         consequent=spec,
         source_line=_line_of(stmt),
         origin="user-assert",
-    ))
+    )
+
+    from sp_discharge import discharge_vc
+    r = discharge_vc(st, vc)
+    if not r.ok:
+        from sp_pretty import pp_vc
+        raise AssertionError(f"Assertion failed: {r.reason}\n{pp_vc(vc)}")
+    
+    st.vcs.append(vc)
 
 
 def _sp_for_with_visitor(stmt: Any, st: ExecState, v: "SPVisitor") -> List[ExecState]:
@@ -788,7 +813,7 @@ def _sp_for_with_visitor(stmt: Any, st: ExecState, v: "SPVisitor") -> List[ExecS
 
     # --------- Tier A: unroll ---------
 
-    # IMPORTANT: try_eval_int expects cstore (dict), not ExecState
+    # try_eval_int expects cstore (dict), not ExecState
     L = try_eval_int(lo, st.cstore)
     R = try_eval_int(hi, st.cstore)
 
@@ -819,7 +844,7 @@ def _sp_for_with_visitor(stmt: Any, st: ExecState, v: "SPVisitor") -> List[ExecS
     # --------- Tier B: symbolic summary ---------
 
     from sp_components import ensure_component_for
-    from sp_qtys import degrade_qty  # your tag weakening
+    from sp_qtys import degrade_qty  
     from Programmer import QXBind, QXQSpec
 
     st2 = st.clone(copy_pi=False)

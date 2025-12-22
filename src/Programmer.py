@@ -854,7 +854,7 @@ class QXCon(QXTop):
     def ID(self):
         return self._id if isinstance(self._id, str) else self._id.getText()
 
-    def range(self):
+    def crange(self):
         return self._crange
 
     def condition(self):
