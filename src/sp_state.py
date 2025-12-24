@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Set, Iterable
 from sp_eval import SymScalar
 
 # -----------------------------
@@ -37,92 +37,90 @@ class FreshNameGen:
         """
         name = self.fresh(base) if freshen else base
         return SymScalar(name)
-    
+
+
+# -----------------------------
+# Locus Utilities
+# -----------------------------   
+
+
+def get_regs(locus: List[Any]) -> Set[str]:
+    """
+    Extract string register names from a locus (list of ranges).
+    """
+    regs: Set[str] = set()
+    if not locus:
+        return regs
+    for r in locus:
+        try:
+            # Try accessor method first
+            loc = r.location()
+        except AttributeError:
+            # Fallback to field access
+            loc = getattr(r, "location", None)
+        regs.add(str(loc))
+    return regs
+
+# -----------------------------
+# PiManager (The Index)
+# -----------------------------
+
 @dataclass
 class PiManager:
     """
     Symbolic component manager:
     - allocates stable component IDs
-    - provides optional reg -> {cid} indexing (not authoritative)
+    - provides optional reg -> {cid} indexing
     """
     next_cid: int = 0
-    reg_index: Dict[str, set[int]] = field(default_factory=dict)
+    reg_index: Dict[str, Set[int]] = field(default_factory=dict)
 
     def new_cid(self) -> int:
-        cid = self.next_cid
         self.next_cid += 1
-        return cid
-
-    def _regs_of_locus(self, locus: List[Any]) -> set[str]:
-        regs: set[str] = set()
-        for r in locus:
-            try:
-                regs.add(str(r.location()))
-            except Exception:
-                regs.add(str(getattr(r, "location", None)))
-        return regs
+        return self.next_cid
 
     def index_component(self, cid: int, locus: List[Any]) -> None:
-        for reg in self._regs_of_locus(locus):
-            self.reg_index.setdefault(reg, set()).add(cid)
+        """Register the component ID for all registers in the locus."""
+        regs = get_regs(locus)
+        for r in regs:
+            if r not in self.reg_index:
+                self.reg_index[r] = set()
+            self.reg_index[r].add(cid)
 
-    def drop_component(self, cid: int) -> None:
-        for reg in list(self.reg_index.keys()):
-            s = self.reg_index.get(reg)
-            if s is None:
-                continue
-            if cid in s:
-                s.remove(cid)
-            if not s:
-                self.reg_index.pop(reg, None)
+    def deindex_component(self, cid: int, locus: List[Any]) -> None:
+        """Remove the component ID from the index for registers in the locus."""
+        regs = get_regs(locus)
+        for r in regs:
+            if r in self.reg_index:
+                self.reg_index[r].discard(cid)
+                if not self.reg_index[r]:
+                    del self.reg_index[r]
 
+    def get_candidates(self, target_locus: List[Any], fallback_cids: Iterable[int]) -> List[int]:
+        """
+        Find potential CIDs that might own the target locus.
+        - Uses the index if available and relevant.
+        - Falls back to returning all CIDs if index is empty/misses.
+        """
+        regs = get_regs(target_locus)
+        
+        # If we have a useful index, use it
+        if self.reg_index:
+            cands: Set[int] = set()
+            found_any = False
+            for r in regs:
+                if r in self.reg_index:
+                    cands |= self.reg_index[r]
+                    found_any = True
+            
+            # If the registers are in the index, trust the index.
+            # If they are NOT in the index, they might be new or unindexed, 
+            # so strictly speaking we might return empty or fallback.
+            # Assuming 'Conservative' strategy: return what we found.
+            return sorted(cands)
 
-# -----------------------------
-# Simple union-find for Π
-# -----------------------------
-
-# @dataclass
-# class UnionFind:
-#     parent: Dict[LocusAtom, LocusAtom] = field(default_factory=dict)
-#     rank: Dict[LocusAtom, int] = field(default_factory=dict)
-
-#     def add(self, x: LocusAtom) -> None:
-#         if x not in self.parent:
-#             self.parent[x] = x
-#             self.rank[x] = 0
-
-#     def find(self, x: LocusAtom) -> LocusAtom:
-#         self.add(x)
-#         p = self.parent[x]
-#         if p != x:
-#             self.parent[x] = self.find(p)
-#         return self.parent[x]
-
-#     def union(self, a: LocusAtom, b: LocusAtom) -> LocusAtom:
-#         ra, rb = self.find(a), self.find(b)
-#         if ra == rb:
-#             return ra
-#         if self.rank[ra] < self.rank[rb]:
-#             ra, rb = rb, ra
-#         self.parent[rb] = ra
-#         if self.rank[ra] == self.rank[rb]:
-#             self.rank[ra] += 1
-#         return ra
-
-#     def union_all(self, xs: Sequence[LocusAtom]) -> Optional[LocusAtom]:
-#         if not xs:
-#             return None
-#         r = self.find(xs[0])
-#         for x in xs[1:]:
-#             r = self.union(r, x)
-#         return r
-
-#     def roots(self, xs: Iterable[LocusAtom]) -> List[LocusAtom]:
-#         return sorted({self.find(x) for x in xs})
-
-#     def component_atoms(self, root: LocusAtom) -> List[LocusAtom]:
-#         rr = self.find(root)
-#         return sorted([a for a in self.parent.keys() if self.find(a) == rr])
+        # Fallback: scan everything
+        return sorted(list(fallback_cids))
 
 # -----------------------------
 # VC + Trace types
@@ -149,7 +147,7 @@ class TraceStep:
 
 @dataclass
 class ExecState:
-    qstore: Dict[Any, Any] = field(default_factory=dict)   # cid -> QXQSpec
+    qstore: Dict[Any, Any] = field(default_factory=dict)   # cid -> QXQSpec (states include internal terms)
     pi: PiManager = field(default_factory=PiManager)
     cstore: Dict[str, Any] = field(default_factory=dict)   # var -> QX* expr AST
     pc: List[Any] = field(default_factory=list)            # boolean AST nodes

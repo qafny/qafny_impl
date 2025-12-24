@@ -10,6 +10,7 @@ from sp_terms import ICtrlGate, IIter, ILoopSummary, IStep, IPostSelect, IMeasur
 from sp_components import ensure_component_for
 from sp_normalization import normalize_qspec
 from sp_discharge import DischargeResult, discharge_all
+from SubstAExp import SubstAExp
 
 
 
@@ -228,10 +229,8 @@ class SPVisitor:
 
         # Emit ensures VCs for each final path
         for st2 in self.paths:
-        #    norm_qstore = {cid: normalize_qspec(spec, st2) for cid, spec in st2.qstore.items()}
             for ens in self._ensures:
                 st2.vcs.append(VC(
-        #            antecedent_qstore=norm_qstore,
                     antecedent_qstore=dict(st2.qstore), 
                     antecedent_pc=list(st2.pc),
                     consequent=ens,
@@ -302,7 +301,7 @@ class SPVisitor:
         # unrolling and loop summary
         out: List[ExecState] = []
         for st in self.paths:
-            out.extend(_sp_for_with_visitor(stmt, st, self))
+            out.extend(_sp_for(stmt, st, self))
         self.paths = out
         return self.paths
 
@@ -374,25 +373,6 @@ def _sp_quantum_if(stmt: Any, st: ExecState) -> ExecState:
     st.qstore[cid] = apply_op_to_qspec(qspec, op=ctrl_op, target_locus=touched_locus, st=st)
     return st
 
-
-
-def _apply_controlled_op_to_touched(st: ExecState, ctrl_op: Any, touched_locus: list) -> ExecState:
-    if not touched_locus:
-        return st
-
-    cid = ensure_component_for(st, touched_locus)
-    qspec = st.qstore.get(cid)
-    if qspec is None:
-        return st  # conservative
-
-    st.qstore[cid] = apply_op_to_qspec(qspec, op=ctrl_op, target_locus=touched_locus, st=st)
-    return st
-
-
-#for quantum-if summary, keep it for now
-def _is_unitary_expr(e):
-    # expand this whitelist as your language grows
-    return e.__class__.__name__ in {"QXSingle", "QXOracle"}  # add QXLambda if needed
 
 @dataclass(frozen=True)
 class BodyStep:
@@ -519,14 +499,6 @@ def _sp_measure(stmt: Any, st: "ExecState") -> "ExecState":
     if joint is None:
         return st
 
-    # IMPORTANT (if your pi has union-find entanglement links):
-    # measurement can "split", so you must forget old unions here.
-    # Implement this method in pi if you have UF state.
-    if hasattr(st.pi, "forget_links_for_component"):
-        try:
-            st.pi.forget_links_for_component(cid_joint)
-        except Exception:
-            pass
 
     # -----------------------
     # Create measured component: meas_locus : Nor ↦ |v⟩
@@ -579,9 +551,11 @@ def _sp_measure(stmt: Any, st: "ExecState") -> "ExecState":
     except Exception:
         qty = getattr(joint, "qty", None)
 
+    old_spec = st.qstore[cid_joint]
+
     st.qstore[cid_joint] = QXQSpec(locus=residual_locus, qty=qty, states=new_terms)
 
-    st.pi.drop_component(cid_joint)
+    st.pi.deindex_component(cid_joint, old_spec.locus())
     st.pi.index_component(cid_joint, residual_locus)
 
     # -----------------------
@@ -609,9 +583,7 @@ def _sp_measure(stmt: Any, st: "ExecState") -> "ExecState":
 
 def _sp_assert(stmt: Any, st: ExecState) -> None:
     spec = stmt.spec()
- #   norm_qstore = {cid: normalize_qspec(qs, st) for cid, qs in st.qstore.items()}
     vc = VC(
- #       antecedent_qstore=norm_qstore,
         antecedent_qstore=dict(st.qstore),
         antecedent_pc=list(st.pc),
         consequent=spec,
@@ -628,184 +600,70 @@ def _sp_assert(stmt: Any, st: ExecState) -> None:
     st.vcs.append(vc)
 
 
-def _sp_for_with_visitor(stmt: Any, st: ExecState, v: "SPVisitor") -> List[ExecState]:
+def _sp_for(stmt: Any, st: ExecState, v: SPVisitor) -> List[ExecState]:
     """
-    Tier A: unroll when bounds are small concrete.
-    Tier B: otherwise, attach IIter(loop summary) wrappers to the relevant component's terms.
-
-    Key properties:
-      - Tier B does NOT push i-bounds into st.pc (binder is internal to IIter).
-      - Tier B alpha-renames loop var occurrences inside QXQRange bounds + op expressions.
-      - try_eval_int is called with st.cstore, not ExecState.
+    Handles loops using SubstAExp for alpha-renaming.
     """
 
-    # --------- helpers (duck-typed accessors) ---------
+    # --------- helpers ---------
 
     def _clsname(x: Any) -> str:
-        try:
-            return x.__class__.__name__
-        except Exception:
-            return ""
+        try: return x.__class__.__name__
+        except Exception: return ""
 
     def _get(maybe_obj: Any, meth: str, default=None):
         try:
             f = getattr(maybe_obj, meth, None)
-            if callable(f):
-                return f()
-        except Exception:
-            pass
+            if callable(f): return f()
+        except Exception: pass
         return default
 
     def _loop_var_name(s: Any) -> str:
-        x = _get(s, "ID", None)
-        if isinstance(x, str):
-            return x
-        try:
-            return str(getattr(s, "_id"))
-        except Exception:
-            return "i"
+        x = _get(s, "ID", None) or _get(s, "id", None)
+        if isinstance(x, str): return x
+        try: return str(getattr(s, "_id"))
+        except Exception: return "i"
 
-    # --------- alpha-renaming: substitute loop var -> alpha binder ---------
+    # --------- Alpha Renaming Helpers using Visitor ---------
 
-    def _subst_bind_in_aexp(a: Any, src: str, alpha: str) -> Any:
-        """
-        Substitute occurrences of QXBind(id=src) with QXBind(id=alpha) inside arithmetic expressions.
-        Minimal structural recursion for QXBind/QXBin/QXUni/QXNum/QXCall/QXQIndex.
-        """
-        if a is None:
-            return a
-
-        n = _clsname(a)
-        if n == "QXBind":
-            try:
-                if str(a.ID()) == src:
-                    from Programmer import QXBind
-                    return QXBind(id=alpha)
-            except Exception:
-                pass
-            return a
-
-        if n == "QXNum":
-            return a
-
-        if n == "QXBin":
-            try:
-                from Programmer import QXBin
-                return QXBin(
-                    op=a.op(),
-                    left=_subst_bind_in_aexp(a.left(), src, alpha),
-                    right=_subst_bind_in_aexp(a.right(), src, alpha),
-                    line_number=getattr(a, "line_number", lambda: None)(),
-                )
-            except Exception:
-                return a
-
-        if n == "QXUni":
-            try:
-                from Programmer import QXUni
-                return QXUni(
-                    op=a.op(),
-                    next=_subst_bind_in_aexp(a.next(), src, alpha),
-                    line_number=getattr(a, "line_number", lambda: None)(),
-                )
-            except Exception:
-                return a
-
-        if n == "QXCall":
-            try:
-                from Programmer import QXCall
-                exps = a.exps() if callable(getattr(a, "exps", None)) else getattr(a, "exps", [])
-                exps2 = [_subst_bind_in_aexp(e, src, alpha) for e in (exps or [])]
-                return QXCall(id=a.ID(), exps=exps2, inverse=getattr(a, "inverse", lambda: False)())
-            except Exception:
-                return a
-
-        if n == "QXQIndex":
-            try:
-                from Programmer import QXQIndex
-                return QXQIndex(id=a.ID(), index=_subst_bind_in_aexp(a.index(), src, alpha))
-            except Exception:
-                return a
-
-        # fallback: leave unchanged
-        return a
-
-    def _subst_bind_in_qrange(qr: Any, src: str, alpha: str) -> Any:
-        """
-        Substitute loop var in QXQRange's crange bounds.
-        Only touches bounds; leaves .location() intact.
-        """
-        if _clsname(qr) != "QXQRange":
-            return qr
+    def _subst_range(qr: Any, visitor: SubstAExp) -> Any:
+        if _clsname(qr) != "QXQRange": return qr
         try:
             from Programmer import QXQRange, QXCRange
             cr = qr.crange()
-            new_cr = QXCRange(
-                left=_subst_bind_in_aexp(cr.left(), src, alpha),
-                right=_subst_bind_in_aexp(cr.right(), src, alpha),
-                line_number=getattr(cr, "line_number", lambda: None)(),
-            )
-            return QXQRange(location=qr.location(), crange=new_cr, line_number=getattr(qr, "line_number", lambda: None)())
-        except Exception:
-            return qr
+            # Apply visitor to left and right bounds
+            new_cr = QXCRange(left=visitor.visit(cr.left()), right=visitor.visit(cr.right()))
+            return QXQRange(location=qr.location(), crange=new_cr)
+        except Exception: return qr
 
-    def _subst_bind_in_gate_expr(op: Any, src: str, alpha: str) -> Any:
-        """
-        Substitute loop var inside the operator AST if it contains expressions/kets that mention the binder.
-        For now: handle QXOracle (bindings, phase exps, kets vectors) and QXSingle/QXCall.
-        Safe fallback: return op unchanged.
-        """
-        if op is None:
-            return op
+    def _subst_gate(op: Any, visitor: SubstAExp) -> Any:
+        if op is None: return op
         n = _clsname(op)
-
-        if n == "QXSingle":
-            return op  # no index use
-
+        if n == "QXSingle": return op
         if n == "QXOracle":
             try:
-                from Programmer import QXOracle, QXSKet
-                # phase
+                from Programmer import QXOracle, QXSKet, QXCall
                 phase = op.phase()
-                if _clsname(phase) == "QXCall":
-                    from Programmer import QXCall
-                    exps = phase.exps() if callable(getattr(phase, "exps", None)) else getattr(phase, "exps", [])
-                    exps2 = [_subst_bind_in_aexp(e, src, alpha) for e in (exps or [])]
-                    phase2 = QXCall(id=phase.ID(), exps=exps2, inverse=getattr(phase, "inverse", lambda: False)())
-                else:
-                    phase2 = phase
-
-                # kets
+                # Phase is expression or call
+                phase2 = visitor.visit(phase)
+                
+                # Kets vectors are expressions
                 kets = op.kets() if callable(getattr(op, "kets", None)) else getattr(op, "kets", [])
                 kets2 = []
                 for k in (kets or []):
                     if _clsname(k) == "QXSKet":
-                        vec2 = _subst_bind_in_aexp(k.vector(), src, alpha)
-                        kets2.append(QXSKet(vector=vec2, negative=getattr(k, "negative", lambda: False)(),
-                                            line_number=getattr(k, "line_number", lambda: None)()))
-                    else:
-                        kets2.append(k)
-
-                # bindings are usually bound vars like x; do not rename them
-                return QXOracle(
-                    bindings=list(op.bindings() or []),
-                    phase=phase2,
-                    kets=kets2,
-                    inverse=getattr(op, "inverse", lambda: False)(),
-                    line_number=getattr(op, "line_number", lambda: None)(),
-                )
-            except Exception:
-                return op
-
-        # fallback: unchanged
+                        vec2 = visitor.visit(k.vector())
+                        kets2.append(QXSKet(vector=vec2))
+                    else: kets2.append(k)
+                return QXOracle(bindings=list(op.bindings() or []), phase=phase2, kets=kets2, inverse=getattr(op, "inverse", lambda: False)())
+            except Exception: return op
         return op
 
     # --------- extract loop header ---------
 
     loop_var = _loop_var_name(stmt)
     cr = _get(stmt, "crange", None)
-    if cr is None:
-        return [st]
+    if cr is None: return [st]
 
     lo = _get(cr, "left", None)
     hi = _get(cr, "right", None)
@@ -813,7 +671,6 @@ def _sp_for_with_visitor(stmt: Any, st: ExecState, v: "SPVisitor") -> List[ExecS
 
     # --------- Tier A: unroll ---------
 
-    # try_eval_int expects cstore (dict), not ExecState
     L = try_eval_int(lo, st.cstore)
     R = try_eval_int(hi, st.cstore)
 
@@ -852,12 +709,12 @@ def _sp_for_with_visitor(stmt: Any, st: ExecState, v: "SPVisitor") -> List[ExecS
 
     alpha = st2.fresh.fresh(loop_var)   # e.g. "i#3"
     st2.push_binder(loop_var, alpha)
-    i_sym = QXBind(id=alpha)
+    
+    # Initialize the Substitution Visitor
+    # Target is the fresh binder AST node
+    alpha_bind = QXBind(id=alpha)
+    subst_vis = SubstAExp(loop_var, alpha_bind)
 
-    # NOTE: do NOT add (lo <= i < hi) to st2.pc here.
-    # Those are loop-local facts; keep them inside IIter.
-
-    # Build a per-iteration summary, alpha-renamed.
     steps: List[IStep] = []
 
     for b in body:
@@ -865,31 +722,25 @@ def _sp_for_with_visitor(stmt: Any, st: ExecState, v: "SPVisitor") -> List[ExecS
 
         if bn == "QXQAssign":
             tgt0 = tuple(b.location() or [])
-            tgt = tuple(_subst_bind_in_qrange(r, loop_var, alpha) for r in tgt0)
-            op = _subst_bind_in_gate_expr(b.exp(), loop_var, alpha)
+            tgt = tuple(_subst_range(r, subst_vis) for r in tgt0)
+            op = _subst_gate(b.exp(), subst_vis)
             steps.append(IStep(op=op, target=tgt))
 
         elif bn == "QXIf" and _clsname(b.bexp()) == "QXQRange":
             guard0 = b.bexp()
-            guard = _subst_bind_in_qrange(guard0, loop_var, alpha)
+            guard = _subst_range(guard0, subst_vis)
 
             inner = b.stmts() or []
             if len(inner) == 1 and _clsname(inner[0]) == "QXQAssign":
                 s = inner[0]
                 tgt0 = tuple(s.location() or [])
-                tgt = tuple(_subst_bind_in_qrange(r, loop_var, alpha) for r in tgt0)
-                op = _subst_bind_in_gate_expr(s.exp(), loop_var, alpha)
+                tgt = tuple(_subst_range(r, subst_vis) for r in tgt0)
+                op = _subst_gate(s.exp(), subst_vis)
 
-                ctrl = ICtrlGate(
-                    controls=(guard,),
-                    op=op,
-                    targets=tgt,
-                )
-
+                ctrl = ICtrlGate(controls=(guard,), op=op, targets=tgt)
                 touched = (guard,) + tgt
                 steps.append(IStep(op=ctrl, target=touched))
             else:
-                # opaque quantum-if body; still rename its guard
                 steps.append(IStep(op=b, target=(guard,)))
 
         else:
@@ -897,7 +748,6 @@ def _sp_for_with_visitor(stmt: Any, st: ExecState, v: "SPVisitor") -> List[ExecS
 
     summary = ILoopSummary(steps=tuple(steps))
 
-    # Determine which quantum component(s) are touched (QXQRange only)
     touched_locus: List[Any] = []
     for s in steps:
         for r in s.target:
@@ -908,25 +758,21 @@ def _sp_for_with_visitor(stmt: Any, st: ExecState, v: "SPVisitor") -> List[ExecS
         st2.exit_scope()
         return [st2]
 
-    # Ensure a single component exists (may merge q and p — necessary once a Ctrl touches both)
     cid = ensure_component_for(st2, touched_locus)
     qspec = st2.qstore.get(cid)
     if qspec is None:
         st2.exit_scope()
         return [st2]
 
-    # Wrap each top-level term with IIter (term remains a single AST node)
     old_states = list(qspec.states()) if callable(getattr(qspec, "states", None)) else list(getattr(qspec, "states", []))
     new_states = [IIter(binder=alpha, lo=lo, hi=hi, body_summary=summary, term=t) for t in old_states]
 
-    # Degrade tag because a symbolic loop generally destroys structure (sound default)
     new_qty = degrade_qty(qspec.qty(), op=summary, fresh_flag=st2.fresh.fresh_en_flag())
 
     st2.qstore[cid] = QXQSpec(locus=list(qspec.locus()), qty=new_qty, states=new_states)
 
     st2.exit_scope()
     return [st2]
-
 
 # -----------------------------
 # Helpers

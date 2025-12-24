@@ -50,10 +50,7 @@ class SubstAExp(ProgramVisitor):
         ran = None
         if ctx.range() is not None:
             ran = ctx.range().accept(self)
-        amp = None
-        if ctx.amp() is not None:
-            amp = ctx.amp().accept(self)
-        return QXTensor(ks, ctx.ID(), ran, amp)
+        return QXTensor(ks, ctx.ID(), ran)
 
 
     def visitSum(self, ctx: Programmer.QXSum):
@@ -101,3 +98,7 @@ class SubstAExp(ProgramVisitor):
 
     def visitQIndex(self, ctx: Programmer.QXQIndex):
         return QXQIndex(ctx.ID(), ctx.index().accept(self))
+    
+    def visitCall(self, ctx: Programmer.QXCall):
+            new_exps = [e.accept(self) for e in ctx.exps()]
+            return QXCall(ctx.ID(), new_exps, ctx.inverse(), ctx.line_number())

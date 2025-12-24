@@ -26,6 +26,7 @@ def normalize_qspec(spec: Any, st: Any) -> Any:
     states = _call_list(spec, "states")
 
     new_states = [rewrite_term(t, st) for t in states]
+    print(f"\n new_states {new_states}")
 
     from Programmer import QXQSpec
     return QXQSpec(locus=locus, qty=qty, states=new_states)

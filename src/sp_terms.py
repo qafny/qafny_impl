@@ -17,7 +17,7 @@ class IApply:
 
 @dataclass(frozen=True)
 class ITensorProd:
-    """Internal tensor product (rarely needed once you stop DSU-merging by atoms)."""
+    """Internal tensor product """
     factors: Tuple[Any, ...]
 
 @dataclass(frozen=True)
@@ -66,8 +66,8 @@ class IPostSelect:
     Represents the post-measurement residual state on `residual_locus`,
     obtained by measuring `meas_locus` and observing `meas_value`.
     """
-    pre_term: Any                 # the joint term BEFORE measurement (may mention q and p)
-    meas_locus: Tuple[Any, ...]   # e.g. (QXQRange(p, [0,n)),)
+    pre_term: Any                 # the joint term BEFORE measurement
+    meas_locus: Tuple[Any, ...]   # e.g. (QXQRange(p[0, n)))
     meas_value: Any               # e.g. QXBind('v')
     prob_sym: Any | None = None   # optional: QXBind('prob') or similar
 
@@ -116,7 +116,7 @@ def apply_op_to_qspec(qspec: Any, op: Any, target_locus: Sequence[Any], st: Any)
             raise TypeError("qspec.states contains a Python list; expected term node")
         new_states.append(apply_op_to_term(op, target_locus, t))
 
-    # 3) eagerly degrade qty
+    # 3) eagerly degrade/upgrade qty
     fresh_flag = st.fresh.fresh_en_flag()
     new_qty = degrade_qty(qty, op, fresh_flag=fresh_flag)
 

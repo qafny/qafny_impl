@@ -133,7 +133,12 @@ def entails_qspec(st: ExecState, ant_qstore: Dict[Any, Any], goal_spec: Any) -> 
 
     # Normalize both sides. This is where everything fire.
     antN = normalize_qspec(ant_spec, st)
+#    goalN = goal_spec
     goalN = normalize_qspec(goal_spec, st)
+
+
+    from sp_pretty import pp
+    print(f"\n entails: {pp(antN)} ==> {pp(goalN)}")
 
     ant_states = _states_list(antN)
     goal_states = _states_list(goalN)
@@ -143,8 +148,7 @@ def entails_qspec(st: ExecState, ant_qstore: Dict[Any, Any], goal_spec: Any) -> 
     # Create normalized qstore for reporting
     try:
         norm_qstore = ant_qstore.copy()
-        # We need the key (cid) corresponding to ant_spec
-        # Since _find_spec_by_locus returned the value, let's find the key
+
         for cid, spec in ant_qstore.items():
             if spec is ant_spec:
                 norm_qstore[cid] = antN

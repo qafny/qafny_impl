@@ -1263,7 +1263,7 @@ class QXTensor(QXQState):
 @qafny.auto.equality
 class QXSum(QXQState):
 
-    def __init__(self, sums: [QXCon], amp: QXAExp, tensor: QXTensor , line_number = None):
+    def __init__(self, sums: [QXCon], amp: QXAExp, tensor: QXTensor , line_number = None): #kets is wapped by a tensor
          
         self._sums = sums
         self._amp = amp

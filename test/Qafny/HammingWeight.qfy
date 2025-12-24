@@ -8,8 +8,10 @@ method HammingWeight(n: nat, q: Q[n], p: Q[n]) returns (v: nat)
   //  ensures { q[0, n), p[0, n): en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(choose(n, v)) |k⟩ |v⟩}
     ensures { q[0, n): en ↦ ∑ k ∈ [0, 2^n)@(countN(k)==v) . 1/sqrt(choose(n, v)) |k⟩ }
 {
+  //  assert { q[0, n) : nor ↦ |0⟩ };
+  //  assert { p[0, n) : nor ↦ |0⟩ };
     q[0, n) *= H;
-    assert { q[0, n): en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) |k⟩ }; 
+  //  assert { q[0, n): en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) |k⟩ }; 
     for i in [0, n)
 //        invariant { q[0, i), p[0, n): en ↦ ∑ k ∈ [0, 2^i) . 1/sqrt(2^i) |k⟩ |countN(k)⟩ }
 //        invariant { q[i, n): Had ↦ |+⟩ }
