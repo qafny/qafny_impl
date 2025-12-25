@@ -4,7 +4,7 @@ method MultiModFull(q : Q[N], p : Q[N], N : nat, base : nat)
   requires base >= 3
   requires { q[0,N) : Nor ↦ |1⟩ }
   requires { p[0,N) : En ↦ |1⟩ }
-  ensures { q[0,N), p[0,N) : en ↦ ∑ k ∈ [0, Pow2(N)) . |k⟩ |(Pow(base, k) % N)⟩}
+  ensures { q[0,N), p[0,N) : En ↦ ∑ k ∈ [0, 2^N) . |k⟩ |base ^ k  % N⟩}
 {
   // This requires a split for it to work! 
   EntangleOne1(q, p, N, base);
@@ -15,12 +15,12 @@ method EntangleOne1(q : Q[1], p : Q[N], N : nat, base : nat)
   requires N >= 3
   requires { q[0,1) : Nor ↦ |1⟩ }
   requires { p[0,N) : En ↦ |1⟩ }
-  ensures { q[0,1), p [0,N) : en ↦ ∑ k ∈ [0, Pow2(N)) . |k⟩ |(Pow(base, k) % N)⟩ }
+  ensures { q[0,1), p [0,N) : En ↦ ∑ k ∈ [0, 2^N) . |k⟩ |base ^ k % N⟩ }
 
 {
   if (q[0,1))
   {
-     p[0,N) *= λ (x => ((Pow(base, 1)) * x) % N);
+     p[0,N) *= λ (x => |(Pow(base, 1) * x) % N⟩);
   }
 }
 
@@ -32,22 +32,22 @@ method MultiMod(q : Q[N], p : Q[N], N : nat, base : nat )
   //we should have a way of only specifying basis.
   //but we also care about amplitudes here.
   requires { q[0], p[0 , N) : En ↦
-    ∑ k ∈ [0 , 2) . 1/sqrt(2) . |(k, ((Pow(base, k)) % N))⟩
+    ∑ k ∈ [0 , 2) . 1/sqrt(2)  |k⟩ | ((Pow(base, k)) % N)⟩
   }
-  ensures { q[0 .. N], p[0 .. N] : en ↦
-    ∑ k ∈ [0, Pow2(N)) .  1/sqrt(2^n) .  |(k, ((Pow(base, k)) % N))⟩
+  ensures { q[0 ,N), p[0, N) : en ↦
+    ∑ k ∈ [0, Pow2(N)) .  1/sqrt(2^n)   |k⟩ | ((Pow(base, k)) % N)⟩
   }
 {
   for i in [1, N) with q[i]
     separates q[0, i), p[0, N)
     invariant {
-      q[0, i), p[0, N) : En ↦ ∑ k ∈ [0 .. Pow2(i)] . | k , ((Pow(base, k)) % N) ⟩
+      q[0, i), p[0, N) : En ↦ ∑ k ∈ [0 , Pow2(i)) . | k ⟩ | ((Pow(base, k)) % N) ⟩
     }
     invariant {
       q [i , N) : Had ↦ |+⟩
     }   
   {
-    p[0, N) *= λ (x => ((Pow(base, Pow2(i))) * x) % N);
+    p[0, N) *= λ (x => |((Pow(base, Pow2(i))) * x) % N⟩);
 
     // This is super hacky, but I have no good way to do this now....
     // TODO: find out one way to take the reference of the underlying range

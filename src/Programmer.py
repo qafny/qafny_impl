@@ -1229,12 +1229,13 @@ class QXQState(QXTop):
 @qafny.auto.equality
 class QXTensor(QXQState):
 
-    def __init__(self, kets: QXKet, id: str = None, crange: QXCRange = None , line_number = None):
+    def __init__(self, kets: QXKet, id: str = None, crange: QXCRange = None , phase: QXAExp = None, line_number = None):
          
         self._kets = kets
         self._id = id.getText() if isAntlrNode(id) else id
         self._crange = crange
 #        self._amp = amp
+        self._phase = phase
         self._line_number = line_number
 
     def accept(self, visitor: AbstractProgramVisitor):
@@ -1248,6 +1249,9 @@ class QXTensor(QXQState):
 
     def kets(self):
         return self._kets
+
+    def phase(self):
+        return self._phase
 
     # def amp(self):
     #     return self._amp

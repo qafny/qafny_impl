@@ -86,7 +86,7 @@ partpred: amplitude=arithExpr ':' pred=bexp;
 partsection: amplitude=arithExpr ':' ket pred=fcall;
 partsections: partsection ('+' partsection);
 
-tensorall: '⊗' ID '.' manyket | '⊗' ID TIn crange '.' manyket;
+tensorall: '⊗' ID (TIn crange)? '.' (manyket | omegaExpr);
 
 sumspec: maySum (arithExpr? manyketpart | '(' arithExpr? manyketpart ')' | (arithExpr '.')? tensorall ) | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
 

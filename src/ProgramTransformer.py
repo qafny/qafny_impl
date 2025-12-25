@@ -494,7 +494,14 @@ class ProgramTransformer(ExpVisitor):
         v = None
         if ctx.crange() is not None:
             v = self.visitCrange(ctx.crange())
-        return QXTensor(self.visitManyket(ctx.manyket()), ctx.ID(), v, line_number=ctx.start.line)
+
+        if ctx.manyket() is not None:
+            _ket = self.visit(ctx.manyket())
+        else:
+            _ket = QXBind(ctx.ID())
+        if ctx.omegaExpr() is not None:
+            next = self.visit(ctx.omegaExpr())
+        return QXTensor(_ket, ctx.ID(), v, next, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#sumspec.
     def visitSumspec(self, ctx: ExpParser.SumspecContext):

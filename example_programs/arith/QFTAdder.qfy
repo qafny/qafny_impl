@@ -21,16 +21,16 @@ method QAdder(q : Q[n], p : Q[n], n:nat, a:nat, b:nat)
 
   p[0, n) *= QFT; //if we apply QFT to Nor, it can be in En or Had, we can creat cast-op to let user select.
   //we need a new way to express Φ type Had expression, for applying SR gates.
-  assert { p[0 .. n] : Had ↦ ⊗ i ∈ [0, n) . Φ(2^i * b) };
+  assert { p[0 ,n) : Had ↦ ⊗ i ∈ [0, n) . ω(2^i * b, 2^n) };
   
   for i in [0, n) with q[i]
-    invariant { p[0 .. n] : Had ↦ ⊗ i ∈ [0, n) . Φ(2^i * (b + ∑ k ∈ [0, i). 2^k * a[i])) };
-    invariant { q[0 , n) : Nor ↦ |a⟩}
+    invariant { p[0 , n) : Had ↦ ⊗ i ∈ [0, n) . ω(2^i * a[i], 2^n) }
+    invariant { q[0 , n) : Nor ↦ |a⟩ }
   {
     //SR m is a series of phase gate, rotating from m+1 to 1, starting from qubit 0 position
     //the nice feature of SR gate is that, if the p[0,n) is in QFT type, it does not create entanglement.
     //we will need to formula this as a lemma, or assumption.
-    p[0, N) *= SR(n - i - 1);
+    SR(p[0,N), n - i - 1);
   }
 }  
 
@@ -41,6 +41,6 @@ method QAdderFull(q : Q[n], p : Q[n], n:nat, f: nat -> nat)
   ensures { q[0 , n),p[0, n) : En ↦ ∑ i ∈ [0, n) . |i, i + f(i)⟩ }
 {
    //we can apply the summation formula below, for every pair of i, and f(i), we apply QAdder.
-   SumFormula(i ∈ [0, n). QAdder(q,p,n,i,f(i)));
+   SumFormula(0,n, QAdder(q,p,n));
    //the summsion formula is equivalent to a for loop. if we do not want to implement the sum formula. I am fine with the for loop.
 }  
