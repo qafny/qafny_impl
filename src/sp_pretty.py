@@ -96,8 +96,21 @@ def pp(obj: Any) -> str:
         return str(obj.op())
 
     if cn == "QXOracle":
-        # short but informative
-        return "Oracle"
+        try:
+            bind_str = ""
+            if obj.bindings():
+                bind_str = ", ".join(pp(b) for b in obj.bindings()) + " -> "                
+            parts = []
+            if obj.phase():
+                parts.append(f"phase={pp(obj.phase())}")            
+            kets = obj.kets()
+            if kets:
+                k_str = ", ".join(pp(k) for k in kets)
+                parts.append(f"kets=[{k_str}]")                
+            body = ", ".join(parts)
+            return f"Oracle({bind_str}{body})"
+        except Exception:
+            return "Oracle(?)"
 
     # ---- types ----
     if cn == "TyNor":

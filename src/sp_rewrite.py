@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from sp_terms import IApply, IIter, ILoopSummary, IStep, ICtrlGate, ITensorProd, IPostSelect
 from sp_pretty import pp
 from SubstAExp import SubstAExp
-
+from ProgramVisitor import ProgramVisitor
 # -------------------------
 # Tiny duck-typing helpers
 # -------------------------
@@ -51,8 +51,39 @@ def _is_ket0(term: Any) -> bool:
     v = _call0(ks[0], "vector", None)
     return _cn(v) == "QXNum" and int(_call0(v, "num", -1)) == 0
 
+def _is_ket1(term: Any) -> bool:
+    if _cn(term) != "QXTensor":
+        return False
+    ks = _call0(term, "kets", None)
+    if not isinstance(ks, (list, tuple)) or len(ks) != 1:
+        return False
+    if _cn(ks[0]) != "QXSKet":
+        return False
+    v = _call0(ks[0], "vector", None)
+    return _cn(v) == "QXNum" and int(_call0(v, "num", -1)) == 1
+
 def _is_H(op: Any) -> bool:
     return _op_name(op) == "H"
+
+def _is_increment_expr(expr: Any) -> bool:
+    """Checks if expr is (x + 1) or (1 + x)."""
+    if _cn(expr) != "QXBin":
+        return False
+    op = str(_call0(expr, "op"))
+    if op != "+":
+        return False
+    l = _call0(expr, "left")
+    r = _call0(expr, "right")
+    try:
+        # Check left + 1
+        if _cn(r) == "QXNum" and int(_call0(r, "num", -1)) == 1:
+            return True
+        # Check 1 + right
+        if _cn(l) == "QXNum" and int(_call0(l, "num", -1)) == 1:
+            return True
+    except:
+        return False
+    return False
 
 # -------------------------
 # AST constructors (robust)
@@ -110,15 +141,17 @@ def _subst_bind(expr: Any, mapping: Dict[str, str]) -> Any:
     
     res = expr
     for src, tgt in mapping.items():
-        from Programmer import QXBind
-        tgt_bind = QXBind(id=tgt)
+        from Programmer import QXBind, QXNum
+        print(f"scr, tgt {src}, {tgt}")
+        if isinstance(tgt, int):
+            node = QXNum(num=int(tgt))
+        elif isinstance(tgt, str):
+            node = QXBind(id=tgt)
         
-        visitor = SubstAExp(src, tgt_bind)
+        visitor = SubstAExp(src, node)
         
         if hasattr(res, "accept"):
             res = res.accept(visitor)
-        else:
-            pass
     return res
 
 def canon_sum(term: Any) -> Any:
@@ -193,6 +226,7 @@ def _rewrite_apply_expand_H0(op: Any, tgt: Tuple[Any, ...], inner: Any) -> Optio
 def _rewrite_tensor_sum_with_ket0(term: Any) -> Optional[Any]:
     if not isinstance(term, ITensorProd):
         return None
+    print(f"\n term: {term}")
     fs = term.factors
     if len(fs) != 2:
         return None
@@ -206,7 +240,8 @@ def _rewrite_tensor_sum_with_ket0(term: Any) -> Optional[Any]:
 
     if _cn(left) != "QXSum":
         return None
-    if not _is_ket0(right):
+    
+    if not _is_ket0(right) and (not _is_ket1(right)):
         return None
 
     left = canon_sum(left)
@@ -222,9 +257,28 @@ def _rewrite_tensor_sum_with_ket0(term: Any) -> Optional[Any]:
     ks = list(_call0(kets, "kets", []) or [])
     if len(ks) != 1:
         return None
-
-    joint = _mk_tensor([ks[0], _mk_sket(_mk_num(0))])
+    if _is_ket0(right):
+        joint = _mk_tensor([ks[0], _mk_sket(_mk_num(0))])
+    elif _is_ket1(right):
+        joint = _mk_tensor([ks[0], _mk_sket(_mk_num(1))])
     return _mk_sum(cons, amp, joint)
+
+def _rewrite_apply_collapse_sum(op: Any, tgt: Tuple[Any, ...], inner: Any) -> Optional[Any]:
+    """
+    Inverse of expand_H0: Apply[H]( Sum_k 1/sqrt(N) |k> ) ==> |0>
+    Used for Deutsch-Jozsa verification (constant case).
+    """
+    if not _is_H(op): return None
+    if _cn(inner) != "QXSum": return None
+    cons = list(_call0(inner, "sums", []) or [])
+    if len(cons) != 1: return None
+    amp = _call0(inner, "amp")
+    # Check for 1/sqrt...
+    if _cn(amp) != "QXBin" or str(_call0(amp, "op")) != "/": return None
+    left = _call0(amp, "left")
+    if _cn(left) != "QXNum" or int(_call0(left, "num", -1)) != 1: return None
+    # We assume if it's a normalized sum of |k>, H collapses it to |0>.
+    return _mk_tensor([_mk_sket(_mk_num(0))])
 
 def _rewrite_oracle_iter(term: Any) -> Optional[Any]:
 
@@ -250,6 +304,8 @@ def _rewrite_oracle_iter(term: Any) -> Optional[Any]:
     
     inner = term.term
 
+    print(f"\n inner: \n {inner}")
+
     if isinstance(inner, ITensorProd):
         normalized_inner = _rewrite_tensor_sum_with_ket0(inner)
         print(f"\n norm_inner: \n {normalized_inner}")
@@ -271,6 +327,7 @@ def _rewrite_oracle_iter(term: Any) -> Optional[Any]:
     kets = _call0(inner, "kets")
     if _cn(kets) != "QXTensor":
         return None
+    #the kets
     ks = list(_call0(kets, "kets", []) or [])
     if len(ks) != 2:
         return None
@@ -279,40 +336,61 @@ def _rewrite_oracle_iter(term: Any) -> Optional[Any]:
     vec0 = _call0(ks[0], "vector")
     if _cn(vec0) != "QXBind" or str(_call0(vec0, "ID")) != k_id: return None
     
-    if _cn(ks[1]) != "QXSKet" or _cn(_call0(ks[1], "vector")) != "QXNum" or int(_call0(_call0(ks[1], "vector"), "num", -1)) != 0:
+    if _cn(ks[1]) != "QXSKet" or _cn(_call0(ks[1], "vector")) != "QXNum":
         return None
 
     oracle_op = gate.op
     if _cn(oracle_op) != "QXOracle":
         return None
-        
+       
     oracle_kets = list(_call0(oracle_op, "kets", []) or [])
     
     new_vec = None
     
     # Check what kind of oracle it is
+    print(f"\n oracle_kets: \n {oracle_kets} \n or {oracle_op}")
+    # Try to extract logic from oracle kets
     if len(oracle_kets) >= 1:
         oracle_vec = _call0(oracle_kets[0], "vector")
-        oracle_bindings = list(_call0(oracle_op, "bindings", []) or [])
+        loop_var = term.binder
         
-        mapping = {}
-        if oracle_bindings:
-            bound_var = str(_call0(oracle_bindings[0], "ID"))
-            mapping[bound_var] = k_id
+        # Check if vector depends on loop variable i
+        checker = HasLoopVarVisitor(loop_var)
+        oracle_vec.accept(checker)
+        print(f"checker {checker.found}")
         
-        new_vec = _subst_bind(oracle_vec, mapping)
-        
-    else: #hard coded for now
-        from Programmer import QXCall
-        new_vec = QXCall(id='countN', exps=[_mk_bind(k_id)], inverse=False)
+        if not checker.found:
+            if _is_increment_expr(oracle_vec):
+                from Programmer import QXCall
+                new_vec = QXCall(id='countN', exps=[_mk_bind(k_id)], inverse=False)
+            
+        else:
+            if _cn(oracle_vec) == "QXBin":
+                shor_vis = ShorVisitor(sum_binder=k_id, loop_var=loop_var)
+                vec_with_k = oracle_vec.accept(shor_vis)
+            elif _cn(oracle_vec) == "QXCall":
+                vec_with_k = oracle_vec
+
+            #x
+            oracle_bindings = list(_call0(oracle_op, "bindings", []) or [])
+            mapping = {}
+            if oracle_bindings:
+                #using the first binding here, could be multiple tho
+                bound_var = str(_call0(oracle_bindings[0], "ID"))
+                print(f"\n ks, {ks[0]} {ks[1]}")
+                x0 = _call0(ks[1], "vector") 
+                x0_str = _call0(x0, "num")
+                print(f"\n x0", {x0})
+                mapping[bound_var] = x0_str
+            new_vec = _subst_bind(vec_with_k, mapping)
+
+            new_vec = new_vec.accept(shor_vis)
 
     ket_k = _mk_sket(_call0(ks[0], "vector"))
     
     # New ket is |Oracle(k)> 
-    ket_oracle = _mk_sket(new_vec)
-    
+    ket_oracle = _mk_sket(new_vec)  
     new_tensor = _mk_tensor([ket_k, ket_oracle])
-
     return _mk_sum(cons, _call0(inner, "amp"), new_tensor)
 
 
@@ -321,26 +399,8 @@ def _rewrite_oracle_iter(term: Any) -> Optional[Any]:
 # -------------------------
 
 def rewrite_term(term: Any, st: Any) -> Any:
-    print(f"\n term: \n {term}")
+ #   print(f"\n term: \n {term}")
     def rec(x: Any) -> Any:
-        if isinstance(x, IApply):
-            innerN = rec(x.term)
-            tgt = tuple(x.target)
-            y = _rewrite_apply_cancel(x.op, tgt, innerN)
-            if y is not None:
-                return rec(y)
-            y = _rewrite_apply_expand_H0(x.op, tgt, innerN)
-            if y is not None:
-                return canon_sum(y)
-            return IApply(op=x.op, target=tgt, term=innerN)
-
-        if isinstance(x, ITensorProd):
-            fsN = tuple(rec(f) for f in x.factors)
-            y = _rewrite_tensor_sum_with_ket0(ITensorProd(fsN))
-            if y is not None:
-                return canon_sum(y)
-            return ITensorProd(fsN)
-
         if isinstance(x, IIter):
             innerN = rec(x.term)
             y = _rewrite_oracle_iter(IIter(
@@ -350,6 +410,40 @@ def rewrite_term(term: Any, st: Any) -> Any:
             if y is not None:
                 return canon_sum(y)
             return IIter(binder=x.binder, lo=x.lo, hi=x.hi, body_summary=x.body_summary, term=innerN)
+        
+        if isinstance(x, IApply):
+            innerN = rec(x.term)
+            tgt = tuple(x.target)
+            y = _rewrite_apply_cancel(x.op, tgt, innerN)
+            if y is not None: return rec(y)
+            y = _rewrite_apply_expand_H0(x.op, tgt, innerN)
+            if y is not None: return canon_sum(y)
+            y = _rewrite_apply_collapse_sum(x.op, tgt, innerN) # DJ Constant
+            if y is not None: return y
+            # y = _rewrite_shor_rqft(x.op, tgt, innerN) # Shor
+            # if y is not None: return y
+            
+            return IApply(op=x.op, target=tgt, term=innerN)
+
+        if isinstance(x, ITensorProd):
+            fsN = tuple(rec(f) for f in x.factors)
+            y = _rewrite_tensor_sum_with_ket0(ITensorProd(fsN))
+            if y is not None:
+                return canon_sum(y)
+            return ITensorProd(fsN)
+
+        
+        # if isinstance(x, IPostSelect):
+        #     preN = rec(x.pre_term)
+        #     y = _rewrite_postselect_hamming(IPostSelect(
+        #         pre_term=preN,
+        #         meas_locus=x.meas_locus,
+        #         meas_value=x.meas_value,
+        #         prob_sym=x.prob_sym
+        #     ))
+        #     if y is not None:
+        #         return canon_sum(y) if _cn(y) == "QXSum" else y
+        #     return IPostSelect(pre_term=preN, meas_locus=x.meas_locus, meas_value=x.meas_value, prob_sym=x.prob_sym)
 
         if _cn(x) == "QXSum":
             return canon_sum(x)
@@ -366,3 +460,40 @@ def rewrite_term(term: Any, st: Any) -> Any:
             break
         out = nxt
     return out
+
+class ShorVisitor(SubstAExp): 
+    def __init__(self, sum_binder: str, loop_var: Any):
+        # No super().__init__ needed if ProgramVisitor doesn't require args, 
+        # or call it correctly if it does.
+        super().__init__("DUMMY_VAR", None) 
+        self.sum_binder = sum_binder
+        self.loop_var = loop_var
+
+    def visitBind(self, ctx:Any):
+        return ctx
+
+    def visitBin(self, ctx):
+        op = str(_call0(ctx, "op"))
+        if op == "^":
+            l = _call0(ctx, "left")
+            # Ensure safe access to node properties
+            if _cn(l) == "QXNum" and int(_call0(l, "num", -1)) == 2:
+                return _mk_bind(self.sum_binder)
+            
+        if op == "*":
+            r = _call0(ctx, "right")
+            if _cn(r) == "QXNum" and _call0(r, "num") == 1:
+                return ctx.left().accept(self)
+        
+        # Call the generic visitBin or visitQXBin depending on base class definition
+        return super().visitBin(ctx)
+    
+class HasLoopVarVisitor(SubstAExp):
+    def __init__(self, target_id: str):
+        self.target_id = target_id
+        self.found = False
+
+    def visitBind(self, ctx):
+        if str(_call0(ctx, "ID")) == self.target_id:
+            self.found = True
+        return ctx

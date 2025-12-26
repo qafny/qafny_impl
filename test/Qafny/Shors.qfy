@@ -9,7 +9,7 @@ method Shors(n: nat, q: Q[n], p: Q[n], N: nat, base: nat, r: nat , c: nat) retur
   requires 0 < r <= 2^n
   requires 2^n % r == 0 // WLOG we verify this specicial case
   requires { q[0, n) : nor ↦ |0⟩ }
-  requires { p[0, n) : nor ↦ |0⟩ }
+  requires { p[0, n) : nor ↦ |1⟩ }
  // ensures {q[0, n), p[0, n): en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) | k ⟩ | (base ^ k) % N ⟩}
  
   //we should have a way of only specifying basis.
@@ -19,7 +19,7 @@ method Shors(n: nat, q: Q[n], p: Q[n], N: nat, base: nat, r: nat , c: nat) retur
 //  ensures py == 4 / (pi * pi * r) //real number
 {
   q[0, n) *= H;
-  p[0, n) *= λ (x => |(x + 1) % 2^n⟩);
+//  p[0, n) *= λ (x => |(x + 1) % 2^n⟩);
   
   for i in [0, n)
  //  invariant {
@@ -32,6 +32,7 @@ method Shors(n: nat, q: Q[n], p: Q[n], N: nat, base: nat, r: nat , c: nat) retur
     //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
     if (q[i]) { p[0, n) *= λ (x => |base ^ (2 ^ i) * x % N⟩); }
   }
+  assert {q[0, n), p[0, n): en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) | k ⟩ | (base ^ k) % N ⟩};
  // var v: nat;
  // var prob: real;
   w, v, s *= measure(p[0, n));//we do not care about the v and prob value here. only the partial measurement of p

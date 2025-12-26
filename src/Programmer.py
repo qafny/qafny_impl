@@ -1206,7 +1206,7 @@ class QXOracle(QXExp):
     # def amp(self):
     #     return self._amp
 
-    def vectors(self):
+    def kets(self):
         return self._kets
 
     def inverse(self):

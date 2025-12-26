@@ -145,7 +145,7 @@ def entails_qspec(st: ExecState, ant_qstore: Dict[Any, Any], goal_spec: Any) -> 
 
     norm_qstore = None 
 
-    # Create normalized qstore for reporting
+    # Create normalized qstore for debugging
     try:
         norm_qstore = ant_qstore.copy()
 
@@ -159,7 +159,7 @@ def entails_qspec(st: ExecState, ant_qstore: Dict[Any, Any], goal_spec: Any) -> 
     if _cn(goal_states) == "QXSum" and _cn(ant_states) == "QXSum":
         return True, norm_qstore, "Symbolic Expansion: Trace matches Spec Structure (Sum)"
 
-    # keep it strict for now; relax later if you want “sum contains term” style
+    # keep it strict for now; relax later
     if len(ant_states) != 1 or len(goal_states) != 1:
         return False, f"Tier-0 expects 1 state term each (ant={len(ant_states)}, goal={len(goal_states)})"
 
@@ -167,7 +167,6 @@ def entails_qspec(st: ExecState, ant_qstore: Dict[Any, Any], goal_spec: Any) -> 
         return False, norm_qstore, "mismatch"
 
     return True, norm_qstore, "matched"
-
 
 # -----------------------------
 # Main API
