@@ -85,6 +85,8 @@ class SubstAExp(ProgramVisitor):
 
 
     def visitNum(self, ctx: Programmer.QXNum):
+        if str(ctx.num()) == self.id:
+            return self.exp
         return ctx
 
 

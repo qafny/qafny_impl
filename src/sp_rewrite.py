@@ -40,27 +40,39 @@ def _op_name(op: Any) -> Optional[str]:
         return str(_call0(op, "op"))
     return None
 
+def _is_ket_val(term: Any, val: int|str) -> bool:
+    if _cn(term) == "QXTensor":
+        ks = _call0(term, "kets", None)
+        if not isinstance(ks, (list, tuple)) or len(ks) != 1: return False
+        term = ks[0]
+    if _cn(term) == "QXSKet":
+        v = _call0(term, "vector", None)
+        try:
+            return _cn(v) == "QXNum" and int(_call0(v, "num", -1)) == val
+        except: return False
+    return False
+
 def _is_ket0(term: Any) -> bool:
-    if _cn(term) != "QXTensor":
-        return False
-    ks = _call0(term, "kets", None)
-    if not isinstance(ks, (list, tuple)) or len(ks) != 1:
-        return False
-    if _cn(ks[0]) != "QXSKet":
-        return False
-    v = _call0(ks[0], "vector", None)
-    return _cn(v) == "QXNum" and int(_call0(v, "num", -1)) == 0
+    return _is_ket_val(term, 0)
 
 def _is_ket1(term: Any) -> bool:
-    if _cn(term) != "QXTensor":
-        return False
-    ks = _call0(term, "kets", None)
-    if not isinstance(ks, (list, tuple)) or len(ks) != 1:
-        return False
-    if _cn(ks[0]) != "QXSKet":
-        return False
-    v = _call0(ks[0], "vector", None)
-    return _cn(v) == "QXNum" and int(_call0(v, "num", -1)) == 1
+    return _is_ket_val(term, 1)
+
+def _is_ket_minus(term: Any) -> bool:
+    # Check for Apply(H, |1>) or equivalent
+    if _cn(term) == "IApply" and _is_H(term.op):
+        return _is_ket_val(term.term, 1)
+    
+    if _cn(term) == "QXTensor":
+        ks = _call0(term, "kets", None)
+        if not isinstance(ks, (list, tuple)) or len(ks) != 1: return False
+        term = ks[0]
+    if _cn(term) == "QXSKet":
+        v = _call0(term, "vector", None)
+        if _cn(v) == "QXHad":
+             state = _call0(v, "state", "")
+             return state == "-"
+    return False
 
 def _is_H(op: Any) -> bool:
     return _op_name(op) == "H"
@@ -147,7 +159,8 @@ def _subst_bind(expr: Any, mapping: Dict[str, str]) -> Any:
             node = QXNum(num=int(tgt))
         elif isinstance(tgt, str):
             node = QXBind(id=tgt)
-        
+        else:
+            node = tgt
         visitor = SubstAExp(src, node)
         
         if hasattr(res, "accept"):
@@ -198,7 +211,7 @@ def _rewrite_apply_cancel(op: Any, tgt: Tuple[Any, ...], inner: Any) -> Optional
 def _rewrite_apply_expand_H0(op: Any, tgt: Tuple[Any, ...], inner: Any) -> Optional[Any]:
     if not _is_H(op):
         return None
-    if not _is_ket0(inner):
+    if not _is_ket0(inner) and not not _is_ket0(inner):
         return None
     if len(tgt) != 1 or _cn(tgt[0]) != "QXQRange":
         return None
@@ -217,6 +230,12 @@ def _rewrite_apply_expand_H0(op: Any, tgt: Tuple[Any, ...], inner: Any) -> Optio
     else:
         width = _mk_bin("-", hi, lo)
 
+    if _is_ket1(inner):
+        from Programmer import QXHad
+        vis = SubstAExp("1", QXHad("-"))
+        ket = vis.visit(inner)
+        return ket
+
     two_pow = _mk_bin("^", _mk_num(2), width)
     amp = _mk_bin("/", _mk_num(1), _mk_uni("sqrt", two_pow))
     con = _mk_con("k#0", _mk_crange(_mk_num(0), two_pow), None)
@@ -224,6 +243,9 @@ def _rewrite_apply_expand_H0(op: Any, tgt: Tuple[Any, ...], inner: Any) -> Optio
     return _mk_sum([con], amp, ket)
 
 def _rewrite_tensor_sum_with_ket0(term: Any) -> Optional[Any]:
+    """
+    Rewrite ITensorProd(Sum, Ket) -> Sum(|k>|0>)
+    """
     if not isinstance(term, ITensorProd):
         return None
     print(f"\n term: {term}")
@@ -238,11 +260,9 @@ def _rewrite_tensor_sum_with_ket0(term: Any) -> Optional[Any]:
         if left_expanded:
             left = left_expanded
 
-    if _cn(left) != "QXSum":
-        return None
+    if _cn(left) != "QXSum": return None
     
-    if not _is_ket0(right) and (not _is_ket1(right)):
-        return None
+    if not _is_ket0(right) and (not _is_ket1(right)): return None
 
     left = canon_sum(left)
 
@@ -252,15 +272,11 @@ def _rewrite_tensor_sum_with_ket0(term: Any) -> Optional[Any]:
 
     amp = _call0(left, "amp")
     kets = _call0(left, "kets")
-    if _cn(kets) != "QXTensor":
-        return None
+    if _cn(kets) != "QXTensor": return None
     ks = list(_call0(kets, "kets", []) or [])
-    if len(ks) != 1:
-        return None
-    if _is_ket0(right):
-        joint = _mk_tensor([ks[0], _mk_sket(_mk_num(0))])
-    elif _is_ket1(right):
-        joint = _mk_tensor([ks[0], _mk_sket(_mk_num(1))])
+    if len(ks) != 1: return None
+    if _is_ket0(right): joint = _mk_tensor([ks[0], _mk_sket(_mk_num(0))])
+    elif _is_ket1(right): joint = _mk_tensor([ks[0], _mk_sket(_mk_num(1))])
     return _mk_sum(cons, amp, joint)
 
 def _rewrite_apply_collapse_sum(op: Any, tgt: Tuple[Any, ...], inner: Any) -> Optional[Any]:
@@ -279,6 +295,120 @@ def _rewrite_apply_collapse_sum(op: Any, tgt: Tuple[Any, ...], inner: Any) -> Op
     if _cn(left) != "QXNum" or int(_call0(left, "num", -1)) != 1: return None
     # We assume if it's a normalized sum of |k>, H collapses it to |0>.
     return _mk_tensor([_mk_sket(_mk_num(0))])
+
+def _rewrite_apply_oracle_on_sum(op: Any, tgt: Tuple[Any, ...], inner: Any) -> Optional[Any]:
+    if _cn(op) != "QXOracle": return None
+    
+    sum_term = None
+    target_term = None
+    
+    #safe check
+    if isinstance(inner, ITensorProd) and len(inner.factors) == 2:
+        left, right = inner.factors
+        if _cn(left) == "QXSum":
+            sum_term = left
+            target_term = right
+        elif _cn(left) == "IApply" and _is_H(left.op):
+             sum_term = _rewrite_apply_expand_H0(left.op, left.target, left.term)
+             target_term = right
+             
+        if not sum_term:
+             if _cn(right) == "QXSum":
+                 sum_term = right
+                 target_term = left
+             elif _cn(right) == "IApply" and _is_H(right.op):
+                 sum_term = _rewrite_apply_expand_H0(right.op, right.target, right.term)
+                 target_term = left
+
+    elif _cn(inner) == "QXSum":
+        sum_term = inner
+        kets_obj = _call0(sum_term, "kets")
+        ks = list(_call0(kets_obj, "kets", []) or [])
+        if len(ks) >= 2: target_term = ks[1] 
+
+    if not sum_term: return None
+    sum_term = canon_sum(sum_term)
+
+    cons = list(_call0(sum_term, "sums", []) or [])
+    amp = _call0(sum_term, "amp")
+    kets_obj = _call0(sum_term, "kets")
+    ks = list(_call0(kets_obj, "kets", []) or [])
+    if len(ks) < 1: return None
+    x_val = _call0(ks[0], "vector")
+
+    oracle_phase = _call0(op, "phase", None)
+    
+    # Check for trivial phase omega(0, 1) -> 1
+    print(f"\n oracle_phase : {oracle_phase} \n target_term: {target_term}")
+    if oracle_phase and _cn(oracle_phase) == "QXCall":
+        fid = str(_call0(oracle_phase, "ID"))
+        if fid == "omega":
+            exps = list(_call0(oracle_phase, "exps", []) or [])
+            if len(exps) >= 1:
+                arg0 = exps[0]
+                #default case
+                if _cn(arg0) == "QXNum" and int(_call0(arg0, "num", -1)) == 0:
+                    oracle_phase = None
+
+    oracle_kets = list(_call0(op, "kets", []) or [])
+
+    is_kickback = False
+    if target_term and _is_ket_minus(target_term):
+        is_kickback = True
+
+    if oracle_phase or is_kickback:
+        bindings = list(_call0(op, "bindings", []) or [])
+        mapping = {}
+        if bindings:
+             bvar = str(_call0(bindings[0], "ID"))
+             mapping[bvar] = x_val
+        
+        new_phase = None
+        if oracle_phase:
+             new_phase = _subst_bind(oracle_phase, mapping)
+        elif is_kickback and len(oracle_kets) >= 2:
+             vec_expr = _call0(oracle_kets[1], "vector") 
+             if len(bindings) >= 2:
+                 y_var = str(_call0(bindings[1], "ID"))
+                 mapping[y_var] = _mk_num(0)
+             f_x = _subst_bind(vec_expr, mapping)
+             from Programmer import QXCall
+             new_phase = QXCall(id='omega', exps=[f_x, _mk_num(1)], inverse=False)
+        
+        if new_phase:
+            from Programmer import QXBin
+            new_amp = QXBin(op='*', left=amp, right=new_phase)
+            if target_term and isinstance(inner, ITensorProd):
+                 new_sum = _mk_sum(cons, new_amp, _mk_tensor([ks[0]]))
+                 return ITensorProd(factors=(new_sum, target_term))
+            else:
+                 new_sum = _mk_sum(cons, new_amp, kets_obj)
+                 return new_sum
+
+    # Case 2: Ket Function Oracle (Bit-Flip)
+    if len(oracle_kets) >= 2:
+        bindings = list(_call0(op, "bindings", []) or [])
+        mapping = {}
+        if len(bindings) >= 1: mapping[str(_call0(bindings[0], "ID"))] = x_val
+        
+        y_val = None
+        if target_term and _cn(target_term) == "QXSKet":
+             y_val = _call0(target_term, "vector")
+        elif len(ks) >= 2:
+             y_val = _call0(ks[1], "vector")
+             
+        if y_val and len(bindings) >= 2: mapping[str(_call0(bindings[1], "ID"))] = y_val
+
+        new_ks = []
+        for ok in oracle_kets:
+            ov = _call0(ok, "vector")
+            nv = _subst_bind(ov, mapping)
+            new_ks.append(_mk_sket(nv))
+        new_tensor = _mk_tensor(new_ks)
+        return _mk_sum(cons, amp, new_tensor)
+
+    return None
+
 
 def _rewrite_oracle_iter(term: Any) -> Optional[Any]:
 
@@ -303,8 +433,6 @@ def _rewrite_oracle_iter(term: Any) -> Optional[Any]:
         return None
     
     inner = term.term
-
-    print(f"\n inner: \n {inner}")
 
     if isinstance(inner, ITensorProd):
         normalized_inner = _rewrite_tensor_sum_with_ket0(inner)
@@ -418,6 +546,8 @@ def rewrite_term(term: Any, st: Any) -> Any:
             if y is not None: return rec(y)
             y = _rewrite_apply_expand_H0(x.op, tgt, innerN)
             if y is not None: return canon_sum(y)
+            y = _rewrite_apply_oracle_on_sum(x.op, tgt, innerN) # Added for Simon
+            if y is not None: return y
             y = _rewrite_apply_collapse_sum(x.op, tgt, innerN) # DJ Constant
             if y is not None: return y
             # y = _rewrite_shor_rqft(x.op, tgt, innerN) # Shor

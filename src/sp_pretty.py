@@ -132,6 +132,9 @@ def pp(obj: Any) -> str:
 
     if cn == "QXNum":
         return str(obj.num())
+    
+    if cn == "QXHad":
+        return str(obj.state())
 
     if cn == "QXBin":
         return f"({pp(obj.left())} {obj.op()} {pp(obj.right())})"

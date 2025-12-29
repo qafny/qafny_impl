@@ -22,7 +22,7 @@ class FreshNameGen:
         Returns a fresh AST node usable as TyEn(flag=...).
         Adapt QXBind ctor to your actual signature.
         """
-        self._en_ctr += 1
+        self._en_ctr == 1
         try:
             from Programmer import QXBind
             return QXBind(id=f"en#{self._en_ctr}")

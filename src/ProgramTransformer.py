@@ -259,7 +259,7 @@ class ProgramTransformer(ExpVisitor):
             bind = self.visitTypeOptionalBinding(ctx.typeOptionalBinding())
             bounds = self.visitChainBExp(ctx.chainBExp())
             imply = self.visitLogicImply(ctx.logicImply())
-            return QXAll(bind, bounds, imply, ctx,line_number=ctx.start.line)
+            return QXAll(bind, bounds, imply, line_number=ctx.start.line)
         elif ctx.crange() is not None:
             bind = self.visitTypeOptionalBinding(ctx.typeOptionalBinding())
             crange = self.visitCrange(ctx.crange())

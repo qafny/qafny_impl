@@ -3,7 +3,7 @@
 method DeutschJozsa(n : nat, q : Q[n], p : Q[1],  f : nat -> nat) // returns (v : nat, prob : real)
 //  requires n >= 1
   requires { q[0, n) : nor ↦ |0⟩  }
-  requires { p[0] : nor ↦ |0⟩ }
+  requires { p[0] : nor ↦ |1⟩ }
   //requires (forall i | 0 <= i < 2 ^ n :: f.requires(i) && (f(i) == 0 || f(i) == 1) 
    //the # is to indicate that the requirement is in Dafny not Qafny, but we should have better way dealing with this.
  // requires balance(f) || constant(f)
@@ -21,9 +21,11 @@ method DeutschJozsa(n : nat, q : Q[n], p : Q[1],  f : nat -> nat) // returns (v 
   //if f is constant and k == 1, then prob == 1.0
   //ensures { q[0, n], p[0] : en ↦ ∑ i ∈ [0, 2^n) . j ∈ [0, 2^n) . (f(j) + i * j, 2) ~ ( i, _ ) }
 {
-  p[0] *= X;
+ // p[0] *= X;
   q[0, n) *= H; // en(1)
-  p[0] *= H; // omega(1, 2)
+  assert {q[0, n) : en ↦ ∑ i ∈  [0, 2^n). 1 / sqrt(2^n)|i⟩};
+  p[0] *= H; // omega(1, 1)
+  assert {p[0] : had ↦ |-⟩};
 
   // this oracle + syntax is not yet implemented
   // We can indeed add one special case by casting the left to EN and stay the
@@ -33,23 +35,23 @@ method DeutschJozsa(n : nat, q : Q[n], p : Q[1],  f : nat -> nat) // returns (v 
   //we can add the type flag for the lambda term like, Q n, Q 1, again since y is one bit, we should not need % 2
   //we need to serve a lemma for the following here, like this one is a phase kickback.
   //so p[0] can be Had.
-  // q[0, n), p[0] *= λ (x, y => |x⟩ |(y ⊕ f(x))⟩);
+   q[0, n), p[0] *= λ (x, y => |x⟩ |(y ⊕ f(x))⟩);
   // since each oracle has different effect, can we blend the magic into oracles? 
-   q[0, n), p[0] *= λ(x, y => ω (f(x), 2)|x⟩|y⟩);
+ //  q[0, n), p[0] *= λ(x, y => ω (f(x), 1)|x⟩|y⟩);
   // equivalent to 
   // q[0, n) *= λ(x => ω (f(x), 2)|x⟩);
 
 
   //I understand the omega term, it means omega(2 pi i * f(i)/2). I guess it is OK.
   //the following requires a lemma for phase kickback, which should be easy, see in my DJ algorithm proof.
- // assert { q[0, n), p[0] : en ↦ ∑ i ∈  [0, 2^n) . 1 / sqrt(2^n) * ω (f(i), 2) |i⟩ |-⟩ };
+  assert { q[0, n), p[0] : en ↦ ∑ i ∈  [0, 2^n) . 1 / sqrt(2^n) * ω (f(i), 1) |i⟩ |-⟩ };
   //assert { q[0 , n) : had ↦ |-⟩ }; //should we allow |-⟩ for abbr. of 1/sqrt(2) (|0⟩ - |1⟩)?
 
   //this step involves the switching basis step, we need to have a way of switching i to j, and j needs to be in the outside.
   //this kind of switching is general in many problems.
   q[0, n) *= H; // need a lemma here to describe the behavior.
   //so omega phase position needs to have either omega, or sum of omega
-  //assert { q[0, n) , p[0] : en(2) ↦ ∑ j ∈ [0, 2 ^ n) . ∑ i ∈ [0, 2 ^ n) . 1 / 2^n * ω (f(i) + i * j, 2)  |j⟩ |-⟩ };
+//  assert { q[0, n) , p[0] : en(2) ↦ ∑ j ∈ [0, 2 ^ n) . ∑ i ∈ [0, 2 ^ n) . 1 / 2^n * ω (f(i) + i * j, 2)  |j⟩ |-⟩ };
   
   // measurement need to be measure to. The measurement in DJ is a specific one, to be 0. we only care about the 0 case.
   //such as prob := measure q[0,n) to 0

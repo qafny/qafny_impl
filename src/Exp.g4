@@ -229,7 +229,7 @@ aaType : AA | AA '(' arithExpr ')';
 
 additiveOp: TAdd | TSub | OPlus;
 
-multiplicativeOp: TMul | TDiv | TMod | TDot;
+multiplicativeOp: TMul | TDiv | TMod | TDot | Dot;
 
 exponentialOp: TExp | TXor;
 
@@ -291,6 +291,8 @@ TExp : '^';
 OPlus: '⊕';
 
 TXor : 'xor';
+
+Dot : '•';
 
 TDot : '.' ;
 
