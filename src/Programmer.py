@@ -2312,7 +2312,7 @@ class QXMethod(QXTop):
 @qafny.auto.equality
 class QXFunction(QXTop):
 
-    def __init__(self, id: str, axiom: bool, bindings: [QXBind], return_type: QXQTy, arith_expr: QXAExp , line_number = None):
+    def __init__(self, id: str, axiom: bool, bindings: [QXBind], return_type: QXQTy = None, arith_expr: QXAExp = None, line_number = None):
          
         self._id = id.getText() if isAntlrNode(id) else id
         self._axiom = axiom

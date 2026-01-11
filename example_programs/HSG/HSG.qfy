@@ -2,7 +2,7 @@
 //The HSG and Shor's algorithm flow is basically the same.
 
 
-function kappa(a:nat,y:nat) : real
+function {:axiom} kappa(a:nat,y:nat) : real
 
 lemma {:axiom} kappaProperty(a:nat,b:nat,y:nat)
   ensures kappa(a+b,y) == kappa(a,y) * kappa(b,y)

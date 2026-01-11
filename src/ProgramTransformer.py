@@ -4,18 +4,20 @@ from enum import Enum
 from collections import ChainMap
 from operator import truediv
 
-#from types import NoneType
+# from types import NoneType
 
 from antlr4 import ParserRuleContext
 
 from ExpLexer import *
-from ExpVisitor import *
-from Programmer import *
-from ExpParser import *
+from src.ExpVisitor import *
+from src.ExpParser import *
+from src.Programmer import *
 
 import utils
 
 """Transforms an ANTLR AST into a Qafny one."""
+
+
 class ProgramTransformer(ExpVisitor):
 
     def attachContext(self, node: QXTop, antlr_node: antlr4.ParserRuleContext):
@@ -40,8 +42,15 @@ class ProgramTransformer(ExpVisitor):
             # extract the path from the include statement (it's just a token)
             path = ctx.TInclude().getText().removeprefix('include ')
             return QXInclude(path, line_number=ctx.start.line)
-        else:
-            return self.visitChildren(ctx)
+        if ctx.method() is not None:
+            return self.visitMethod(ctx.method())
+        if ctx.function() is not None:
+            return self.visitFunction(ctx.function())
+        if ctx.lemma() is not None:
+            return self.visitLemma(ctx.lemma())
+        if ctx.predicate() is not None:
+            return self.visitPredicate(ctx.predicate())
+        return None
 
     # Visit a parse tree produced by ExpParser#method.
     def visitMethod(self, ctx: ExpParser.MethodContext):
@@ -50,7 +59,10 @@ class ProgramTransformer(ExpVisitor):
             axiom = True
         else:
             axiom = False
-        returns = self.visitReturna(ctx.returna())
+        if not axiom:
+            returns = self.visitReturna(ctx.returna())
+        else:
+            returns = []
         conds = self.visitConds(ctx.conds())
         if not axiom:
             stmts = self.visitStmts(ctx.stmts())
@@ -66,14 +78,12 @@ class ProgramTransformer(ExpVisitor):
         else:
             axiom = False
         return_type = self.visitTypeT(ctx.typeT())
-        body =  None
+        body = None
         if ctx.arithExpr() is not None:
             body = self.visitArithExpr(ctx.arithExpr())
         elif ctx.qspec() is not None:
             body = self.visitQspec(ctx.qspec())
-        else:
-            raise ValueError("[UNREACHABLE] Function body should either be an arithExpr or a qspec.")
-        
+
         return QXFunction(ctx.ID(), axiom, bindings, return_type, body, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#lemma.
@@ -119,7 +129,7 @@ class ProgramTransformer(ExpVisitor):
         # convert decreases
         for a_exp in ctx.arithExpr():
             conds.append(QXDecreases(self.visitArithExpr(a_exp), line_number=ctx.start.line))
-        print(f"\n visitConds {conds}")
+        #       print(f"\n visitConds {conds}")
         return conds
 
     # Visit a parse tree produced by ExpParser#reen.
@@ -152,11 +162,9 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#stmts.
     def visitStmts(self, ctx: ExpParser.StmtsContext):
-        if ctx is None:
-            return None
         i = 0
         tmp = []
-        while(ctx.stmt(i) is not None):
+        while (ctx.stmt(i) is not None):
             tmp = tmp + self.visitStmt(ctx.stmt(i))
             i = i + 1
         return tmp
@@ -193,14 +201,14 @@ class ProgramTransformer(ExpVisitor):
             return [self.visitBreakStmt(ctx.breakStmt())]
         else:
             raise ValueError("[UNREACHABLE] Unreachable branch in visitStmt.")
-        
-    
+
     def visitFcallStmt(self, ctx: ExpParser.FcallContext):
         # check for inverse
         inverse = False
         if ctx.getChild(1) is not None and ctx.getChild(1).getText() == '^{-1}':
             inverse = True
-        return QXCallstmt(ctx.ID(), self.visitArithExprsOrKets(ctx.arithExprsOrKets()), inverse, line_number=ctx.start.line)
+        return QXCallstmt(ctx.ID(), self.visitArithExprsOrKets(ctx.arithExprsOrKets()), inverse,
+                          line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#spec.
     def visitSpec(self, ctx: ExpParser.SpecContext):
@@ -215,7 +223,7 @@ class ProgramTransformer(ExpVisitor):
     def visitBexp(self, ctx: ExpParser.BexpContext):
         if ctx is None:
             return None
-        
+
         if ctx.qbool() is not None:
             return self.visitQbool(ctx.qbool())
         elif ctx.logicExpr() is not None:
@@ -231,7 +239,7 @@ class ProgramTransformer(ExpVisitor):
     def visitQbool(self, ctx: ExpParser.QboolContext):
         if ctx.qbool() is not None:
             v = self.visitQbool(ctx.qbool())
-            return QXQNot(v, ctx,line_number=ctx.start.line)
+            return QXQNot(v, ctx, line_number=ctx.start.line)
         if ctx.idindex() is not None:
             left = self.visitArithExpr(ctx.arithExpr(0))
             right = self.visitArithExpr(ctx.arithExpr(1))
@@ -247,7 +255,7 @@ class ProgramTransformer(ExpVisitor):
         if ctx.logicImply() is not None:
             v2 = self.visitLogicImply(ctx.logicImply())
             v1 = self.visitAllspec(ctx.allspec())
-            return QXLogic("==>", v1, v2, ctx,line_number=ctx.start.line)
+            return QXLogic("==>", v1, v2, line_number=ctx.start.line)
         elif ctx.qunspec() is not None:
             return self.visitQunspec(ctx.qunspec())
         else:
@@ -259,16 +267,17 @@ class ProgramTransformer(ExpVisitor):
             bind = self.visitTypeOptionalBinding(ctx.typeOptionalBinding())
             bounds = self.visitChainBExp(ctx.chainBExp())
             imply = self.visitLogicImply(ctx.logicImply())
-            return QXAll(bind, bounds, imply, ctx,line_number=ctx.start.line)
+            return QXAll(bind, bounds, imply, line_number=ctx.start.line)
         elif ctx.crange() is not None:
             bind = self.visitTypeOptionalBinding(ctx.typeOptionalBinding())
             crange = self.visitCrange(ctx.crange())
             imply = self.visitLogicImply(ctx.logicImply())
 
             # convert crange to QXComp
-            bounds = QXComp("<=", crange.left(), QXComp("<", QXBind(bind.ID()), crange.right()), ctx.crange(),line_number=ctx.start.line)
+            bounds = QXComp("<=", crange.left(), QXComp("<", QXBind(bind.ID()), crange.right()), ctx.crange(),
+                            line_number=ctx.start.line)
 
-            return QXAll(bind, bounds, imply, ctx,line_number=ctx.start.line)
+            return QXAll(bind, bounds, imply, ctx, line_number=ctx.start.line)
         else:
             return self.visitLogicExpr(ctx.logicExpr())
 
@@ -278,7 +287,8 @@ class ProgramTransformer(ExpVisitor):
             # could be or, and or not
             if ctx.getChild(0).getText() == 'not':
                 return QXCNot(self.visitLogicExpr(ctx.logicExpr(0)), line_number=ctx.start.line)
-            return QXLogic(ctx.getChild(1), self.visitLogicExpr(ctx.logicExpr(0)), self.visitLogicExpr(ctx.logicExpr(1)))
+            return QXLogic(ctx.getChild(1), self.visitLogicExpr(ctx.logicExpr(0)),
+                           self.visitLogicExpr(ctx.logicExpr(1)))
         elif ctx.chainBExp() is not None:
             return self.visitChainBExp(ctx.chainBExp())
         elif ctx.logicInExpr() is not None:
@@ -305,13 +315,14 @@ class ProgramTransformer(ExpVisitor):
         # Left-associative grouping
         result = va[0]
         for i in range(len(op)):
-            result = QXComp(op[i], result, va[i+1], line_number=ctx.start.line)
+            result = QXComp(op[i], result, va[i + 1], line_number=ctx.start.line)
         return result
 
     # Visit a parse tree produced by ExpParser#logicInExpr.
     def visitLogicInExpr(self, ctx: ExpParser.LogicInExprContext):
         # right contains left
-        return QXBin('∈', self.visitArithExpr(ctx.arithExpr(0)), self.visitArithExpr(ctx.arithExpr(1)), line_number=ctx.start.line)
+        return QXBin('∈', self.visitArithExpr(ctx.arithExpr(0)), self.visitArithExpr(ctx.arithExpr(1)),
+                     line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#comOp.
     def visitComOp(self, ctx: ExpParser.ComOpContext):
@@ -342,14 +353,19 @@ class ProgramTransformer(ExpVisitor):
                     # the same tensor with the amplitude multiplied in (if it already has an amplitude)
                     # TODO: how to handle line:column information here?
                     if qspec.amp() is not None:
-                        qspecs[i] = QXTensor(qspec.kets(), qspec.ID(), qspec.range(), QXBin('*', amplitude, qspec.amp()), line_number=ctx.start.line)
+                        qspecs[i] = QXTensor(qspec.kets(), qspec.ID(), qspec.range(),
+                                             QXBin('*', amplitude, qspec.amp()), line_number=ctx.start.line)
                     else:
-                        qspecs[i] = QXTensor(qspec.kets(), qspec.ID(), qspec.range(), amplitude, line_number=ctx.start.line)
+                        qspecs[i] = QXTensor(qspec.kets(), qspec.ID(), qspec.range(), amplitude,
+                                             line_number=ctx.start.line)
                 elif isinstance(qspec, QXSum):
                     # the same sum with the amplitude multiplied in
-                    qspecs[i] = QXSum(qspec.sums(), QXBin('*', amplitude, qspec.amp(), line_number=ctx.start.line), qspec.kets(), qspec.condition(), line_number=ctx.start.line) # TODO: how to handle line:column information here?
+                    qspecs[i] = QXSum(qspec.sums(), QXBin('*', amplitude, qspec.amp(), line_number=ctx.start.line),
+                                      qspec.kets(), qspec.condition(),
+                                      line_number=ctx.start.line)  # TODO: how to handle line:column information here?
                 else:
-                    raise ValueError(f"[UNREACHABLE] All qspecs are expected to be either a QXTensor or a QXSum, but a {type(qspec)} was found!")
+                    raise ValueError(
+                        f"[UNREACHABLE] All qspecs are expected to be either a QXTensor or a QXSum, but a {type(qspec)} was found!")
         return (type, qspecs)
 
     # Visit a parse tree produced by ExpParser#qunspec.
@@ -406,19 +422,21 @@ class ProgramTransformer(ExpVisitor):
                 amplitude = spec.amp()
                 if amplitude is not None:
                     if next.amplitude() is not None:
-                        amplitude = QXBin("*", amplitude, next.amp(), line_number=line_number) # TODO: how to attach line:col?
+                        amplitude = QXBin("*", amplitude, next.amp(),
+                                          line_number=line_number)  # TODO: how to attach line:col?
                 else:
                     amplitude = next.amp()
                 # combine kets
-                kets = spec.kets() + next.kets() # TODO: check for overlapping ids
+                kets = spec.kets() + next.kets()  # TODO: check for overlapping ids
 
                 # combine the conditions (and)
                 condition = spec.condition()
                 if condition is not None and next.condition() is not None:
-                    condition = QXLogic('&&', condition, next.condition(), line_number=line_number) # TODO: attach line:col
+                    condition = QXLogic('&&', condition, next.condition(),
+                                        line_number=line_number)  # TODO: attach line:col
                 else:
                     condition = next.condition()
-                spec = QXSum(sums, amplitude, kets, condition, line_number=line_number) # TODO: how to attach line:col
+                spec = QXSum(sums, amplitude, kets, condition, line_number=line_number)  # TODO: how to attach line:col
             elif isinstance(spec, QXTensor) and isinstance(next, QXTensor):
                 # combine tensors
                 raise NotImplementedError("Combining two tensors")
@@ -434,7 +452,8 @@ class ProgramTransformer(ExpVisitor):
             return self.visitTensorall(ctx.tensorall())
         if ctx.manyketpart() is not None:
             if ctx.arithExpr() is not None:
-                return QXTensor(self.visitManyketpart(ctx.manyketpart()), None, self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
+                return QXTensor(self.visitManyketpart(ctx.manyketpart()), None, self.visitArithExpr(ctx.arithExpr()),
+                                line_number=ctx.start.line)
             else:
                 return QXTensor(self.visitManyketpart(ctx.manyketpart()), line_number=ctx.start.line)
         if ctx.sumspec() is not None:
@@ -494,14 +513,7 @@ class ProgramTransformer(ExpVisitor):
         v = None
         if ctx.crange() is not None:
             v = self.visitCrange(ctx.crange())
-
-        if ctx.manyket() is not None:
-            _ket = self.visit(ctx.manyket())
-        else:
-            _ket = QXBind(ctx.ID())
-        if ctx.omegaExpr() is not None:
-            next = self.visit(ctx.omegaExpr())
-        return QXTensor(_ket, ctx.ID(), v, next, line_number=ctx.start.line)
+        return QXTensor(self.visitManyket(ctx.manyket()), ctx.ID(), v, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#sumspec.
     def visitSumspec(self, ctx: ExpParser.SumspecContext):
@@ -547,7 +559,7 @@ class ProgramTransformer(ExpVisitor):
                             else:
                                 # choose the correct one (or None if no condition was found)
                                 condition = left_condition if left_condition is not None else right_condition
-                            
+
                     else:
                         # explore the remaining side of the tree
                         tree_condition, tree = extract_condition(tree)
@@ -572,7 +584,8 @@ class ProgramTransformer(ExpVisitor):
                     # explore numerator branch (denominator would make no sense as it could lead to divide by zero errors)
                     if isinstance(expr.left(), QXBExp):
                         # left is directly a boolean expression, extract it and fix the tree
-                        return expr.left(), QXBin('/', QXNum(1, line_number=ctx.start.line), expr.right(), line_number=ctx.start.line)
+                        return expr.left(), QXBin('/', QXNum(1, line_number=ctx.start.line), expr.right(),
+                                                  line_number=ctx.start.line)
                     else:
                         condition, left_expr = extract_condition(expr.left())
                         # need to repair the QXAExp if the condition was modified
@@ -587,12 +600,11 @@ class ProgramTransformer(ExpVisitor):
                 # if it's not a binary expression, there is nothing to explore
                 return (None, expr)
 
-
         if ctx.maySum() is not None:
             # the end sumspec (not recursive)
             this_sum = self.visitMaySum(ctx.maySum())
             amp = None
-        #    condition = None
+            #    condition = None
             if ctx.manyketpart() is not None:
                 if ctx.arithExpr() is not None:
                     amp = self.visitArithExpr(ctx.arithExpr())
@@ -600,7 +612,7 @@ class ProgramTransformer(ExpVisitor):
                     condition, amp = extract_condition(amp)
                     kets = QXTensor(self.visitManyketpart(ctx.manyketpart()))
                     return QXSum([this_sum], amp, kets, line_number=ctx.start.line)
-            
+
             if hasattr(ctx, "tensorall") and ctx.tensorall() is not None:
                 if ctx.arithExpr() is not None:
                     amp = self.visitArithExpr(ctx.arithExpr())
@@ -611,7 +623,7 @@ class ProgramTransformer(ExpVisitor):
                     amp = self.visitArithExpr(ctx.arithExpr())
                 next_sum = self.visitSumspec(ctx.sumspec())
                 sums = [this_sum] + next_sum.sums()
-                            # combine the amplitudes
+                # combine the amplitudes
                 if amp is not None:
                     amp = QXBin('*', amp, next_sum.amp(), line_number=ctx.start.line)
                 else:
@@ -657,7 +669,8 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#assigning.
     def visitAssigning(self, ctx: ExpParser.AssigningContext):
-        return QXCAssign(self.visitIdindices(ctx.idindices()), self.visitArithExpr(ctx.arithExpr()),line_number=ctx.start.line)
+        return QXCAssign(self.visitIdindices(ctx.idindices()), self.visitArithExpr(ctx.arithExpr()),
+                         line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#ids.
     def visitIds(self, ctx: ExpParser.IdsContext):
@@ -677,7 +690,7 @@ class ProgramTransformer(ExpVisitor):
         while ctx.getChild(i) is not None:
             child = ctx.getChild(i)
 
-            if isinstance(child, antlr4.tree.Tree.TerminalNodeImpl) and child.getText() != ',': # ignore commas
+            if isinstance(child, antlr4.tree.Tree.TerminalNodeImpl) and child.getText() != ',':  # ignore commas
                 # Identifier
                 transformed.append(QXBind(child))
             elif isinstance(child, ExpParser.IdindexContext):
@@ -706,10 +719,10 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#measure.
     def visitMeasure(self, ctx: ExpParser.MeasureContext):
-        stmts = [] # this might hold the inits and the measure or just the measure
+        stmts = []  # this might hold the inits and the measure or just the measure
 
         assign_to = self.visitIdindices(ctx.idindices())
-        
+
         # if var specified, add QXInit
         if ctx.getChild(0).getText() == 'var':
             # there should only be two variables, the first is a natural number, the second a real
@@ -725,21 +738,20 @@ class ProgramTransformer(ExpVisitor):
                         raise ValueError('UNREACHABLE')
 
                     bind = QXBind(assign_to[i].ID(), type, assign_to[i])
-                    stmts.append(QXInit(bind, assign_to[i])) # todo: attach line:col information
+                    stmts.append(QXInit(bind, assign_to[i]))  # todo: attach line:col information
 
-        
         locus = self.visitLocus(ctx.locus())
 
         restrict = None
         if ctx.arithExpr() is not None:
             restrict = self.visitArithExpr(ctx.arithExpr())
-        
+
         stmts.append(QXMeasure(assign_to, locus, restrict, line_number=ctx.start.line))
         return stmts
 
     # Visit a parse tree produced by ExpParser#measureAbort.
     def visitMeasureAbort(self, ctx: ExpParser.MeasureAbortContext):
-        stmts = [] # this might hold the inits and the measure or just the measure
+        stmts = []  # this might hold the inits and the measure or just the measure
         assign_to = self.visitIdindices(ctx.idindices())
 
         # if var specified, add QXInit
@@ -757,7 +769,7 @@ class ProgramTransformer(ExpVisitor):
                         raise ValueError('UNREACHABLE')
 
                     bind = QXBind(assign_to[i].ID(), type, assign_to[i])
-                    stmts.append(QXInit(bind, assign_to[i])) # todo: attach line:col information
+                    stmts.append(QXInit(bind, assign_to[i]))  # todo: attach line:col information
 
         locus = self.visitLocus(ctx.locus())
 
@@ -780,7 +792,10 @@ class ProgramTransformer(ExpVisitor):
     def visitIfexp(self, ctx: ExpParser.IfexpContext):
         bexp = self.visitBexp(ctx.bexp())
         stmts = self.visitStmts(ctx.stmts(0))
-        else_stmts = self.visitStmts(ctx.stmts(1))
+        if ctx.stmts(1) is not None:
+            else_stmts = self.visitStmts(ctx.stmts(1))
+        else:
+            else_stmts = []
 
         return QXIf(bexp, stmts, else_stmts, line_number=ctx.start.line)
 
@@ -801,7 +816,9 @@ class ProgramTransformer(ExpVisitor):
             child = ctx.getChild(i)
 
             if child.getText() not in ['(', ',', ')']:
-                converted_child = child.accept(self) if not isinstance(child, antlr4.tree.Tree.TerminalNodeImpl) else QXBind(child)
+                converted_child = child.accept(self) if not isinstance(child,
+                                                                       antlr4.tree.Tree.TerminalNodeImpl) else QXBind(
+                    child)
                 if isinstance(converted_child, list):
                     kets += converted_child
                 else:
@@ -829,16 +846,18 @@ class ProgramTransformer(ExpVisitor):
         invs = self.visitLoopConds(ctx.loopConds())
         stmts = self.visitStmts(ctx.stmts())
 
-        return QXWhile(bexp, invs, stmts, ctx,line_number=ctx.start.line)
+        return QXWhile(bexp, invs, stmts, line_number=ctx.start.line)
 
     def visitFcallStmt(self, ctx: ExpParser.FcallContext):
         # check for inverse
         inverse = False
         if ctx.getChild(1) is not None and ctx.getChild(1).getText() == '^{-1}':
             inverse = True
-        return QXCallStmt(ctx.ID(), self.visitArithExprsOrKets(ctx.arithExprsOrKets()), inverse, line_number=ctx.start.line)    
-    
-    # Visit a parse tree produced by ExpParser#fcall.
+        return QXCallStmt(ctx.ID(), self.visitArithExprsOrKets(ctx.arithExprsOrKets()), inverse,
+                          line_number=ctx.start.line)
+
+        # Visit a parse tree produced by ExpParser#fcall.
+
     def visitFcall(self, ctx: ExpParser.FcallContext):
         # check for inverse
         inverse = False
@@ -1003,7 +1022,7 @@ class ProgramTransformer(ExpVisitor):
         return QXCall("omega", params, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#rotExpr.
-    def visitRotExpr(self, ctx:ExpParser.RotExprContext):
+    def visitRotExpr(self, ctx: ExpParser.RotExprContext):
         return QXUni("rot", self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#ketCallExpr.
@@ -1018,7 +1037,7 @@ class ProgramTransformer(ExpVisitor):
         return QXSet(aexps, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#memberAccess.
-    def visitMemberAccess(self, ctx:ExpParser.MemberAccessContext):
+    def visitMemberAccess(self, ctx: ExpParser.MemberAccessContext):
         return QXMemberAccess([str(id) for id in ctx.ID()], line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#expr.
@@ -1048,7 +1067,8 @@ class ProgramTransformer(ExpVisitor):
         # convert ids or bindings
         bindings = None
         if ctx.ids():
-            bindings = [QXBind(id, line_number=ctx.start.line) for id in self.visitIds(ctx.ids())] # ids are just bindings without types
+            bindings = [QXBind(id, line_number=ctx.start.line) for id in
+                        self.visitIds(ctx.ids())]  # ids are just bindings without types
         elif ctx.bindings():
             bindings = self.visitBindings(ctx.bindings())
         else:
@@ -1077,10 +1097,11 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#dis.
     def visitDis(self, ctx: ExpParser.DisContext):
-        gate = self.visitExpr(ctx.expr())   # not technically a QXAExp, but placed in the array anyway
+        gate = self.visitExpr(ctx.expr())  # not technically a QXAExp, but placed in the array anyway
         function = self.visitArithExpr(ctx.arithExpr(0))
         amplitude = self.visitArithExpr(ctx.arithExpr(1))
-        return QXCall('dis', [gate, function, amplitude], line_number=ctx.start.line)   # should this turn into a custom tree node class?
+        return QXCall('dis', [gate, function, amplitude],
+                      line_number=ctx.start.line)  # should this turn into a custom tree node class?
 
     # Visit a parse tree produced by ExpParser#manyket.
     def visitManyket(self, ctx: ExpParser.ManyketContext):
@@ -1104,7 +1125,8 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#ketsum.
     def visitKetsum(self, ctx: ExpParser.KetsumContext):
-        return QXSumAExp(self.visitMaySum(ctx.maySum()), self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
+        return QXSumAExp(self.visitMaySum(ctx.maySum()), self.visitArithExpr(ctx.arithExpr()),
+                         line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#qstate.
     def visitQstate(self, ctx: ExpParser.QstateContext):
@@ -1134,12 +1156,20 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#typeOptionalBindings.
     def visitTypeOptionalBindings(self, ctx: ExpParser.TypeOptionalBindingsContext):
-        return [self.visitTypeOptionalBinding(type_optional_binding) for type_optional_binding in ctx.typeOptionalBinding()]
+        tmp = []
+        i = 0
+        while ctx.typeOptionalBinding(i) is not None:
+            tmp.append(self.visitTypeOptionalBinding(ctx.typeOptionalBinding(i)))
+            i = i + 1
+        return tmp
 
     # Visit a parse tree produced by ExpParser#typeOptionalBinding.
     def visitTypeOptionalBinding(self, ctx: ExpParser.TypeOptionalBindingContext):
-        type = self.visitTypeT(ctx.typeT())
-        return QXBind(ctx.ID(), type,  line_number=ctx.start.line)
+        if ctx.typeT() is not None:
+            type = self.visitTypeT(ctx.typeT())
+        else:
+            type = None
+        return QXBind(ctx.ID(), type, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#locus.
     def visitLocus(self, ctx: ExpParser.LocusContext):
@@ -1156,7 +1186,8 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#crange.
     def visitCrange(self, ctx: ExpParser.CrangeContext):
-        return QXCRange(self.visitArithExpr(ctx.arithExpr(0)), self.visitArithExpr(ctx.arithExpr(1)),  line_number=ctx.start.line)
+        return QXCRange(self.visitArithExpr(ctx.arithExpr(0)), self.visitArithExpr(ctx.arithExpr(1)),
+                        line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#index.
     def visitIndex(self, ctx: ExpParser.IndexContext):
@@ -1164,7 +1195,7 @@ class ProgramTransformer(ExpVisitor):
 
     # Visit a parse tree produced by ExpParser#idindex.
     def visitIdindex(self, ctx: ExpParser.IdindexContext):
-        return QXQIndex(ctx.ID(), self.visitIndex(ctx.index()),  line_number=ctx.start.line)
+        return QXQIndex(ctx.ID(), self.visitIndex(ctx.index()), line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#qrange.More actions
     def visitQrange(self, ctx: ExpParser.QrangeContext):
@@ -1194,33 +1225,34 @@ class ProgramTransformer(ExpVisitor):
                     next_num = -index.right().num() + 1
                 if next_num != 0:
                     op = '+' if next_num > 0 else '-'
-                    crange = QXCRange(index, QXBin(op, index.left(), QXNum(abs(next_num),line_number=ctx.start.line),line_number=ctx.start.line), ctx.index(),line_number=ctx.start.line)
+                    crange = QXCRange(index, QXBin(op, index.left(), QXNum(abs(next_num), line_number=ctx.start.line),
+                                                   line_number=ctx.start.line), line_number=ctx.start.line)
                 else:
                     # for the second one (upper bound), we can ignore the summand
-                    crange = QXCRange(index, index.left(),line_number=ctx.start.line)
+                    crange = QXCRange(index, index.left(), line_number=ctx.start.line)
             else:
-                crange = QXCRange(index, QXBin("+", index, QXNum(1),line_number=ctx.start.line), line_number=ctx.start.line)
+                crange = QXCRange(index, QXBin("+", index, QXNum(1), line_number=ctx.start.line),
+                                  line_number=ctx.start.line)
 
             index = None
 
-        return QXQRange(location, index, crange,  line_number=ctx.start.line)
+        return QXQRange(location, index, crange, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#numexp.
     def visitNumexp(self, ctx: ExpParser.NumexpContext):
-        return QXNum(utils.str_to_num(ctx.getText()),  line_number=ctx.start.line)
+        return QXNum(utils.str_to_num(ctx.getText()), line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#typeT.
     def visitTypeT(self, ctx: ExpParser.TypeTContext):
-        if not ctx:
-            return None
+        if ctx.typeT() is None:
+            return self.visitBaseTy(ctx.baseTy(0))
 
-        if ctx.typeT() is not None:
-            # function type
-            types = [self.visitBaseTy(type) for type in ctx.baseTy()]
-            return TyFun(types, self.visitTypeT(ctx.typeT()),  line_number=ctx.start.line)
-
-        # any singular base type
-        return self.visitBaseTy(ctx.baseTy(0))
+        tmp = []
+        i = 0
+        while ctx.baseTy(i) is not None:
+            tmp.append(self.visitBaseTy(ctx.baseTy(i)))
+            i = i + 1
+        return TyFun(tmp, self.visitTypeT(ctx.typeT()), line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#baseTy.
     def visitBaseTy(self, ctx: ExpParser.BaseTyContext):
@@ -1247,7 +1279,7 @@ class ProgramTransformer(ExpVisitor):
             v = ctx.arithExpr().accept(self)
             return TyArray(ty, v, line_number=ctx.start.line)
         elif isinstance(ctx, ExpParser.QBitStringTypeContext):
-            return TyQ(self.visit(ctx.arithExpr()), line_number=ctx.start.line)
+            return TyQ(self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
         else:
             token_text = ctx.getText().strip()
             line = ctx.start.line
@@ -1260,48 +1292,47 @@ class ProgramTransformer(ExpVisitor):
                 f"Add support for this type in visitBaseTy()."
             )
 
-
     # Visit a parse tree produced by ExpParser#NaturalType.
-    def visitNaturalType(self, ctx:ExpParser.NaturalTypeContext):
+    def visitNaturalType(self, ctx: ExpParser.NaturalTypeContext):
         return TySingle("nat", line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#RealType.
-    def visitRealType(self, ctx:ExpParser.RealTypeContext):
+    def visitRealType(self, ctx: ExpParser.RealTypeContext):
         return TySingle("real", line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#IntType.
-    def visitIntType(self, ctx:ExpParser.IntTypeContext):
+    def visitIntType(self, ctx: ExpParser.IntTypeContext):
         return TySingle("int", line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#BoolType.
-    def visitBoolType(self, ctx:ExpParser.BoolTypeContext):
+    def visitBoolType(self, ctx: ExpParser.BoolTypeContext):
         return TySingle("bool", line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#BitVectorType.
-    def visitBitVectorType(self, ctx:ExpParser.BitVectorTypeContext):
+    def visitBitVectorType(self, ctx: ExpParser.BitVectorTypeContext):
         return TySingle(ctx.TBV().getText(), line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#DynamicArrayType.
-    def visitDynamicArrayType(self, ctx:ExpParser.DynamicArrayTypeContext):
-        return TyArray(ctx.baseTy().accept(self), None, ctx,line_number=ctx.start.line)
+    def visitDynamicArrayType(self, ctx: ExpParser.DynamicArrayTypeContext):
+        return TyArray(ctx.baseTy().accept(self), None, ctx, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#ArrayType.
-    def visitArrayType(self, ctx:ExpParser.ArrayTypeContext):
-        return TyArray(ctx.baseTy().accept(self), None, ctx,line_number=ctx.start.line)
+    def visitArrayType(self, ctx: ExpParser.ArrayTypeContext):
+        return TyArray(ctx.baseTy().accept(self), None, ctx, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#SetType.
-    def visitSetType(self, ctx:ExpParser.SetTypeContext):
-        return TySet(ctx.baseTy().accept(self), ctx,line_number=ctx.start.line)
+    def visitSetType(self, ctx: ExpParser.SetTypeContext):
+        return TySet(ctx.baseTy().accept(self), ctx, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#ArrayWithSizeType.
-    def visitArrayWithSizeType(self, ctx:ExpParser.ArrayWithSizeTypeContext):
+    def visitArrayWithSizeType(self, ctx: ExpParser.ArrayWithSizeTypeContext):
         ty = ctx.baseTy().accept(self)
         v = ctx.arithExpr().accept(self)
-        return TyArray(ty, v, ctx,line_number=ctx.start.line)
+        return TyArray(ty, v, ctx, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#QBitStringType.
-    def visitQBitStringType(self, ctx:ExpParser.QBitStringTypeContext):
-        return TyQ(self.visitArithExpr(ctx.arithExpr()), ctx,line_number=ctx.start.line)
+    def visitQBitStringType(self, ctx: ExpParser.QBitStringTypeContext):
+        return TyQ(self.visitArithExpr(ctx.arithExpr()), ctx, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#qty.
     def visitQty(self, ctx: ExpParser.QtyContext):
@@ -1331,7 +1362,7 @@ class ProgramTransformer(ExpVisitor):
         return ctx.getText()
 
     # Visit a parse tree produced by ExpParser#exponentialOp.
-    def visitExponentialOp(self, ctx:ExpParser.ExponentialOpContext):
+    def visitExponentialOp(self, ctx: ExpParser.ExponentialOpContext):
         return ctx.getText()
 
     # Visit a parse tree produced by ExpParser#boolLiteral.

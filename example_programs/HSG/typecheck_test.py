@@ -7,7 +7,7 @@ from antlr4 import FileStream, CommonTokenStream
 script_dir = Path(__file__).resolve().parent
 root_dir = script_dir.parent.parent
 src_dir = root_dir / "src"
-sys.path.insert(0, str(root_dir))
+#sys.path.insert(0, str(root_dir))
 sys.path.insert(0, str(src_dir))
 
 from src.ExpLexer import ExpLexer
