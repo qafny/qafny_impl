@@ -4,7 +4,8 @@ __pycache__
 .history/
 .DS_Store
 dist-newstyle/.DS_Store
-scr/.DS_Store
+src/.hypothesis
+src/.DS_Store
 test/.DS_Store
 src/generated
 generated/

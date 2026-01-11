@@ -1,7 +1,7 @@
-from src.ProgramVisitor import *
+from ProgramVisitor import *
 from copy import deepcopy
-from src.AbstractProgramVisitor import AbstractProgramVisitor
-from src.Programmer import *
+from AbstractProgramVisitor import AbstractProgramVisitor
+from Programmer import *
 
 
 def compareAExp(a1: QXAExp, a2: QXAExp):

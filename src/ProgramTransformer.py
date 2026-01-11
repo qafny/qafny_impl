@@ -9,9 +9,9 @@ from operator import truediv
 from antlr4 import ParserRuleContext
 
 from ExpLexer import *
-from src.ExpVisitor import *
-from src.ExpParser import *
-from src.Programmer import *
+from ExpVisitor import *
+from ExpParser import *
+from Programmer import *
 
 import utils
 

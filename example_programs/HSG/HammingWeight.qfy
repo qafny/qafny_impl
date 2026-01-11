@@ -1,0 +1,20 @@
+method HammingWeight(n: nat, q: Q[n], p: Q[n]) returns (v: nat)
+    requires { q[0, n) : nor ↦ |0⟩ } 
+    requires { p[0, n) : nor ↦ |0⟩ } //ancilla
+  //  ensures { q[0, n), p[0, n): en ↦ ∑ k ∈ [0, 2^n) . 1/sqrt(2^n) |k⟩ |countN(k)⟩}
+    ensures { p[0, n): nor ↦ |v⟩}
+    ensures 0 <= v <= n
+  //  ensures prob == choose(n, v) / 2^n
+    ensures { q[0, n): en ↦ ∑ k ∈ [0, 2^n)@(countN(k)==v) . 1/sqrt(choose(n, v)) |k⟩ }
+{
+    q[0, n) *= H;
+    for i in [0, n)
+        invariant { q[0, i), p[0, n): en ↦ ∑ k ∈ [0, 2^i) . 1/sqrt(2^i) |k⟩ |countN(k)⟩ }
+        invariant { q[i, n): Had ↦ |+⟩ }
+    {
+        if (q[i]) {p[0, n) *= λ (x => | x + 1⟩);}
+    }
+    w, v, s*= measure(p[0, n)); //w is witness, v is measured value; 
+    countNLEn(n,w); 
+    hammingProjMass(n,v,s);   
+}

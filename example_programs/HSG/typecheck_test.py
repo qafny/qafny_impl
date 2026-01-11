@@ -5,19 +5,16 @@ import traceback
 from antlr4 import FileStream, CommonTokenStream
 
 script_dir = Path(__file__).resolve().parent
-root_dir = script_dir.parent.parent
-src_dir = root_dir / "src"
-#sys.path.insert(0, str(root_dir))
-sys.path.insert(0, str(src_dir))
 
-from src.ExpLexer import ExpLexer
-from src.ExpParser import ExpParser
-from src.ProgramTransformer import ProgramTransformer
-from src.ProgramVisitor import *
-from src.AbstractProgramVisitor import AbstractProgramVisitor
-from src.CollectKind import CollectKind
-from src.TypeCollector import TypeCollector
-from src.TypeChecker import TypeChecker
+
+from ExpLexer import ExpLexer
+from ExpParser import ExpParser
+from ProgramTransformer import ProgramTransformer
+from ProgramVisitor import *
+from AbstractProgramVisitor import AbstractProgramVisitor
+from CollectKind import CollectKind
+from TypeCollector import TypeCollector
+from TypeChecker import TypeChecker
 
 hsg_dir = script_dir
 qfy_files = [str(f) for f in hsg_dir.glob("*.qfy") if f.is_file()]
