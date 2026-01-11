@@ -1,6 +1,6 @@
-from src.Programmer import *
+from Programmer import *
 
-from src.AbstractProgramVisitor import AbstractProgramVisitor
+from AbstractProgramVisitor import AbstractProgramVisitor
 
 
 class ProgramVisitor(AbstractProgramVisitor):
