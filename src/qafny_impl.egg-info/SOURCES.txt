@@ -1,0 +1,12 @@
+LICENSE
+README.md
+setup.py
+src/error_reporter/CodeReport.py
+src/error_reporter/CodeSnippet.py
+src/error_reporter/ErrorReport.py
+src/error_reporter/SyntaxHighlighter.py
+src/error_reporter/__init__.py
+src/qafny_impl.egg-info/PKG-INFO
+src/qafny_impl.egg-info/SOURCES.txt
+src/qafny_impl.egg-info/dependency_links.txt
+src/qafny_impl.egg-info/top_level.txt
