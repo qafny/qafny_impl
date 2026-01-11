@@ -13,6 +13,8 @@ sys.path.insert(0, str(src_dir))
 from src.ExpLexer import ExpLexer
 from src.ExpParser import ExpParser
 from src.ProgramTransformer import ProgramTransformer
+from src.ProgramVisitor import *
+from src.AbstractProgramVisitor import AbstractProgramVisitor
 from src.CollectKind import CollectKind
 from src.TypeCollector import TypeCollector
 from src.TypeChecker import TypeChecker
@@ -35,6 +37,7 @@ for filename in qfy_files:
     try:
         transformer = ProgramTransformer()
         qafny_ast = transformer.visitProgram(ast)
+        print(qafny_ast)
         print("  ProgramTransformer succeeded")
     except Exception as e:
         print(f"  ProgramTransformer failed: {e}")
