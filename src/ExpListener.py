@@ -422,6 +422,15 @@ class ExpListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by ExpParser#manyketchild.
+    def enterManyketchild(self, ctx:ExpParser.ManyketchildContext):
+        pass
+
+    # Exit a parse tree produced by ExpParser#manyketchild.
+    def exitManyketchild(self, ctx:ExpParser.ManyketchildContext):
+        pass
+
+
     # Enter a parse tree produced by ExpParser#forexp.
     def enterForexp(self, ctx:ExpParser.ForexpContext):
         pass

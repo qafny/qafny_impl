@@ -9,9 +9,9 @@ from operator import truediv
 from antlr4 import ParserRuleContext
 
 from ExpLexer import *
-from ExpVisitor import *
-from ExpParser import *
-from Programmer import *
+from src.ExpVisitor import *
+from src.ExpParser import *
+from src.Programmer import *
 
 import utils
 
@@ -207,8 +207,7 @@ class ProgramTransformer(ExpVisitor):
         inverse = False
         if ctx.getChild(1) is not None and ctx.getChild(1).getText() == '^{-1}':
             inverse = True
-        return QXCallstmt(ctx.ID(), self.visitArithExprsOrKets(ctx.arithExprsOrKets()), inverse,
-                          line_number=ctx.start.line)
+        return QXCallStmt(ctx.ID(), self.visitArithExprsOrKets(ctx.arithExprsOrKets()), inverse, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#spec.
     def visitSpec(self, ctx: ExpParser.SpecContext):
@@ -344,7 +343,11 @@ class ProgramTransformer(ExpVisitor):
     def visitQtypeCreate(self, ctx: ExpParser.QtypeCreateContext):
         '''Returns a tuple of the type and an array of the specs'''
         type = self.visitQty(ctx.qty())
-        qspecs = [self.visitQspec(qspec) for qspec in ctx.qspec()]
+        qspecs = []
+        i = 0
+        while ctx.qspec(i) is not None:
+            qspecs.append(self.visitQspec(ctx.qspec(i)))
+            i += 1
         # if we have a amplitude before the qspecs, we need to incorporate into each qspec
         if ctx.arithExpr() is not None:
             amplitude = self.visitArithExpr(ctx.arithExpr())
@@ -810,23 +813,28 @@ class ProgramTransformer(ExpVisitor):
     def visitManyketpart(self, ctx: ExpParser.ManyketpartContext):
         # not just kets, but can include ket arith expr, function calls, ids and id indices
         kets = []
-
         i = 0
-        while ctx.getChild(i) is not None:
-            child = ctx.getChild(i)
-
-            if child.getText() not in ['(', ',', ')']:
-                converted_child = child.accept(self) if not isinstance(child,
-                                                                       antlr4.tree.Tree.TerminalNodeImpl) else QXBind(
-                    child)
-                if isinstance(converted_child, list):
-                    kets += converted_child
-                else:
-                    kets.append(converted_child)
-
+        while ctx.manyketchild(i) is not None:
+            converted_child = self.visitManyketChild(ctx.manyketchild(i))
+            if isinstance(converted_child, list):
+                kets += converted_child
+            else:
+                kets.append(converted_child)
             i += 1
 
         return kets
+
+    def visitManyketChild(self, ctx: ExpParser.ManyketchildContext):
+        if ctx.ket(0) is not None:
+            return self.visitKet(ctx.ket(0))
+        if ctx.partspec() is not None:
+            return self.visitPartspec(ctx.partspec())
+        if ctx.fcall() is not None:
+            return self.visitFcall(ctx.fcall())
+        if ctx.ID() is not None:
+            return QXBind(ctx.ID())
+        if ctx.idindex() is not None:
+            return self.visitIdindex(ctx.idindex())
 
     # Visit a parse tree produced by ExpParser#forexp.
     def visitForexp(self, ctx: ExpParser.ForexpContext):
@@ -991,7 +999,7 @@ class ProgramTransformer(ExpVisitor):
             fcall = QXUni(fname, self.visitArithExpr(ctx.arithExpr()), line_number=ctx.start.line)
             # check for exponent
             if ctx.numexp() is not None:
-                fcall = QXBin("^", sin_expr, QXNum(int(ctx.numexp().getText())), line_number=ctx.start.line)
+                fcall = QXUni(fname, QXNum(int(ctx.numexp().getText())), line_number=ctx.start.line)
             return fcall
 
     # Visit a parse tree produced by ExpParser#sinExpr.

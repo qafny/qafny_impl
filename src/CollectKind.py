@@ -1,7 +1,7 @@
-from ProgramVisitor import *
+from src.ProgramVisitor import *
 from copy import deepcopy
 from AbstractProgramVisitor import AbstractProgramVisitor
-from Programmer import *
+from src.Programmer import *
 
 
 def compareAExp(a1: QXAExp, a2: QXAExp):
@@ -27,7 +27,7 @@ def compareType(t1: QXType, t2: QXType):
         return False
     if isinstance(t1, TySingle) and isinstance(t2, TySingle):
         return t1.type() == t2.type()
-    if isinstance(t1, Programmer.TyQ) and isinstance(t2, TyQ):
+    if isinstance(t1, TyQ) and isinstance(t2, TyQ):
         return compareAExp(t1.flag(), t2.flag())
     return False
 
@@ -53,7 +53,7 @@ class CollectKind(ProgramVisitor):
         # we use this list to remove variables
         self.reenv = []
 
-    def visitMethod(self, ctx: Programmer.QXMethod):
+    def visitMethod(self, ctx: QXMethod):
         x = str(ctx.ID())
         self.tenv = dict()
         self.xenv = dict()
@@ -87,14 +87,14 @@ class CollectKind(ProgramVisitor):
 
         return x_
 
-    def visitProgram(self, ctx: Programmer.QXProgram):
+    def visitProgram(self, ctx: QXProgram):
         for elem in ctx.topLevelStmts():
             v = elem.accept(self)
             if not v:
                 return False
         return True
 
-    def visitBind(self, ctx: Programmer.QXBind):
+    def visitBind(self, ctx: QXBind):
         ty = self.tenv.get(str(ctx.ID()))
 
         if ctx.type() is not None:
@@ -115,28 +115,28 @@ class CollectKind(ProgramVisitor):
             else:
                 return True
 
-    def visitSingleT(self, ctx: Programmer.TySingle):
+    def visitSingleT(self, ctx: TySingle):
         return True
 
-    def visitFun(self, ctx: Programmer.TyFun):
+    def visitFun(self, ctx: TyFun):
         return True
 
-    def visitQComp(self, ctx: Programmer.QXQComp):
+    def visitQComp(self, ctx: QXQComp):
         return True
 
-    def visitQ(self, ctx: Programmer.TyQ):
+    def visitQ(self, ctx: TyQ):
         return ctx.flag().accept(self)
 
-    def visitBin(self, ctx: Programmer.QXBin):
+    def visitBin(self, ctx: QXBin):
         return ctx.left().accept(self) and ctx.right().accept(self)
 
-    def visitUni(self, ctx: Programmer.QXUni):
+    def visitUni(self, ctx: QXUni):
         return ctx.next().accept(self)
 
-    def visitNum(self, ctx: Programmer.QXNum):
+    def visitNum(self, ctx: QXNum):
         return True
 
-    def visitInit(self, ctx: Programmer.QXInit):
+    def visitInit(self, ctx: QXInit):
         y = str(ctx.binding().ID())
         tv = ctx.binding().type()
         if tv.accept(self):
@@ -144,20 +144,20 @@ class CollectKind(ProgramVisitor):
             return True
         return False
 
-    def visitCast(self, ctx: Programmer.QXCast):
+    def visitCast(self, ctx: QXCast):
         v = ctx.qty().accept(self)
         for elem in ctx.locus():
             v = v and elem.accept(self)
         return v
 
-    def visitQAssign(self, ctx: Programmer.QXQAssign):
+    def visitQAssign(self, ctx: QXQAssign):
         v = True
         for elem in ctx.locus():
             v = v and elem.accept(self)
         v = v and ctx.exp().accept(self)
         return v
 
-    def visitOracle(self, ctx: Programmer.QXOracle):
+    def visitOracle(self, ctx: QXOracle):
         v = True
         for i in ctx.bindings():
             if isinstance(i, QXBind):
@@ -169,23 +169,23 @@ class CollectKind(ProgramVisitor):
             v = v and i.accept(self)
         return v
 
-    def visitSKet(self, ctx: Programmer.QXSKet):
+    def visitSKet(self, ctx: QXSKet):
         return ctx.vector().accept(self)
 
-    def visitQRange(self, ctx: Programmer.QXQRange):
+    def visitQRange(self, ctx: QXQRange):
         v = True
         v = v and ctx.crange().accept(self)
 
         return v
 
-    def visitCRange(self, ctx: Programmer.QXCRange):
+    def visitCRange(self, ctx: QXCRange):
         return ctx.left().accept(self) and ctx.right().accept(self)
 
     def isBitType(self, t: QXType):
         if isinstance(t, TySingle):
             return t.type() == "nat" or t.type() == "real" or t.type() == "bool"
 
-    def visitMeasure(self, ctx: Programmer.QXMeasure):
+    def visitMeasure(self, ctx: QXMeasure):
         v = True
         for elem in ctx.locus():
             v = v and elem.accept(self)
@@ -204,18 +204,18 @@ class CollectKind(ProgramVisitor):
                 v = v and self.isBitType(ty1)
         return v
 
-    def visitCAssign(self, ctx: Programmer.QXCAssign):
+    def visitCAssign(self, ctx: QXCAssign):
         v = ctx.aexp().accept(self)
         v = v and str(ctx.ids())
         return v
 
-    def visitIf(self, ctx: Programmer.QXIf):
-        v = ctx.bexp().accept(self) if isinstance(ctx.bexp(), Programmer.QXBExp) else True
+    def visitIf(self, ctx: QXIf):
+        v = ctx.bexp().accept(self) if isinstance(ctx.bexp(), QXBExp) else True
         for elem in ctx.stmts():
             v = v and elem.accept(self)
         return v
 
-    def visitFor(self, ctx: Programmer.QXFor):
+    def visitFor(self, ctx: QXFor):
         v = ctx.crange().accept(self)
         self.tenv.update({str(ctx.ID()): TySingle("nat")})
 
@@ -227,7 +227,7 @@ class CollectKind(ProgramVisitor):
             v = v and elem.accept(self)
         return v
 
-    def visitCall(self, ctx: Programmer.QXCall):
+    def visitCall(self, ctx: QXCall):
         v = True
         for elem in ctx.exps():
             v = v and elem.accept(self)
@@ -240,7 +240,7 @@ class CollectKind(ProgramVisitor):
         #         return v
         # return False
 
-    def visitQSpec(self, ctx: Programmer.QXQSpec):
+    def visitQSpec(self, ctx: QXQSpec):
         for elem in ctx.locus():
             elem.accept(self)
         for state in ctx.states():
@@ -248,12 +248,12 @@ class CollectKind(ProgramVisitor):
         ctx.qty().accept(self)
         return True
 
-    def visitAssert(self, ctx: Programmer.QXAssert):
+    def visitAssert(self, ctx: QXAssert):
         if isinstance(ctx.spec(), QXQSpec):
             return True
         return ctx.spec().accept(self)
 
-    def visitSingle(self, ctx: Programmer.QXSingle):
+    def visitSingle(self, ctx: QXSingle):
         """Visit a single quantum operation"""
         # We assume that the type of a single quantum operation is always valid
         return True
@@ -264,7 +264,7 @@ class CollectKind(ProgramVisitor):
         # need to check if the asserted var is in the tenv or xenv
 
     # leave the check later
-    def visitAll(self, ctx: Programmer.QXAll):
+    def visitAll(self, ctx: QXAll):
         """Visit a QXAll operation"""
         # We assume that the type of a QXAll operation is always valid
         return True

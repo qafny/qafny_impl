@@ -122,7 +122,9 @@ ifexp: If ('(' bexp ')' | bexp) 'then'? '{' stmts '}' (Else '{' stmts '}')?;
 
 cifexp : If bexp 'then' (arithExpr | '{' arithExpr '}') Else (arithExpr | '{' arithExpr '}');
 
-manyketpart: (ket | partspec | '(' ket (',' ket)* ')' | fcall | ID | idindex)+;
+manyketpart: (manyketchild)+;
+
+manyketchild: ket | partspec | '(' ket (',' ket)* ')' | fcall | ID | idindex;
 
 forexp : 'for' ID TIn crange (('with' | '&&') bexp)? loopConds '{' stmts '}';
 

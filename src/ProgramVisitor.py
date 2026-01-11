@@ -1,7 +1,6 @@
-import Programmer
-from Programmer import *
+from src.Programmer import *
 
-from AbstractProgramVisitor import AbstractProgramVisitor
+from src.AbstractProgramVisitor import AbstractProgramVisitor
 
 
 class ProgramVisitor(AbstractProgramVisitor):
@@ -152,15 +151,15 @@ class ProgramVisitor(AbstractProgramVisitor):
                 raise NotImplementedError(f"No visit method defined for {type(ctx)}")
 
     # ────────── Root Node ──────────
-    def visitProgram(self, ctx: Programmer.QXProgram):
+    def visitProgram(self, ctx: QXProgram):
         for elem in ctx.method():
             elem.accept(self)
 
     # ────────── Top level ──────────
-    def visitInclude(self, ctx: Programmer.QXInclude):
+    def visitInclude(self, ctx: QXInclude):
         return ctx.path()
 
-    def visitMethod(self, ctx: Programmer.QXMethod):
+    def visitMethod(self, ctx: QXMethod):
         for bindelem in ctx.bindings():
             bindelem.accept(self)
 
@@ -173,7 +172,7 @@ class ProgramVisitor(AbstractProgramVisitor):
         for stmtelem in ctx.stmts():
             stmtelem.accept(self)
 
-    def visitFunction(self, ctx: Programmer.QXFunction):
+    def visitFunction(self, ctx: QXFunction):
         for bindelem in ctx.bindings():
             bindelem.accept(self)
 
@@ -181,61 +180,61 @@ class ProgramVisitor(AbstractProgramVisitor):
 
         ctx.arith_expr().accept(self)
 
-    def visitLemma(self, ctx: Programmer.QXLemma):
+    def visitLemma(self, ctx: QXLemma):
         for bindelem in ctx.bindings():
             bindelem.accept(self)
 
         for condelem in ctx.conds():
             condelem.accept(self)
 
-    def visitPredicate(self, ctx: Programmer.QXPredicate):
+    def visitPredicate(self, ctx: QXPredicate):
         for bindelem in ctx.bindings():
             bindelem.accept(self)
 
         ctx.arith_expr().accept(self)
 
     # ────────── Conditions ──────────
-    def visitRequires(self, ctx: Programmer.QXRequires):
+    def visitRequires(self, ctx: QXRequires):
         return ctx.spec().accept(self)
 
-    def visitEnsures(self, ctx: Programmer.QXEnsures):
+    def visitEnsures(self, ctx: QXEnsures):
         return ctx.spec().accept(self)
 
-    def visitInvariant(self, ctx: Programmer.QXInvariant):
+    def visitInvariant(self, ctx: QXInvariant):
         return ctx.spec().accept(self)
 
-    def visitDecreases(self, ctx: Programmer.QXDecreases):
+    def visitDecreases(self, ctx: QXDecreases):
         return ctx.aexp().accept(self)
 
-    def visitSeparates(self, ctx: Programmer.QXSeparates):
+    def visitSeparates(self, ctx: QXSeparates):
         return ctx.locus().accept(self)
 
     # ────────── Statements ──────────
-    def visitAssert(self, ctx: Programmer.QXAssert):
+    def visitAssert(self, ctx: QXAssert):
         return ctx.spec().accept(self)
 
     def visitBreak(self, ctx: QXBreak):
         return 'break'
 
-    def visitCall(self, ctx: Programmer.QXCall):
+    def visitCall(self, ctx: QXCall):
         for elem in ctx.exps():
             elem.accept(self)
         return ctx.ID()
     
-    def visitCallStmt(self, ctx: Programmer.QXCallStmt):
+    def visitCallStmt(self, ctx: QXCallStmt):
         call_expr = ctx.call_expr()
         return call_expr.accept(self)
 
-    def visitCAssign(self, ctx: Programmer.QXCAssign):
+    def visitCAssign(self, ctx: QXCAssign):
         ctx.aexp().accept(self)
         return ctx.ids()
 
-    def visitCast(self, ctx: Programmer.QXCast):
+    def visitCast(self, ctx: QXCast):
         ctx.qty().accept(self)
         for elem in ctx.locus():
             elem.accept(self)
 
-    def visitFor(self, ctx: Programmer.QXFor):
+    def visitFor(self, ctx: QXFor):
         ctx.crange().accept(self)
 
         for ielem in ctx.conds():
@@ -246,7 +245,7 @@ class ProgramVisitor(AbstractProgramVisitor):
 
         return ctx.ID()
 
-    def visitIf(self, ctx: Programmer.QXIf):
+    def visitIf(self, ctx: QXIf):
         ctx.bexp().accept(self)
         for elem in ctx.stmts():
             elem.accept(self)
@@ -255,36 +254,36 @@ class ProgramVisitor(AbstractProgramVisitor):
             for elem in ctx.else_stmts():
                 elem.accept(self)
 
-    def visitInit(self, ctx: Programmer.QXInit):
+    def visitInit(self, ctx: QXInit):
         return ctx.binding().accept(self)
 
-    def visitMeasure(self, ctx: Programmer.QXMeasure):
+    def visitMeasure(self, ctx: QXMeasure):
         for elem in ctx.locus():
             elem.accept(self)
         if ctx.res() is not None:
             ctx.res().accept(self)
         return ctx.ids()
 
-    def visitMeasureAbort(self, ctx: Programmer.QXMeasureAbort):
+    def visitMeasureAbort(self, ctx: QXMeasureAbort):
         for elem in ctx.locus():
             elem.accept(self)
         if ctx.res() is not None:
             ctx.res().accept(self)
         return ctx.ids()
 
-    def visitQAssign(self, ctx: Programmer.QXQAssign):
+    def visitQAssign(self, ctx: QXQAssign):
         for elem in ctx.location():
             elem.accept(self)
         return ctx.exp().accept(self)
 
-    def visitQCreate(self, ctx: Programmer.QXQCreate):
+    def visitQCreate(self, ctx: QXQCreate):
         ctx.qrange().accept(self)
         return ctx.size().accept(self)
 
-    def visitReturn(self, ctx: Programmer.QXReturn):
+    def visitReturn(self, ctx: QXReturn):
         return ctx.ids()
 
-    def visitWhile(self, ctx: Programmer.QXWhile):
+    def visitWhile(self, ctx: QXWhile):
         ctx.bexp().accept(self)
         for cond in ctx.conds():
             cond.accept(self)
@@ -292,130 +291,130 @@ class ProgramVisitor(AbstractProgramVisitor):
             stmt.accept(self)
 
     # ────────── Partition ──────────
-    def visitPartPredicate(self, ctx: Programmer.QXPartPredicate):
+    def visitPartPredicate(self, ctx: QXPartPredicate):
         ctx.amplitude().accept(self)
         ctx.predicate().accept(self)
 
-    def visitPartsection(self, ctx: Programmer.QXPartsection):
+    def visitPartsection(self, ctx: QXPartsection):
         ctx.amplitude().accept(self)
         ctx.ket().accept(self)
         ctx.predicate().accept(self)
 
-    def visitPart(self, ctx: Programmer.QXPart):
+    def visitPart(self, ctx: QXPart):
         ctx.qnum().accept(self)
         ctx.fname().accept(self)
         ctx.trueAmp().accept(self)
         ctx.falseAmp().accept(self)
 
-    def visitPartWithPredicates(self, ctx: Programmer.QXPartWithPredicates):
+    def visitPartWithPredicates(self, ctx: QXPartWithPredicates):
         ctx.qnum().accept(self)
         ctx.truePred().accept(self)
         ctx.falsePred().accept(self)
 
-    def visitPartGroup(self, ctx: Programmer.QXPartGroup):
+    def visitPartGroup(self, ctx: QXPartGroup):
         ctx.fpred().accept(self) if not isinstance(ctx.fpred(), str) else ctx.fpred()
         ctx.bool().accept(self)
         ctx.amplitude().accept(self)
 
-    def visitPartLambda(self, ctx: Programmer.QXPartLambda):
+    def visitPartLambda(self, ctx: QXPartLambda):
         ctx.fpred().accept(self)
         ctx.amplitude().accept(self)
 
-    def visitPartWithSections(self, ctx: Programmer.QXPartWithSections):
+    def visitPartWithSections(self, ctx: QXPartWithSections):
         for section in ctx.sections():
             section.accept(self)
 
     # ────────── Types ──────────
-    def visitSingleT(self, ctx: Programmer.TySingle):
+    def visitSingleT(self, ctx: TySingle):
         return ctx.type()
 
-    def visitArrayT(self, ctx: Programmer.TyArray):
+    def visitArrayT(self, ctx: TyArray):
         ctx.num().accept(self)
         return ctx.type().accept(self)
 
-    def visitTySet(self, ctx: Programmer.TySet):
+    def visitTySet(self, ctx: TySet):
         return ctx.type().accept(self)
 
-    def visitQ(self, ctx: Programmer.TyQ):
+    def visitQ(self, ctx: TyQ):
         return ctx.flag().accept(self)
 
-    def visitFun(self, ctx: Programmer.TyFun):
+    def visitFun(self, ctx: TyFun):
         for param in ctx.params():
             param.accept(self)
         ctx.return_type().accept(self)
 
     # ────────── Quantum types ──────────
-    def visitNor(self, ctx: Programmer.TyNor):
+    def visitNor(self, ctx: TyNor):
         return "nor"
 
-    def visitTyHad(self, ctx: Programmer.TyHad):
+    def visitTyHad(self, ctx: TyHad):
         return "had"
 
-    def visitEn(self, ctx: Programmer.TyEn):
+    def visitEn(self, ctx: TyEn):
         return ctx.flag().accept(self)
 
-    def visitAA(self, ctx: Programmer.TyAA):
+    def visitAA(self, ctx: TyAA):
         return "aa"
 
     # ────────── Arithmetic expressions ──────────
-    def visitBin(self, ctx: Programmer.QXBin):
+    def visitBin(self, ctx: QXBin):
         ctx.left().accept(self)
         ctx.right().accept(self)
         return ctx.op()
 
-    def visitBind(self, ctx: Programmer.QXBind):
+    def visitBind(self, ctx: QXBind):
         if ctx.type() is not None:
             ctx.type().accept(self)
         return ctx.ID()
 
-    def visitIfExp(self, ctx: Programmer.QXIfExp):
+    def visitIfExp(self, ctx: QXIfExp):
         ctx.bexp().accept(self)
         ctx.left().accept(self)
         ctx.right().accept(self)
         return True
 
-    def visitMemberAccess(self, ctx: Programmer.QXMemberAccess):
+    def visitMemberAccess(self, ctx: QXMemberAccess):
         return ctx.ids()
 
-    def visitNegation(self, ctx: Programmer.QXNegation):
+    def visitNegation(self, ctx: QXNegation):
         return ctx.aexp().accept(self)
 
-    def visitQIndex(self, ctx: Programmer.QXQIndex):
+    def visitQIndex(self, ctx: QXQIndex):
         i = ctx.index().accept(self)
         return ctx.ID() + '[' + str(i)  + ']'
 
-    def visitSumAExp(self, ctx: Programmer.QXSumAExp):
+    def visitSumAExp(self, ctx: QXSumAExp):
         ctx.sum().accept(self)
         return ctx.aexp().accept(self)
 
-    def visitUni(self, ctx: Programmer.QXUni):
+    def visitUni(self, ctx: QXUni):
         ctx.next().accept(self)
         return ctx.op()
 
     # ────────── Boolean expressions ──────────
-    def visitBool(self, ctx: Programmer.QXComp):
+    def visitBool(self, ctx: QXComp):
         ctx.left().accept(self)
         ctx.right().accept(self)
         return ctx.op()
 
-    def visitCNot(self, ctx: Programmer.QXCNot):
+    def visitCNot(self, ctx: QXCNot):
         return ctx.next().accept(self)
 
-    def visitLogic(self, ctx: Programmer.QXLogic):
+    def visitLogic(self, ctx: QXLogic):
         ctx.left().accept(self)
         ctx.right().accept(self)
         return ctx.op()
 
-    def visitQComp(self, ctx: Programmer.QXQComp):
+    def visitQComp(self, ctx: QXQComp):
         ctx.left().accept(self)
         ctx.right().accept(self)
         ctx.index().accept(self)
         return ctx.op()
 
-    def visitQNot(self, ctx: Programmer.QXQNot):
+    def visitQNot(self, ctx: QXQNot):
         return ctx.next().accept(self)
 
-    def visitQSpec(self, ctx: Programmer.QXQSpec):
+    def visitQSpec(self, ctx: QXQSpec):
         for elem in ctx.locus():
             elem.accept(self)
         for state in ctx.states():
@@ -423,12 +422,12 @@ class ProgramVisitor(AbstractProgramVisitor):
         return ctx.qty().accept(self)
 
     # ────────── Quantum states ──────────
-    def visitAll(self, ctx: Programmer.QXAll):
+    def visitAll(self, ctx: QXAll):
         ctx.bind().accept(self)
         ctx.bounds().accept(self)
         ctx.next().accept(self)
 
-    def visitSum(self, ctx: Programmer.QXSum):
+    def visitSum(self, ctx: QXSum):
         # for elem in ctx.kets():
         #     if isinstance(elem, list):
         #         for e in elem:
@@ -439,7 +438,7 @@ class ProgramVisitor(AbstractProgramVisitor):
         for elem in ctx.sums():
             elem.accept(self)
 
-    def visitTensor(self, ctx: Programmer.QXTensor):
+    def visitTensor(self, ctx: QXTensor):
         for elem in ctx.kets():
             if isinstance(elem, list):
                 for e in elem:
@@ -452,14 +451,14 @@ class ProgramVisitor(AbstractProgramVisitor):
             ctx.range().accept(self)
         return ctx.ID()
 
-    def visitSKet(self, ctx: Programmer.QXSKet):
+    def visitSKet(self, ctx: QXSKet):
         return ctx.vector().accept(self)
 
-    def visitVKet(self, ctx: Programmer.QXVKet):
+    def visitVKet(self, ctx: QXVKet):
         return ctx.vector().accept(self)
 
     # ────────── Quantum gates/applications ──────────
-    def visitOracle(self, ctx: Programmer.QXOracle):
+    def visitOracle(self, ctx: QXOracle):
         for binding in ctx.bindings():
             binding.accept(self)
 
@@ -467,38 +466,38 @@ class ProgramVisitor(AbstractProgramVisitor):
         for elem in ctx.vectors():
             elem.accept(self)
 
-    def visitSingle(self, ctx: Programmer.QXSingle):
+    def visitSingle(self, ctx: QXSingle):
         return ctx.op()
 
     # ────────── Sums and ranges ──────────
-    def visitCon(self, ctx: Programmer.QXCon):
+    def visitCon(self, ctx: QXCon):
         ctx.range().accept(self)
         return ctx.ID()
 
-    def visitCRange(self, ctx: Programmer.QXCRange):
+    def visitCRange(self, ctx: QXCRange):
         if ctx.left() is not None:
             ctx.left().accept(self)
         if ctx.right() is not None:
             ctx.right().accept(self)
 
     # ────────── Literals ──────────
-    def visitNum(self, ctx: Programmer.QXNum):
+    def visitNum(self, ctx: QXNum):
         return ctx.num()
 
-    def visitBoolLiteral(self, ctx: Programmer.QXBoolLiteral):
+    def visitBoolLiteral(self, ctx: QXBoolLiteral):
         return ctx.value()
 
-    def visitHad(self, ctx: Programmer.QXHad):
+    def visitHad(self, ctx: QXHad):
         return ctx.state()
 
-    def visitSet(self, ctx: Programmer.QXSet):
+    def visitSet(self, ctx: QXSet):
         for member in ctx.members():
             member.accept(self)
 
-    def visitQRange(self, ctx: Programmer.QXQRange):
+    def visitQRange(self, ctx: QXQRange):
         ctx.crange().accept(self)
 
-        if isinstance(ctx.location(), Programmer.QXCall):
+        if isinstance(ctx.location(), QXCall):
             return ctx.location().accept(self)
         else:
             return ctx.location()
