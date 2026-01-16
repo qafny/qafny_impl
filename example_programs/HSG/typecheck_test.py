@@ -5,13 +5,12 @@ import traceback
 from antlr4 import FileStream, CommonTokenStream
 
 script_dir = Path(__file__).resolve().parent
-
+root_dir = script_dir.parent.parent
+sys.path.insert(0, str(root_dir / "src"))
 
 from ExpLexer import ExpLexer
 from ExpParser import ExpParser
 from ProgramTransformer import ProgramTransformer
-from ProgramVisitor import *
-from AbstractProgramVisitor import AbstractProgramVisitor
 from CollectKind import CollectKind
 from TypeCollector import TypeCollector
 from TypeChecker import TypeChecker
@@ -20,21 +19,21 @@ hsg_dir = script_dir
 qfy_files = [str(f) for f in hsg_dir.glob("*.qfy") if f.is_file()]
 
 for filename in qfy_files:
-    print(f"Testing {os.path.basename(filename)}:")
+    print(f"\n=== Testing {os.path.basename(filename)} ===")
     file_stream = FileStream(filename, encoding="utf-8")
+    lines = file_stream.strdata.splitlines()
     lexer = ExpLexer(file_stream)
     token_stream = CommonTokenStream(lexer)
     parser = ExpParser(token_stream)
     ast = parser.program()
     errors = parser.getNumberOfSyntaxErrors()
     if errors > 0:
-        print(f"  Parsing failed ({errors} errors) — skipping further steps")
+        print(f"  Parsing failed ({errors} errors) — skipping")
         continue
 
     try:
         transformer = ProgramTransformer()
         qafny_ast = transformer.visitProgram(ast)
-        print(qafny_ast)
         print("  ProgramTransformer succeeded")
     except Exception as e:
         print(f"  ProgramTransformer failed: {e}")
@@ -57,18 +56,22 @@ for filename in qfy_files:
     except Exception as e:
         tb = traceback.extract_tb(sys.exc_info()[2])
         last = tb[-1]
-        print(f"  TypeCollector FAILED: {type(e).__name__}: {e}")
-        print(f"    Location: {last.filename}:{last.lineno} (line: '{last.line}')")
+        src_line_no = last.lineno - 1
+        src_line = lines[src_line_no].strip() if 0 <= src_line_no < len(lines) else "<unknown>"
+        print(f"  TypeCollector FAILED around line {src_line_no + 1}: {type(e).__name__}: {e}")
+        print(f"    Source: {src_line}")
         traceback.print_exc()
         continue
 
     try:
-        type_checker = TypeChecker(type_collector.get_env())
+        type_checker = TypeChecker(type_collector.get_env(), {}, 0)
         type_checker.visit(qafny_ast)
-        print("  TypeChecker succeeded (no errors)")
+        print("  TypeChecker succeeded")
     except Exception as e:
         tb = traceback.extract_tb(sys.exc_info()[2])
         last = tb[-1]
-        print(f"  TypeChecker FAILED: {type(e).__name__}: {e}")
-        print(f"    Location: {last.filename}:{last.lineno} (line: '{last.line}')")
+        src_line_no = last.lineno - 1
+        src_line = lines[src_line_no].strip() if 0 <= src_line_no < len(lines) else "<unknown>"
+        print(f"  TypeChecker FAILED around line {src_line_no + 1}: {type(e).__name__}: {e}")
+        print(f"    Source: {src_line}")
         traceback.print_exc()
