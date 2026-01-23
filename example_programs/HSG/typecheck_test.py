@@ -65,7 +65,7 @@ for filename in qfy_files:
 
     try:
         type_checker = TypeChecker(type_collector.get_env(), {}, {}, 0)
-        type_checker.visit(qafny_ast._exps)
+        type_checker.visit(qafny_ast._exps[0])
         print("  TypeChecker succeeded")
     except Exception as e:
         tb = traceback.extract_tb(sys.exc_info()[2])
