@@ -1,7 +1,7 @@
 //Discrete Log algorithm is very very similar to Shor's algorithm.
 //The idea is to have two H qubit arrays.
 method DLog(n:nat, N : nat, x : nat, g:nat, r:nat, c:nat, q : Q[n], p : Q[n], t : Q[n]) returns (u:nat, v:nat, p : real)
-  requires 1 < base < N <= 2^n //if we do not want allow this syntax, fine.
+  requires 1 < N <= 2^n //if we do not want allow this syntax, fine.
   requires gcd(x,N) == 1
   requires gcd(g,N) == 1
   //requires order(x,N) == r //define order function
@@ -26,7 +26,7 @@ method DLog(n:nat, N : nat, x : nat, g:nat, r:nat, c:nat, q : Q[n], p : Q[n], t 
   for i in [0, n) //with t[i]
     //separates q[0, i), t[0, n)
     invariant {
-      q[0, i), t[0, n) : En ↦ ∑ k ∈ [0, 2^i) . | k , ((Pow(x, k)) % N) ⟩
+      q[0, i), t[0, n) : En ↦ ∑ k ∈ [0, 2^i) . | k ⟩ | ((Pow(x, k)) % N) ⟩
     }
     invariant {
       q [i , N) : Had ↦ |+⟩
@@ -44,7 +44,7 @@ method DLog(n:nat, N : nat, x : nat, g:nat, r:nat, c:nat, q : Q[n], p : Q[n], t 
   for i in [0, n) //with t[i]
     //separates p[0, i), t[0, n)
     invariant {
-      p[0, i), t[0, n) : En ↦ ∑ k ∈ [0, 2^i) . | k , ((Pow(x, k)) % N) ⟩
+      p[0, i), t[0, n) : En ↦ ∑ k ∈ [0, 2^i) . | k ⟩ |((Pow(x, k)) % N) ⟩
     }
     invariant {
       p [i , N) : Had ↦ |+⟩
@@ -64,7 +64,7 @@ method DLog(n:nat, N : nat, x : nat, g:nat, r:nat, c:nat, q : Q[n], p : Q[n], t 
   v,prob *= measure(t[0,N));//we will then measure t, please see andrew's note, to see what is the result assertion
   delta := log(g,v);
   assert  {v == 1 / sqrt(N)} ;
-  assert {q[0,n), p[0,n): En ↦ ∑ k ∈ [0, 2^i) . | k , delta - k * log(g, x) ⟩ }; // first log impossible? how to deal with delta
+  assert {q[0,n), p[0,n): En ↦ ∑ k ∈ [0, 2^i) . | k ⟩ | delta - k * log(g, x) ⟩ }; // first log impossible? how to deal with delta
   
   //we will also need two QFT application to both q and p.
   q[0,n) *= RQFT;

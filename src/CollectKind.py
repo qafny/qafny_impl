@@ -83,9 +83,37 @@ class CollectKind(ProgramVisitor):
         for stmt in ctx.stmts():
             x_ = x_ and stmt.accept(self)
 
-        self.env.update({x: (tenvv, self.xenv)})
+        self.env.update({x: (self.tenv, self.xenv)})
 
         return x_
+
+    def visitFunction(self, ctx: QXFunction):
+        x = str(ctx.ID())
+        self.tenv = dict()
+        self.xenv = dict()
+
+        for binding in ctx.bindings():
+            y = str(binding.ID())
+            tv = binding.type()
+            if not tv.accept(self):
+                return False
+            self.tenv.update({y: tv})
+
+        if ctx.return_type() is not None:
+            tv = ctx.return_type().accept(self)
+            if not tv:
+                return False
+            self.xenv.update({x:tv})
+        #self.reenv = list(x)
+
+        if ctx.arith_expr() is not None:
+            x_val = ctx.arith_expr().accept(self)
+            if not x_val:
+                return False
+
+        self.env.update({x: (self.tenv, self.xenv)})
+
+        return True
 
     def visitProgram(self, ctx: QXProgram):
         for elem in ctx.topLevelStmts():
@@ -165,7 +193,7 @@ class CollectKind(ProgramVisitor):
             if str(i) not in self.tenv:
                 self.tenv.update({str(i): QXQTy()})
 
-        for i in ctx.kets():
+        for i in ctx.vectors():
             v = v and i.accept(self)
         return v
 
