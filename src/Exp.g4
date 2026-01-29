@@ -187,7 +187,7 @@ qstate: arithExpr | additiveOp | ketsum;
 
 bindings : binding ( ',' binding)*;
 
-binding: ID ':' typeT;
+binding: ID ':' typeT;ket
 
 typeOptionalBindings : typeOptionalBinding (',' typeOptionalBinding)*;
 

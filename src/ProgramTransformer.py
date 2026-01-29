@@ -424,13 +424,13 @@ class ProgramTransformer(ExpVisitor):
                 # combine amplitudes (if not None)
                 amplitude = spec.amp()
                 if amplitude is not None:
-                    if next.amplitude() is not None:
+                    if next.amp() is not None:
                         amplitude = QXBin("*", amplitude, next.amp(),
                                           line_number=line_number)  # TODO: how to attach line:col?
                 else:
                     amplitude = next.amp()
                 # combine kets
-                kets = spec.kets() + next.kets()  # TODO: check for overlapping ids
+                kets = QXTensor(spec.kets().kets(), next.kets().kets())  # TODO: check for overlapping ids
 
                 # combine the conditions (and)
                 condition = spec.condition()
@@ -518,10 +518,41 @@ class ProgramTransformer(ExpVisitor):
             v = self.visitCrange(ctx.crange())
         return QXTensor(self.visitManyket(ctx.manyket()), ctx.ID(), v, line_number=ctx.start.line)
 
+    def mergeAmp(self, a: QXAExp, b: QXAExp):
+        if a == QXNum(1.0):
+            return b
+        if b == QXNum(1.0):
+            return a
+        return QXBin("*", a, b, line_number = a.line_number())
+
     # Visit a parse tree produced by ExpParser#sumspec.
     def visitSumspec(self, ctx: ExpParser.SumspecContext):
+        if ctx.maySum() is None:
+            return self.visitSumspec(ctx.sumspec())
+
+        this_sum = self.visitMaySum(ctx.maySum())
+
+        amp = QXNum(1.0)
+        if ctx.arithExpr() is not None:
+            amp = self.visitArithExpr(ctx.arithExpr())
+
+        if ctx.manyketpart() is not None:
+            kets = QXTensor(self.visitManyketpart(ctx.manyketpart()))
+            return QXSum([this_sum], amp, [kets], line_number=ctx.start.line)
+
+        if ctx.sumspec() is not None:
+            next_sum = self.visitSumspec(ctx.sumspec())
+            sums = [this_sum] + next_sum.sums()
+            # combine the amplitudes
+            amp = self.mergeAmp(amp, next_sum.amp())
+            return QXSum(sums, amp, next_sum.kets(), line_number=ctx.start.line)
+
+        if ctx.tensorall() is not None:
+            kets = self.visitTensorall(ctx.tensorall())
+            return QXSum([this_sum], amp, kets, line_number=ctx.start.line)
+
+        '''
         def extract_condition(expr: QXAExp):
-            '''Returns a tuple of the conditon and the fixed amplitude expression.'''
             # cases:
             # bexp / aexp ==> bexp, 1 / aexp
             # bexp * aexp ==> bexp, aexp
@@ -619,8 +650,7 @@ class ProgramTransformer(ExpVisitor):
             if hasattr(ctx, "tensorall") and ctx.tensorall() is not None:
                 if ctx.arithExpr() is not None:
                     amp = self.visitArithExpr(ctx.arithExpr())
-                kets = self.visitTensorall(ctx.tensorall())
-                return QXSum([this_sum], amp, kets, line_number=ctx.start.line)
+
             if ctx.sumspec() is not None:
                 if ctx.arithExpr() is not None:
                     amp = self.visitArithExpr(ctx.arithExpr())
@@ -635,7 +665,7 @@ class ProgramTransformer(ExpVisitor):
         # parentheses wrapper: '(' sumspec ')'
         if ctx.sumspec() is not None:
             return self.visitSumspec(ctx.sumspec())
-
+'''
     # Visit a parse tree produced by ExpParser#maySum.
     def visitMaySum(self, ctx: ExpParser.MaySumContext):
         return QXCon(ctx.ID(), self.visitCrange(ctx.crange()), self.visitBexp(ctx.bexp()), line_number=ctx.start.line)
@@ -825,8 +855,6 @@ class ProgramTransformer(ExpVisitor):
         return kets
 
     def visitManyketChild(self, ctx: ExpParser.ManyketchildContext):
-        if ctx.ket(0) is not None:
-            return self.visitKet(ctx.ket(0))
         if ctx.partspec() is not None:
             return self.visitPartspec(ctx.partspec())
         if ctx.fcall() is not None:
@@ -835,6 +863,13 @@ class ProgramTransformer(ExpVisitor):
             return QXBind(ctx.ID())
         if ctx.idindex() is not None:
             return self.visitIdindex(ctx.idindex())
+
+        i = 0
+        kets = []
+        while ctx.ket(i) is not None:
+            vket = self.visitKet(ctx.ket(i))
+            kets.append(vket)
+        return vket
 
     # Visit a parse tree produced by ExpParser#forexp.
     def visitForexp(self, ctx: ExpParser.ForexpContext):

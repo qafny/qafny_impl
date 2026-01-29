@@ -538,31 +538,6 @@ class QXCond(QXTop):
         pass
 
 
-@qafny.auto.rich_repr
-@qafny.auto.equality
-class QXBind(QXAExp):
-
-    def __init__(self, id: str, type: QXType = None , line_number = None):
-         
-        self._id = coerceStr(id)
-        self._type = type
-        self._line_number = line_number
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitBind(self)
-
-    def ID(self):
-        # return self._id if self._id is str else self._id.getText()
-        return self._id
-
-    def type(self):
-        return self._type
-
-    def __repr__(self):
-        return utils.make_repr('QXBind', {'id': self._id, 'ty': self._type})
-    
-    def line_number(self):
-        return self._line_number
 
 
 class QXBool(QXBExp, QXSpec):
@@ -908,6 +883,11 @@ class QXNum(QXAExp):
         self._num = num
         self._line_number = line_number
 
+    def __eq__(self, other):
+        if not isinstance(other, QXNum):
+            return NotImplemented
+        return self.num() == other.num()
+
     def accept(self, visitor: AbstractProgramVisitor):
         return visitor.visitNum(self)
 
@@ -1224,12 +1204,16 @@ class QXQState(QXTop):
     def accept(self, visitor: AbstractProgramVisitor):
         pass
 
+class QXVTensor(QXQState):
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        pass
 
 @qafny.auto.rich_repr
 @qafny.auto.equality
-class QXTensor(QXQState):
+class QXTensor(QXVTensor):
 
-    def __init__(self, kets: QXKet, id: str = None, crange: QXCRange = None , phase: QXAExp = None, line_number = None):
+    def __init__(self, kets: [QXKet], id: str = None, crange: QXCRange = None , phase: QXAExp = None, line_number = None):
          
         self._kets = kets
         self._id = id.getText() if isAntlrNode(id) else id
@@ -1267,11 +1251,11 @@ class QXTensor(QXQState):
 @qafny.auto.equality
 class QXSum(QXQState):
 
-    def __init__(self, sums: [QXCon], amp: QXAExp, tensor: QXTensor , line_number = None):
+    def __init__(self, sums: [QXCon], amp: QXAExp, tensors: [QXVTensor] , line_number = None):
          
         self._sums = sums
         self._amp = amp
-        self._kets = tensor
+        self._kets = tensors
     #    self._condition = condition
         self._line_number = line_number
 
@@ -1294,6 +1278,31 @@ class QXSum(QXQState):
     def __repr__(self):
         return f"QXSum(sums={self._sums}, amp={self._amp}, kets={self._kets})"
     
+    def line_number(self):
+        return self._line_number
+
+@qafny.auto.rich_repr
+@qafny.auto.equality
+class QXBind(QXAExp, QXVTensor):
+
+    def __init__(self, id: str, type: QXType = None, line_number=None):
+        self._id = coerceStr(id)
+        self._type = type
+        self._line_number = line_number
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitBind(self)
+
+    def ID(self):
+        # return self._id if self._id is str else self._id.getText()
+        return self._id
+
+    def type(self):
+        return self._type
+
+    def __repr__(self):
+        return utils.make_repr('QXBind', {'id': self._id, 'ty': self._type})
+
     def line_number(self):
         return self._line_number
 
