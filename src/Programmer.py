@@ -1162,41 +1162,6 @@ class QXVKet(QXKet):
         return self._line_number
 
 
-@qafny.auto.rich_repr
-@qafny.auto.equality
-class QXOracle(QXExp):
-
-    def __init__(self, bindings: [QXBind], phase: QXAExp, kets: [QXKet], inverse: bool = False , line_number = None):
-         
-        self._bindings = bindings
-        self._phase = phase
-        self._kets = kets
-        self._inverse = inverse
-        self._line_number = line_number
-
-    def accept(self, visitor: AbstractProgramVisitor):
-        return visitor.visitOracle(self)
-
-    def bindings(self):
-        return self._bindings
-
-    def phase(self):
-        return self._phase
-
-    # def amp(self):
-    #     return self._amp
-
-    def vectors(self):
-        return self._kets
-
-    def inverse(self):
-        return self._inverse
-
-    def __repr__(self):
-        return f"QXOracle(bindings={self._bindings}, phase={self._phase}, kets={self._kets}, inverse={self._inverse})"
-    
-    def line_number(self):
-        return self._line_number
 
 
 class QXQState(QXTop):
@@ -1579,6 +1544,41 @@ class QXIf(QXStmt):
     def line_number(self):
         return self._line_number
 
+
+@qafny.auto.rich_repr
+@qafny.auto.equality
+class QXOracle(QXExp):
+
+    def __init__(self, bindings: [QXBind], phase: QXAExp, kets: [QXKet], inverse: bool = False, line_number=None):
+        self._bindings = bindings
+        self._phase = phase
+        self._kets = kets
+        self._inverse = inverse
+        self._line_number = line_number
+
+    def accept(self, visitor: AbstractProgramVisitor):
+        return visitor.visitOracle(self)
+
+    def bindings(self):
+        return self._bindings
+
+    def phase(self):
+        return self._phase
+
+    # def amp(self):
+    #     return self._amp
+
+    def vectors(self):
+        return self._kets
+
+    def inverse(self):
+        return self._inverse
+
+    def __repr__(self):
+        return f"QXOracle(bindings={self._bindings}, phase={self._phase}, kets={self._kets}, inverse={self._inverse})"
+
+    def line_number(self):
+        return self._line_number
 
 @qafny.auto.rich_repr
 @qafny.auto.equality

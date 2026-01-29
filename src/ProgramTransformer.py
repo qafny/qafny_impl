@@ -863,7 +863,6 @@ class ProgramTransformer(ExpVisitor):
             return QXBind(ctx.ID())
         if ctx.idindex() is not None:
             return self.visitIdindex(ctx.idindex())
-
         i = 0
         kets = []
         while ctx.ket(i) is not None:
@@ -1176,6 +1175,11 @@ class ProgramTransformer(ExpVisitor):
         if ctx.arithExpr() is not None:
             return self.visitArithExpr(ctx.arithExpr())
         elif ctx.additiveOp() is not None:
+            v = self.visitAdditiveOp(ctx.additiveOp())
+            if v == "+":
+                return QXCall("omega", [QXNum(0.0)], line_number=ctx.start.line)
+            else:
+                return QXCall("omega", [QXNum(1.0)], line_number=ctx.start.line)
             return QXHad(self.visitAdditiveOp(ctx.additiveOp()), line_number=ctx.start.line)
         elif ctx.ketsum() is not None:
             return self.visitKetsum(ctx.ketsum())
