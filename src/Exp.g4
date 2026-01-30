@@ -65,11 +65,11 @@ chainBExp: arithExprWithSum (comOp arithExprWithSum)+;
 comOp :  GE | LE | EQ | NE | LT | GT;
 
 // see SWAPTest.qfy for an instance where the amplitude is specified before the qspecs
-qtypeCreate: qty '↦' (arithExpr '.')? qspec ('+' qspec)*;
+//qtypeCreate: qty '↦' (arithExpr '.')? qspec ('+' qspec)*;
 
-qunspec : locus ':' qtypeCreate ('⊗' locus ':' qtypeCreate)*;
+qunspec : locus ':' qty '↦' qspec ('+' qspec)*;
 
-qspec : tensorall | arithExpr? manyketpart | sumspec;
+qspec : tensorall | sumspec;
 
 // 4 different calls for the partition function:
 // 1. part(n, function_predicate, true_amplitude, false_amplitude)
@@ -88,7 +88,7 @@ partsections: partsection ('+' partsection);
 
 tensorall: '⊗' ID (TIn crange)? '.' (manyket | omegaExpr);
 
-sumspec: maySum (arithExpr? manyketpart | '(' arithExpr? manyketpart ')' | (arithExpr '.')? tensorall ) | maySum (arithExpr '.')? sumspec | '(' sumspec ')';
+sumspec: arithExpr? manyketpart | (arithExpr '.')? tensorall | maySum (arithExpr)? (manyket)? sumspec | '(' sumspec ')';
 
 maySum: TSum ID TIn crange (('on' | '@') '(' bexp ')')? '.';
 
@@ -124,7 +124,7 @@ cifexp : If bexp 'then' (arithExpr | '{' arithExpr '}') Else (arithExpr | '{' ar
 
 manyketpart: (manyketchild)+;
 
-manyketchild: ket | partspec | '(' ket (',' ket)* ')' | fcall | ID | idindex;
+manyketchild: ket | partspec | fcall | ID | idindex;
 
 forexp : 'for' ID TIn crange (('with' | '&&') bexp)? loopConds '{' stmts '}';
 
@@ -179,7 +179,7 @@ dis : 'dis' '(' expr ',' arithExpr ',' arithExpr ')';
 manyket: (ket)+;
 
 // TODO: what does the subtraction mean?
-ket : TSub? '|' qstate (',' qstate)* '⟩' | '⊗' arithAtomic;
+ket : TSub? '|' qstate '⟩' | '⊗' arithAtomic;
 
 ketsum : maySum arithExpr;
 
@@ -187,7 +187,7 @@ qstate: arithExpr | additiveOp | ketsum;
 
 bindings : binding ( ',' binding)*;
 
-binding: ID ':' typeT;ket
+binding: ID ':' typeT;
 
 typeOptionalBindings : typeOptionalBinding (',' typeOptionalBinding)*;
 

@@ -197,15 +197,6 @@ class ExpListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by ExpParser#qtypeCreate.
-    def enterQtypeCreate(self, ctx:ExpParser.QtypeCreateContext):
-        pass
-
-    # Exit a parse tree produced by ExpParser#qtypeCreate.
-    def exitQtypeCreate(self, ctx:ExpParser.QtypeCreateContext):
-        pass
-
-
     # Enter a parse tree produced by ExpParser#qunspec.
     def enterQunspec(self, ctx:ExpParser.QunspecContext):
         pass

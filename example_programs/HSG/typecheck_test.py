@@ -34,6 +34,7 @@ for filename in qfy_files:
     try:
         transformer = ProgramTransformer()
         qafny_ast = transformer.visitProgram(ast)
+        #print(qafny_ast)
         print("  ProgramTransformer succeeded")
     except Exception as e:
         print(f"  ProgramTransformer failed: {e}")

@@ -340,8 +340,8 @@ class ProgramTransformer(ExpVisitor):
             return ">"
 
     # Visit a parse tree produced by ExpParser#qtypeCreate.
-    def visitQtypeCreate(self, ctx: ExpParser.QtypeCreateContext):
-        '''Returns a tuple of the type and an array of the specs'''
+    '''def visitQtypeCreate(self, ctx: ExpParser.QtypeCreateContext):
+        Returns a tuple of the type and an array of the specs
         type = self.visitQty(ctx.qty())
         qspecs = []
         i = 0
@@ -370,37 +370,33 @@ class ProgramTransformer(ExpVisitor):
                     raise ValueError(
                         f"[UNREACHABLE] All qspecs are expected to be either a QXTensor or a QXSum, but a {type(qspec)} was found!")
         return (type, qspecs)
-
+'''
     # Visit a parse tree produced by ExpParser#qunspec.
     def visitQunspec(self, ctx: ExpParser.QunspecContext):
+
+        locus = self.visitLocus(ctx.locus())
+        qty = self.visit(ctx.qty())
+
         i = 0
-        parts = len(ctx.locus())
-        # each specification is split by a ⊗
-        # we combine all of the parts into one
-        locus = []
-        qty = None
         states = []
-        while ctx.locus(i) is not None:
-            locus += self.visitLocus(ctx.locus(i))
+        while ctx.qspec(i) is not None:
+            states.append(self.visitQspec(ctx.qspec(i)))
+            i += 1
 
-            qty, new_states = self.visitQtypeCreate(ctx.qtypeCreate(i))
-
-            if parts > 1 and not isinstance(qty, TyEn):
+           # if parts > 1 and not isinstance(qty, TyEn):
                 # error, q-bits must be entangled to use tensor ⊗
-                print("Error: q-bit strings must be entangled in order to use the tensor in qunspecs.")
-                pass
+           #     print("Error: q-bit strings must be entangled in order to use the tensor in qunspecs.")
+           #     pass
 
             # combine states in a method similar to FOIL-ing two binomials
-            if len(states) == 0:
-                states = new_states
-            else:
-                old_states = states.copy()
-                states.clear()
-                for j in range(len(old_states)):
-                    for k in range(len(new_states)):
-                        states.append(self.mergeStates(ctx.start.line, old_states[j], new_states[k]))
-
-            i += 1
+            #if len(states) == 0:
+            #    states = new_states
+            #else:
+            #    old_states = states.copy()
+            #    states.clear()
+            #    for j in range(len(old_states)):
+             #       for k in range(len(new_states)):
+            #            states.append(self.mergeStates(ctx.start.line, old_states[j], new_states[k]))
 
         return QXQSpec(locus, qty, states, line_number=ctx.start.line)
 
@@ -453,12 +449,6 @@ class ProgramTransformer(ExpVisitor):
     def visitQspec(self, ctx: ExpParser.QspecContext):
         if ctx.tensorall() is not None:
             return self.visitTensorall(ctx.tensorall())
-        if ctx.manyketpart() is not None:
-            if ctx.arithExpr() is not None:
-                return QXTensor(self.visitManyketpart(ctx.manyketpart()), None, self.visitArithExpr(ctx.arithExpr()),
-                                line_number=ctx.start.line)
-            else:
-                return QXTensor(self.visitManyketpart(ctx.manyketpart()), line_number=ctx.start.line)
         if ctx.sumspec() is not None:
             return self.visitSumspec(ctx.sumspec())
 
@@ -516,7 +506,7 @@ class ProgramTransformer(ExpVisitor):
         v = None
         if ctx.crange() is not None:
             v = self.visitCrange(ctx.crange())
-        return QXTensor(self.visitManyket(ctx.manyket()), ctx.ID(), v, line_number=ctx.start.line)
+        return QXTensor(QXNum(1.0), self.visitManyket(ctx.manyket()), ctx.ID(), v, line_number=ctx.start.line)
 
     def mergeAmp(self, a: QXAExp, b: QXAExp):
         if a == QXNum(1.0):
@@ -525,13 +515,48 @@ class ProgramTransformer(ExpVisitor):
             return a
         return QXBin("*", a, b, line_number = a.line_number())
 
+    def mergeSums(self, sumOp: QXCon, amp: QXAExp, kets : [QXKet], next: QXQState, line_number):
+
+        if isinstance(next, QXSum):
+            if not kets:
+                next.setSum([sumOp] + next.sums())
+                next.setAmp(self.mergeAmp(next.amp(),amp))
+                return next
+
+        return QXSum([sumOp], amp, kets, next, line_number = line_number)
+
+
     # Visit a parse tree produced by ExpParser#sumspec.
     def visitSumspec(self, ctx: ExpParser.SumspecContext):
-        if ctx.maySum() is None:
-            return self.visitSumspec(ctx.sumspec())
+        if ctx.tensorall() is not None:
+            return self.visitTensorall(ctx.tensorall())
 
-        this_sum = self.visitMaySum(ctx.maySum())
+        if ctx.manyketpart() is not None:
+            kets = self.visitManyketpart(ctx.manyketpart())
+            amp = QXNum(1.0)
+            if ctx.arithExpr() is not None:
+                amp = self.visitArithExpr(ctx.arithExpr())
+            return QXTensor(amp, kets, line_number=ctx.start.line)
 
+        if ctx.maySum() is not None:
+            this_sum = self.visitMaySum(ctx.maySum())
+
+            amp = QXNum(1.0)
+            if ctx.arithExpr() is not None:
+                amp = self.visitArithExpr(ctx.arithExpr())
+
+            kets = []
+            if ctx.manyket() is not None:
+                kets = self.visitManyket(ctx.manyket())
+
+            next = self.visitSumspec(ctx.sumspec())
+
+            return self.mergeSums(this_sum, amp, kets, next, line_number=ctx.start.line)
+
+        return self.visitSumspec(ctx.sumspec())
+
+
+    '''
         amp = QXNum(1.0)
         if ctx.arithExpr() is not None:
             amp = self.visitArithExpr(ctx.arithExpr())
@@ -551,7 +576,7 @@ class ProgramTransformer(ExpVisitor):
             kets = self.visitTensorall(ctx.tensorall())
             return QXSum([this_sum], amp, kets, line_number=ctx.start.line)
 
-        '''
+        
         def extract_condition(expr: QXAExp):
             # cases:
             # bexp / aexp ==> bexp, 1 / aexp
@@ -846,10 +871,7 @@ class ProgramTransformer(ExpVisitor):
         i = 0
         while ctx.manyketchild(i) is not None:
             converted_child = self.visitManyketChild(ctx.manyketchild(i))
-            if isinstance(converted_child, list):
-                kets += converted_child
-            else:
-                kets.append(converted_child)
+            kets.append(converted_child)
             i += 1
 
         return kets
@@ -863,12 +885,8 @@ class ProgramTransformer(ExpVisitor):
             return QXBind(ctx.ID())
         if ctx.idindex() is not None:
             return self.visitIdindex(ctx.idindex())
-        i = 0
-        kets = []
-        while ctx.ket(i) is not None:
-            vket = self.visitKet(ctx.ket(i))
-            kets.append(vket)
-        return vket
+        if ctx.ket() is not None:
+            return self.visitKet(ctx.ket())
 
     # Visit a parse tree produced by ExpParser#forexp.
     def visitForexp(self, ctx: ExpParser.ForexpContext):
@@ -1150,20 +1168,17 @@ class ProgramTransformer(ExpVisitor):
         kets = []
         i = 0
         while ctx.ket(i) is not None:
-            kets += self.visitKet(ctx.ket(i))
+            kets = kets.append(self.visitKet(ctx.ket(i)))
             i = i + 1
         return kets
 
     # Visit a parse tree produced by ExpParser#ket.
     def visitKet(self, ctx: ExpParser.KetContext):
         # with multiple q-states, create multiple Kets, return as list
-        if len(ctx.qstate()) > 0:
-            kets = []
-            for qstate in ctx.qstate():
-                kets.append(QXSKet(self.visitQstate(qstate), qstate, line_number=ctx.start.line))
-            return kets
+        if ctx.qstate() is not None:
+            return QXSKet(self.visitQstate(ctx.qstate()), ctx.qstate(), line_number=ctx.start.line)
         elif ctx.arithAtomic() is not None:
-            return [QXVKet(self.visitArithAtomic(ctx.arithAtomic()), line_number=ctx.start.line)]
+            return QXVKet(self.visitArithAtomic(ctx.arithAtomic()), line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#ketsum.
     def visitKetsum(self, ctx: ExpParser.KetsumContext):

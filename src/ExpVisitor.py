@@ -115,8 +115,8 @@ class ExpVisitor(ParseTreeVisitor):
 
 
     # Visit a parse tree produced by ExpParser#qtypeCreate.
-    def visitQtypeCreate(self, ctx:ExpParser.QtypeCreateContext):
-        return self.visitChildren(ctx)
+    #def visitQtypeCreate(self, ctx:ExpParser.QtypeCreateContext):
+    #    return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by ExpParser#qunspec.
