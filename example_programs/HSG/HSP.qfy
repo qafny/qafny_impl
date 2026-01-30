@@ -1,0 +1,60 @@
+// Hidden Shift problem
+// https://arxiv.org/pdf/quant-ph/0211140.pdf 
+
+// I still don't understand character theory very well
+// What does "compute chi(y) into the phase" mean? What operation takes place? (step 3 in algorithm 1, page 5)
+
+method HSP (q : Q[n], p : Q[n], n:nat, f : [Bool] -> [Bool], q:nat, prime:nat, chi: [Bool] -> [Bool]) returns (s:nat, prob:nat)
+  requires { q[0 , n) : Nor ↦ |0⟩ }
+  requires { p[0 , n) : Nor ↦ |0⟩ }
+
+  ensures prob == 1 - 1/q
+  //postcondition for s: for all x, f(x) == chi(x+s)
+  ensures forall x :: 0 <= x < 2^n ==> f(x) == chi(x+s)
+{
+  q[0, n) *= H;
+  p[0, n) *= H;
+  
+  for i in [0, n) 
+   // separates q[0, i), p[0, n)
+    invariant {
+      q[0, i), p[0, n) : En ↦ ∑ k ∈ [0, 2^i) . 1 / sqrt(2^n) | f(k, p[k])⟩ |k ⟩
+    }
+    invariant {
+      q [i , n) : Had ↦ |+⟩
+    }
+  {
+    //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
+    if (q[i]) { q[0, n) *= λ(x => |x + f(x)⟩);}
+
+    // This is super hacky, but I have no good way to do this now....
+    // TODO: find out one way to take the reference of the underlying range
+    // e.g. [[ p[0 .. N] ]] ?
+    //#LemmaPowEquiv(p_seq'nat'_7__emit, base, i, N);
+  }
+
+  q[0,n) *= QFT;
+
+  for i in [0, n)
+    invariant {
+      q[0, i), p[0, n) : En ↦ ∑ k ∈ [0, 2^i) . 1 / sqrt(2^n) | k , f(k, p[k]) ⟩
+    }
+    invariant {
+      q [i , n) : Had ↦ |+⟩
+    }
+  {
+    //quantum mod-mult requires gcd(base,N) == 1 to implement, otherwise, it is not implementable.
+    if (q[i]) {q[0, n) *= λ (x,y => |x⟩ |y + f(x)⟩);}
+
+    // This is super hacky, but I have no good way to do this now....
+    // TODO: find out one way to take the reference of the underlying range
+    // e.g. [[ p[0 .. N] ]] ?
+    //#LemmaPowEquiv(p_seq'nat'_7__emit, base, i, N);
+  }
+
+  q[0,n) *= RQFT;
+
+  y,prob *= measure(q[0,n));
+
+  s := not(y);
+}
