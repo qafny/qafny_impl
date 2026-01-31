@@ -77,8 +77,7 @@ class CollectKind(ProgramVisitor):
 
         for condelem in ctx.conds():
             condelem.accept(self)
-
-        tenvv = self.tenv.copy()
+        #tenvv = self.tenv.copy()
 
         for stmt in ctx.stmts():
             x_ = x_ and stmt.accept(self)
