@@ -43,8 +43,8 @@ method QPE(q : Q[n], p : Q[n], n:nat, U : Q[n] -> Q[n], psi: Q[n], lambda : [Boo
   //--> En ↦ ∑ j ∈ [0, 2^n)) . 1 / sqrt(2^n) * 1 / sqrt(2^n) . (∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (- j * v, 2^n)  . | v ⟩ )
   q[0,n) *= RQFT;
   //the 1 / sqrt(2^n) * 1 / sqrt(2^n) can be rewritten as 1 / 2^n, but we can keep it in 1 / sqrt(2^n) * 1 / sqrt(2^n) or 1/ (sqrt(2^n) * sqrt(2^n))
-  assert { q[0,n) : En ↦  ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n) * 1 / sqrt(2^n) . (∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (- j * v, 2^n)  | v ⟩ ) };
-  assert { q[0,n) : En ↦  ∑ v ∈ [0, 2^n) . 1 / (2^n) . ∑ j ∈ [0, 2^n) . ω (j * lambda * 2^n - j * v, 2/n)   | v ⟩ };
+  assert { q[0,n) : En ↦  ∑ j ∈ [0, 2^n) . 1 / sqrt(2^n) * 1 / sqrt(2^n) ∑ v ∈ [0, 2^n) . ω (j * lambda, 1) * ω (- j * v, 2^n)  | v ⟩ };
+  assert { q[0,n) : En ↦  ∑ v ∈ [0, 2^n) . 1 / (2^n) ∑ j ∈ [0, 2^n) . ω (j * lambda * 2^n - j * v, 2/n)   | v ⟩ };
    // the above step rearrange the arrays from ∑ j  and ∑ v
    //can do something smart, we can start with the one in line 47, 
   y,p *= measure(q[0,n));

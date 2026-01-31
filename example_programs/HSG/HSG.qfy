@@ -31,7 +31,7 @@ method HSG(q : Q[n], p : Q[n], n:nat, f : [Bool] -> [Bool], h: [nat], r:nat) ret
     
     for i in [0, n)
       invariant {
-        q[0, i), p[0, n) : En ↦ ∑ k ∈ [0, Pow2(i)) . ∑ j ∈ [0, i) . 1 / sqrt(2^n)  | k ,  f(n2b(k))[j] ⟩
+        q[0, i), p[0, n) : En ↦ ∑ k ∈ [0, Pow2(i)) . ∑ j ∈ [0, i) . 1 / sqrt(2^n)  | k ⟩ |  f(n2b(k))[j] ⟩
       }
       invariant {
         q [i , n) : Had ↦ |+⟩
@@ -51,7 +51,7 @@ method HSG(q : Q[n], p : Q[n], n:nat, f : [Bool] -> [Bool], h: [nat], r:nat) ret
     q[0,n) *= QFT;
     //we need to have a way of dealing with 2^n / r, the sum actually does not matter, we need to say 2^n/r as nat is 2^n/r round to bottom nat
     //in the following ω (v * x + r * k * x, 2^n) can be break down ω (v * x) * ω (r * k * x, 2^n), and the first one is one since it can be moved out of the sum k.
-    assert { q[0 ,n) : En ↦ ∑ y ∈ [0, 2^n) . 1 / sqrt(r) * 1 / sqrt(2^n) . ∑ h ∈ [0 ,r) . kappa(v,y) * kappa(h, y) |y⟩ };
+    assert { q[0 ,n) : En ↦ ∑ y ∈ [0, 2^n) . 1 / sqrt(r) * 1 / sqrt(2^n) ∑ h ∈ [0 ,r) . kappa(v,y) * kappa(h, y) |y⟩ };
     y,p *= measure(q[0 ,n));
     //will need to support a lemma (does not need proof), to show that ∑ k ∈ [0 .. 2^n / r] . ω (r * k * x, 2^n) is 4 / (pi * pi * r) when y = c * 2^n / r
 

@@ -36,7 +36,7 @@ method Shors(n:nat, q : Q[n], p : Q[n], N : nat, base : nat, r:nat , c:nat) retu
   q[0,n) *= QFT;
   //we need to have a way of dealing with 2^n / r, the sum actually does not matter, we need to say 2^n/r as nat is 2^n/r round to bottom nat
   //in the following ω (v * x + r * k * x, 2^n) can be break down ω (v * x) * ω (r * k * x, 2^n), and the first one is one since it can be moved out of the sum k.
-  assert { q[0 , n) : En ↦ ∑ x ∈ [0, 2^n) . 1 / sqrt(2^n / r) * 1 / sqrt(2^n) . ∑ k ∈ [0 , 2^n / r) . ω (v * x + r * k * x, 2^n)  |x⟩ };
+  assert { q[0 , n) : En ↦ ∑ x ∈ [0, 2^n) . 1 / sqrt(2^n / r) * 1 / sqrt(2^n) ∑ k ∈ [0 , 2^n / r) . ω (v * x + r * k * x, 2^n)  |x⟩ };
   y,p *= measure(q[0 , n));
   //will need to support a lemma (does not need proof), to show that ∑ k ∈ [0 .. 2^n / r] . ω (r * k * x, 2^n) is 4 / (pi * pi * r) when y = c * 2^n / r
 }  

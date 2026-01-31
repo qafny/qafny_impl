@@ -71,7 +71,7 @@ method DLog(n:nat, N : nat, x : nat, g:nat, r:nat, c:nat, q : Q[n], p : Q[n], t 
   p[0,n) *= RQFT;
 
   //Please see andrew's note to see what is the result. 1 / sqrt(N) . where this coming from?
-  assert { q[0, n), p[0, n) :  En ↦ ∑ k ∈ [0, 2^i) . omega(k, delta, N) | k * log(g, x) , k ⟩}; 
+  assert { q[0, n), p[0, n) :  En ↦ ∑ k ∈ [0, 2^i) . omega(k, delta, N) | k * log(g, x) ⟩ | k ⟩}; 
   
   //below is not in the current syntax now, we actually want to measure both q and p at the same time.
   //but we want to get two values, instead of 1.

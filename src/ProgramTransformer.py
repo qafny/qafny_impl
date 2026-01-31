@@ -31,7 +31,7 @@ class ProgramTransformer(ExpVisitor):
         i = 0
         topLevelStmts = []
         while ctx.topLevel(i) is not None:
-            topLevelStmts.append(self.visitTopLevel(ctx.topLevel(i)))
+            topLevelStmts+=[self.visitTopLevel(ctx.topLevel(i))]
             i = i + 1
         return QXProgram(topLevelStmts, line_number=ctx.start.line)
 
@@ -120,15 +120,15 @@ class ProgramTransformer(ExpVisitor):
             top = self.visitReen(ctx.reen(i))
             spec = self.visitSpec(ctx.spec(i))
             if top == 'requires':
-                conds.append(QXRequires(spec, line_number=ctx.start.line))
+                conds+=[QXRequires(spec, line_number=ctx.start.line)]
             elif top == 'ensures':
-                conds.append(QXEnsures(spec, line_number=ctx.start.line))
+                conds += [QXEnsures(spec, line_number=ctx.start.line)]
 
             i = i + 1
 
         # convert decreases
         for a_exp in ctx.arithExpr():
-            conds.append(QXDecreases(self.visitArithExpr(a_exp), line_number=ctx.start.line))
+            conds+= [QXDecreases(self.visitArithExpr(a_exp), line_number=ctx.start.line)]
         #       print(f"\n visitConds {conds}")
         return conds
 
@@ -145,17 +145,17 @@ class ProgramTransformer(ExpVisitor):
 
         i = 0
         while ctx.spec(i) is not None:
-            conditions.append(QXInvariant(self.visitSpec(ctx.spec(i)), line_number=ctx.start.line))
+            conditions+= [(QXInvariant(self.visitSpec(ctx.spec(i)), line_number=ctx.start.line))]
             i += 1
 
         i = 0
         while ctx.arithExpr(i) is not None:
-            conditions.append(QXDecreases(self.visitArithExpr(ctx.arithExpr(i)), line_number=ctx.start.line))
+            conditions += [(QXDecreases(self.visitArithExpr(ctx.arithExpr(i)), line_number=ctx.start.line))]
             i += 1
 
         i = 0
         while ctx.locus(i) is not None:
-            conditions.append(QXSeparates(self.visitLocus(ctx.locus(i)), line_number=ctx.start.line))
+            conditions += [(QXSeparates(self.visitLocus(ctx.locus(i)), line_number=ctx.start.line))]
             i += 1
 
         return conditions
@@ -871,7 +871,7 @@ class ProgramTransformer(ExpVisitor):
         i = 0
         while ctx.manyketchild(i) is not None:
             converted_child = self.visitManyketChild(ctx.manyketchild(i))
-            kets.append(converted_child)
+            kets = kets = [converted_child]
             i += 1
 
         return kets
@@ -1093,7 +1093,7 @@ class ProgramTransformer(ExpVisitor):
     def visitSetInstance(self, ctx: ExpParser.SetInstanceContext):
         aexps = []
         for untransformed_aexp in ctx.arithExpr():
-            aexps.append(self.visitArithExpr(untransformed_aexp))
+            aexps += [self.visitArithExpr(untransformed_aexp)]
         return QXSet(aexps, line_number=ctx.start.line)
 
     # Visit a parse tree produced by ExpParser#memberAccess.
@@ -1168,7 +1168,7 @@ class ProgramTransformer(ExpVisitor):
         kets = []
         i = 0
         while ctx.ket(i) is not None:
-            kets = kets.append(self.visitKet(ctx.ket(i)))
+            kets = kets + [self.visitKet(ctx.ket(i))]
             i = i + 1
         return kets
 
