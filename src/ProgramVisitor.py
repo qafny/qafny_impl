@@ -433,10 +433,12 @@ class ProgramVisitor(AbstractProgramVisitor):
         #         for e in elem:
         #             e.accept(self)
         #     else:
-        ctx.kets().accept(self)
-        ctx.amp().accept(self)
         for elem in ctx.sums():
             elem.accept(self)
+        for ket in ctx.kets():
+            ket.accept(self)
+        ctx.amp().accept(self)
+        ctx.next().accept(self)
 
     def visitTensor(self, ctx: QXTensor):
         for elem in ctx.kets():
@@ -445,6 +447,7 @@ class ProgramVisitor(AbstractProgramVisitor):
                     e.accept(self)
             else:
                 elem.accept(self)
+        ctx.phase().accept(self)
         # if ctx.amp():
         #     ctx.amp().accept(self)
         if ctx.range():

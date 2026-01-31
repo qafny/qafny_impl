@@ -375,7 +375,7 @@ class ProgramTransformer(ExpVisitor):
     def visitQunspec(self, ctx: ExpParser.QunspecContext):
 
         locus = self.visitLocus(ctx.locus())
-        qty = self.visit(ctx.qty())
+        qty = self.visitQty(ctx.qty())
 
         i = 0
         states = []
