@@ -271,6 +271,33 @@ class TypeCollector(ProgramVisitor):
 
         return True
 
+    def visitFunction(self, ctx: QXFunction):
+        self.env[self.fvar] = ([], [], [])
+        return True
+
+    def visitLemma(self, ctx: Programmer.QXLemma):
+        self.fvar = str(ctx.ID())
+        self.tenv = []
+        self.mkenv = []
+        self.pred = []
+        self.fkenv = self.kenv.get(self.fvar)
+
+        if self.fkenv is None:
+            print(f"Error: Kind environment not found for method '{self.fvar}'")
+            return False
+
+        self.tenv += self.createRequireVars(ctx.conds())
+        self.mkenv += self.createEnsureVars(ctx.conds())
+
+        for condelem in ctx.conds():
+            v = condelem.accept(self)
+            if not v:
+                return False
+
+        self.env[self.fvar] = (self.tenv, self.mkenv, self.pred)
+
+        return True
+
     def visitProgram(self, ctx: Programmer.QXProgram):
         for elem in ctx.topLevelStmts():
             v = elem.accept(self)

@@ -176,9 +176,11 @@ class ProgramVisitor(AbstractProgramVisitor):
         for bindelem in ctx.bindings():
             bindelem.accept(self)
 
-        ctx.return_type().accept(self)
+        if ctx.return_type() is not None:
+            ctx.return_type().accept(self)
 
-        ctx.arith_expr().accept(self)
+        if ctx.arith_expr() is not None:
+            ctx.arith_expr().accept(self)
 
     def visitLemma(self, ctx: QXLemma):
         for bindelem in ctx.bindings():

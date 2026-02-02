@@ -114,6 +114,24 @@ class CollectKind(ProgramVisitor):
 
         return True
 
+    def visitLemma(self, ctx: QXLemma):
+        x = str(ctx.ID())
+        self.tenv = dict()
+
+        for binding in ctx.bindings():
+            y = str(binding.ID())
+            tv = binding.type()
+            if not tv.accept(self):
+                return False
+            self.tenv.update({y: tv})
+
+        for condelem in ctx.conds():
+            condelem.accept(self)
+
+        self.env.update({x: (self.tenv, [])})
+
+        return True
+
     def visitProgram(self, ctx: QXProgram):
         for elem in ctx.topLevelStmts():
             v = elem.accept(self)
