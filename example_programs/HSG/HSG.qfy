@@ -4,8 +4,8 @@
 
 function {:axiom} kappa(a:nat,y:nat) : real
 
-lemma {:axiom} kappaProperty(a:nat,b:nat,y:nat)
-  ensures kappa(a+b,y) == kappa(a,y) * kappa(b,y)
+//lemma {:axiom} kappaProperty(a:nat,b:nat,y:nat)
+//  ensures kappa(a+b,y) == kappa(a,y) * kappa(b,y)
 
 // I tried to implement the lemma you described, but I realized I don't know what you mean by c and x
 lemma {:axiom} endProperty(y:nat, c:nat, n:nat, r:nat, x:nat)
