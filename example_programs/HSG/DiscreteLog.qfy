@@ -1,3 +1,7 @@
+function {:axiom} gcd(a:nat,b:nat) : nat
+function {:axiom} order(a:nat,b:nat) : nat
+function {:axiom} log(a:nat,b:nat) : real
+
 //Discrete Log algorithm is very very similar to Shor's algorithm.
 //The idea is to have two H qubit arrays.
 method DLog(n:nat, N : nat, x : nat, g:nat, r:nat, c:nat, q : Q[n], p : Q[n], t : Q[n]) returns (u:nat, v:nat, p : real)

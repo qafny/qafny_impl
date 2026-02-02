@@ -1,3 +1,7 @@
+function {:axiom} gcd(a:nat,b:nat) : real
+
+function {:axiom} order(a:nat,b:nat) : real
+
 //r is the order, this function is to do analysis, not the computation. We need to analysis that the shor's algorithm can produce r.
 method Shors(n:nat, q : Q[n], p : Q[n], N : nat, base : nat, r:nat , c:nat) returns (y:nat, p : real)
   requires 1 < base < N <= 2^n //if we do not want allow this syntax, fine.
